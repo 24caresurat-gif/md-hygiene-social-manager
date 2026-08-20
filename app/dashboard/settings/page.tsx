@@ -1,0 +1,1 @@
+import PlaceholderPage from '../placeholder-page'; export default function Page(){return <PlaceholderPage title="Settings" eyebrow="WORKSPACE" description="Manage your workspace, profile, connected channels and preferences."/>}
