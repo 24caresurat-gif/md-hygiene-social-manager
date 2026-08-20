@@ -1,0 +1,1 @@
+import PlaceholderPage from '../placeholder-page'; export default function Page(){return <PlaceholderPage title="Media Library" eyebrow="ASSETS" description="Organize images and videos for your social content."/>}
