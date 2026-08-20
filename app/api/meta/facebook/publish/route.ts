@@ -23,13 +23,19 @@ export async function POST(request: Request) {
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL; const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!supabaseUrl || !anonKey) return NextResponse.json({ error: 'Supabase configuration is missing.' }, { status: 500 });
+  let supabase: ReturnType<typeof createClient> | null = null;
+  let userId = '';
+  let account: { id: string; name: string; platform_account_id: string; access_token: string | null; platform: string; status: string; brand_id: string | null } | null = null;
+  const attemptedAt = new Date().toISOString();
 
   try {
-    const supabase = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: `Bearer ${userAccessToken}` } } });
+    supabase = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: `Bearer ${userAccessToken}` } } });
     const { data: userData, error: userError } = await supabase.auth.getUser(userAccessToken);
     if (userError || !userData.user) throw new Error('Invalid Social Manager session.');
-    const { data: account, error: accountError } = await supabase.from('social_accounts').select('id,name,platform_account_id,access_token,platform,status').eq('id', accountId).eq('user_id', userData.user.id).eq('platform', 'facebook').single();
-    if (accountError || !account) throw new Error('Connected Facebook Page not found.');
+    userId = userData.user.id;
+    const { data: foundAccount, error: accountError } = await supabase.from('social_accounts').select('id,name,platform_account_id,access_token,platform,status,brand_id').eq('id', accountId).eq('user_id', userId).eq('platform', 'facebook').single();
+    if (accountError || !foundAccount) throw new Error('Connected Facebook Page not found.');
+    account = foundAccount;
     if (account.status !== 'connected' || !account.access_token) throw new Error('Facebook Page connection is not active. Please reconnect it.');
 
     const pageId = account.platform_account_id; const pageToken = account.access_token;
@@ -44,11 +50,15 @@ export async function POST(request: Request) {
     if (!publishResponse.ok || result.error) throw new Error(result.error?.message || 'Facebook rejected the post.');
     const postId = result.id || result.post_id || result.video_id || null;
 
-    const { error: trackingError } = await supabase.from('social_posts').insert({ user_id: userData.user.id, social_account_id: account.id, platform: 'facebook', platform_post_id: postId, message, media_type: mediaType, status: 'published', published_at: new Date().toISOString() });
+    const { error: trackingError } = await supabase.from('social_posts').insert({ user_id: userId, brand_id: account.brand_id, social_account_id: account.id, platform: 'facebook', platform_post_id: postId, message, link: link || null, media_type: mediaType, status: 'published', published_at: new Date().toISOString(), attempted_at: attemptedAt, platform_response: result });
     if (trackingError) console.error('social_posts tracking failed:', trackingError.message);
-
     return NextResponse.json({ published: true, postId, page: account.name });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unable to publish to Facebook.' }, { status: 400 });
+    const errorMessage = error instanceof Error ? error.message : 'Unable to publish to Facebook.';
+    if (supabase && userId && account) {
+      const { error: trackingError } = await supabase.from('social_posts').insert({ user_id: userId, brand_id: account.brand_id, social_account_id: account.id, platform: 'facebook', platform_post_id: null, message: message || '', link: link || null, media_type: mediaType, status: 'failed', attempted_at: attemptedAt, error_message: errorMessage });
+      if (trackingError) console.error('failed-post tracking failed:', trackingError.message);
+    }
+    return NextResponse.json({ error: errorMessage }, { status: 400 });
   }
 }
