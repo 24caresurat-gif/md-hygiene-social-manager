@@ -1,5 +1,4 @@
 'use client';
-import '../ui.css';
 import { useEffect, useState, type ReactNode } from 'react';
 import { getSupabase } from '../../../lib/supabase-browser';
 const nav=[['Dashboard','⌂','/dashboard'],['Accounts','◎','/dashboard/accounts'],['Create Post','✎','/dashboard/publish'],['Calendar','□','/dashboard/calendar'],['Analytics','▥','/dashboard/analytics'],['Media Library','▧','/dashboard/media'],['Leads','♙','/dashboard/leads'],['Settings','⚙','/dashboard/settings']];
