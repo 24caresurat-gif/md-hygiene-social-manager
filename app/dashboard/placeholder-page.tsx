@@ -1,0 +1,3 @@
+'use client';
+import AppShell from './components/AppShell';
+export default function PlaceholderPage({title,eyebrow,description}:{title:string;eyebrow:string;description:string}){return <AppShell title={title}><div className="page-head"><div><span className="eyebrow">{eyebrow}</span><h1>{title}</h1><p>{description}</p></div><button className="btn btn-primary" onClick={()=>location.href='/dashboard/publish'}>＋ Create Post</button></div><section className="panel empty-state large-empty"><div className="empty-icon">✦</div><h2>{title} workspace</h2><p>This module is ready for the unified MD Hygiene UI. Features can be enabled here without changing the app shell.</p></section></AppShell>}
