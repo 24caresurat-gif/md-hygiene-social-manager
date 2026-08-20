@@ -19,13 +19,19 @@ export async function GET(request:Request){
   const {data:user}=await supabase.auth.getUser(userToken); if(!user.user)throw new Error('Invalid session.');
   const accountsResponse=await fetch('https://mybusinessaccountmanagement.googleapis.com/v1/accounts',{headers:{Authorization:`Bearer ${token.access_token}`},cache:'no-store'}); const accounts=await accountsResponse.json();
   if(!accountsResponse.ok||accounts.error)throw new Error(accounts.error?.message||'Unable to read Google Business accounts.');
-  const profiles=accounts.accounts||[];
+  const profiles=accounts.accounts||[]; let connected=0;
   for(const profile of profiles){
-   const id=String(profile.name||'').replace(/^accounts\//,''); const name=profile.accountName||id;
-   const {data:existing}=await supabase.from('social_accounts').select('id').eq('user_id',user.user.id).eq('platform','google_business').eq('platform_account_id',id).maybeSingle();
-   const payload={user_id:user.user.id,platform:'google_business',name,handle:null,platform_account_id:id,access_token:token.access_token,refresh_token:token.refresh_token||null,token_expires_at:token.expires_in?new Date(Date.now()+Number(token.expires_in)*1000).toISOString():null,status:'connected',updated_at:new Date().toISOString()};
-   const result=existing?await supabase.from('social_accounts').update(payload).eq('id',existing.id):await supabase.from('social_accounts').insert(payload); if(result.error)throw result.error;
+   const accountName=String(profile.name||''); const accountId=accountName.replace(/^accounts\//,'');
+   const locationsResponse=await fetch(`https://mybusinessbusinessinformation.googleapis.com/v1/${encodeURIComponent(accountName)}/locations?readMask=name,title,storefrontAddress&pageSize=100`,{headers:{Authorization:`Bearer ${token.access_token}`},cache:'no-store'});
+   const locations=await locationsResponse.json();
+   const targets=locationsResponse.ok&&(locations.locations||[]).length?locations.locations.map((x:any)=>({id:String(x.name||''),name:x.title||accountId,handle:x.storefrontAddress?.locality||null})): [{id:accountId,name:profile.accountName||accountId,handle:null}];
+   for(const target of targets){
+    if(!target.id)continue;
+    const {data:existing}=await supabase.from('social_accounts').select('id').eq('user_id',user.user.id).eq('platform','google_business').eq('platform_account_id',target.id).maybeSingle();
+    const payload={user_id:user.user.id,platform:'google_business',name:target.name,handle:target.handle,platform_account_id:target.id,access_token:token.access_token,refresh_token:token.refresh_token||null,token_expires_at:token.expires_in?new Date(Date.now()+Number(token.expires_in)*1000).toISOString():null,status:'connected',updated_at:new Date().toISOString()};
+    const result=existing?await supabase.from('social_accounts').update(payload).eq('id',existing.id):await supabase.from('social_accounts').insert(payload); if(result.error)throw result.error; connected++;
+   }
   }
-  const response=NextResponse.redirect(new URL(`/dashboard/accounts?google=connected&count=${profiles.length}`,url.origin)); response.cookies.set('google_business_oauth_state','',{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax',path:'/',maxAge:0}); response.cookies.set('google_business_user_token','',{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax',path:'/',maxAge:0}); return response;
+  const response=NextResponse.redirect(new URL(`/dashboard/accounts?google=connected&count=${connected}`,url.origin)); response.cookies.set('google_business_oauth_state','',{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax',path:'/',maxAge:0}); response.cookies.set('google_business_user_token','',{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax',path:'/',maxAge:0}); return response;
  }catch(error){return NextResponse.redirect(new URL(`/dashboard/accounts?error=${encodeURIComponent(error instanceof Error?error.message:'Google Business connection failed.')}`,url.origin));}
 }
