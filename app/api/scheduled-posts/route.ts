@@ -12,13 +12,24 @@ async function userFromRequest(req: NextRequest) {
   return user;
 }
 
+async function authorizeWorkspace(db: ReturnType<typeof admin>, userId: string, brandId: string, accountIds: string[] = []) {
+  const { data: brand, error: brandError } = await db.from('brands').select('id').eq('id', brandId).eq('user_id', userId).maybeSingle();
+  if (brandError || !brand) return false;
+  if (!accountIds.length) return true;
+  const { data: accounts, error: accountError } = await db.from('social_accounts').select('id').eq('user_id', userId).eq('brand_id', brandId).in('id', accountIds);
+  return !accountError && (accounts?.length ?? 0) === accountIds.length;
+}
+
 export async function GET(req: NextRequest) {
   const user = await userFromRequest(req);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const brandId = new URL(req.url).searchParams.get('brandId');
   const db = admin();
   let q = db.from('scheduled_posts').select('*').eq('user_id', user.id).order('scheduled_for', { ascending: true });
-  if (brandId) q = q.eq('brand_id', brandId);
+  if (brandId) {
+    if (!(await authorizeWorkspace(db, user.id, brandId))) return NextResponse.json({ error: 'Workspace not found.' }, { status: 403 });
+    q = q.eq('brand_id', brandId);
+  }
   const { data, error } = await q;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ posts: data ?? [] });
@@ -31,8 +42,10 @@ export async function POST(req: NextRequest) {
   if (!body?.brandId || !Array.isArray(body.accountIds) || !body.accountIds.length || !body.scheduledFor) return NextResponse.json({ error: 'brandId, accountIds and scheduledFor are required.' }, { status: 400 });
   const when = new Date(body.scheduledFor);
   if (Number.isNaN(when.getTime()) || when.getTime() <= Date.now()) return NextResponse.json({ error: 'scheduledFor must be a valid future date.' }, { status: 400 });
+  const accountIds = [...new Set(body.accountIds.map(String))];
   const db = admin();
-  const { data, error } = await db.from('scheduled_posts').insert({ user_id: user.id, brand_id: body.brandId, account_ids: body.accountIds, caption: String(body.caption || ''), link: body.link || null, media_url: body.mediaUrl || null, scheduled_for: when.toISOString(), status: body.status === 'draft' ? 'draft' : 'scheduled' }).select('*').single();
+  if (!(await authorizeWorkspace(db, user.id, String(body.brandId), accountIds))) return NextResponse.json({ error: 'Workspace or social account access denied.' }, { status: 403 });
+  const { data, error } = await db.from('scheduled_posts').insert({ user_id: user.id, brand_id: body.brandId, account_ids: accountIds, caption: String(body.caption || ''), link: body.link || null, media_url: body.mediaUrl || null, scheduled_for: when.toISOString(), status: body.status === 'draft' ? 'draft' : 'scheduled' }).select('*').single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ post: data }, { status: 201 });
 }
