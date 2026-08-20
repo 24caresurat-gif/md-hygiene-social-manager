@@ -32,12 +32,14 @@ export async function POST(request: Request) {
     if (userError || !user.user) return NextResponse.json({ error: 'Invalid session.' }, { status: 401 });
     const body = await request.json().catch(() => ({}));
     const name = String(body.name || '').trim();
-    if (!name) return NextResponse.json({ error: 'Business name is required.' }, { status: 400 });
+    const logo_url = body.logo_url ? String(body.logo_url).trim() : null;
+    if (!name) return NextResponse.json({ error: 'Workspace name is required.' }, { status: 400 });
+    if (logo_url && logo_url.length > 2048) return NextResponse.json({ error: 'Logo URL is too long.' }, { status: 400 });
     const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-    const { data, error } = await supabase.from('brands').insert({ user_id: user.user.id, name, slug }).select('id,name,slug,logo_url').single();
+    const { data, error } = await supabase.from('brands').insert({ user_id: user.user.id, name, slug, logo_url }).select('id,name,slug,logo_url').single();
     if (error) throw error;
     return NextResponse.json({ brand: data }, { status: 201 });
   } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : 'Unable to create business.' }, { status: 400 });
+    return NextResponse.json({ error: e instanceof Error ? e.message : 'Unable to create workspace.' }, { status: 400 });
   }
 }
