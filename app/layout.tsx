@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import './dashboard/ui.css';
 
 export const metadata: Metadata = {
   title: 'MD Hygiene Social Manager',
@@ -7,11 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return (
-    <html lang="en">
-      <body>{children}</body>
-    </html>
-  );
+  return <html lang="en"><body>{children}</body></html>;
 }
-
-// Trigger a fresh Vercel deployment after configuration updates.
