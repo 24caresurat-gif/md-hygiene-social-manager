@@ -1,0 +1,1 @@
+import PlaceholderPage from '../placeholder-page'; export default function Page(){return <PlaceholderPage title="Leads" eyebrow="CRM" description="Keep your social enquiries and lead workflow organized."/>}
