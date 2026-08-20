@@ -4,6 +4,10 @@ import { getSupabase } from '../../../lib/supabase-browser';
 
 export type Brand = { id: string; name: string; slug: string; logo_url?: string | null };
 
+// Kept as a named export for backwards compatibility with dashboard builds.
+// There is intentionally no "All Workspaces" option in the workspace-gated UI.
+export const ALL_BRANDS_ID = '__all_workspaces__';
+
 export default function BrandSelector({ value, onChange, onLoaded }: { value: string; onChange: (id: string) => void; onLoaded?: (workspaces: Brand[]) => void }) {
   const [workspaces, setWorkspaces] = useState<Brand[]>([]);
   const [loading, setLoading] = useState(true);
