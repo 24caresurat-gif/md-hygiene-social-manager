@@ -1,0 +1,1 @@
+import PlaceholderPage from '../placeholder-page'; export default function Page(){return <PlaceholderPage title="Calendar" eyebrow="PLANNING" description="Plan, schedule and review upcoming social content."/>}
