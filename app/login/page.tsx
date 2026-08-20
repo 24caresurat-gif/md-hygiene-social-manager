@@ -1,7 +1,7 @@
 'use client';
 
 import { FormEvent, useState } from 'react';
-import { supabase } from '../../lib/supabase-browser';
+import { getSupabase } from '../../lib/supabase-browser';
 
 export default function LoginPage() {
   const [mode, setMode] = useState<'login' | 'signup'>('login');
@@ -13,13 +13,19 @@ export default function LoginPage() {
   async function submit(e: FormEvent) {
     e.preventDefault();
     setLoading(true); setMessage('');
-    const result = mode === 'login'
-      ? await supabase.auth.signInWithPassword({ email, password })
-      : await supabase.auth.signUp({ email, password });
-    if (result.error) setMessage(result.error.message);
-    else if (mode === 'signup') setMessage('Account created. Check your email if confirmation is enabled.');
-    else window.location.href = '/dashboard';
-    setLoading(false);
+    try {
+      const supabase = getSupabase();
+      const result = mode === 'login'
+        ? await supabase.auth.signInWithPassword({ email, password })
+        : await supabase.auth.signUp({ email, password });
+      if (result.error) setMessage(result.error.message);
+      else if (mode === 'signup') setMessage('Account created. Check your email if confirmation is enabled.');
+      else window.location.href = '/dashboard';
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Unable to connect to Supabase.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
