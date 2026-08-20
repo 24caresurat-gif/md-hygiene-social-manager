@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
 
+const DEFAULT_META_APP_ID = '1578165993688458';
+const DEFAULT_META_CONFIG_ID = '1857783405201550';
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const origin = url.origin;
-  const appId = process.env.META_APP_ID;
-  const configId = process.env.META_CONFIG_ID;
+  const appId = process.env.META_APP_ID || DEFAULT_META_APP_ID;
+  const configId = process.env.META_CONFIG_ID || DEFAULT_META_CONFIG_ID;
 
   if (!appId || !configId) {
     return NextResponse.json({ error: 'Meta configuration is missing.' }, { status: 500 });
