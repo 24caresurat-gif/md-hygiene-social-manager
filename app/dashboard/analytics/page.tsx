@@ -1,0 +1,1 @@
+import PlaceholderPage from '../placeholder-page'; export default function Page(){return <PlaceholderPage title="Analytics" eyebrow="INSIGHTS" description="Track reach, engagement, followers and content performance."/>}
