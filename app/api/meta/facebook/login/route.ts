@@ -1,31 +1,3 @@
-import { NextResponse } from 'next/server';
-
-const DEFAULT_META_APP_ID = '1578165993688458';
-const DEFAULT_META_CONFIG_ID = '1857783405201550';
-
-export async function GET(request: Request) {
-  const url = new URL(request.url);
-  const origin = url.origin;
-  const appId = process.env.META_APP_ID || DEFAULT_META_APP_ID;
-  const configId = process.env.META_CONFIG_ID || DEFAULT_META_CONFIG_ID;
-
-  if (!appId || !configId) {
-    return NextResponse.json({ error: 'Meta configuration is missing.' }, { status: 500 });
-  }
-
-  const redirectUri = `${origin}/api/meta/facebook/callback`;
-  const state = crypto.randomUUID();
-  const response = NextResponse.redirect(
-    `https://www.facebook.com/v23.0/dialog/oauth?client_id=${encodeURIComponent(appId)}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(state)}&config_id=${encodeURIComponent(configId)}&response_type=code`
-  );
-
-  response.cookies.set('meta_oauth_state', state, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 600,
-  });
-
-  return response;
-}
+import {NextResponse} from 'next/server';
+const DEFAULT_META_APP_ID='1578165993688458',DEFAULT_META_CONFIG_ID='1857783405201550';
+export async function GET(request:Request){const url=new URL(request.url),origin=url.origin,appId=process.env.META_APP_ID||DEFAULT_META_APP_ID,configId=process.env.META_CONFIG_ID||DEFAULT_META_CONFIG_ID,brandId=url.searchParams.get('brandId')||'';if(!appId||!configId)return NextResponse.json({error:'Meta configuration is missing.'},{status:500});const redirectUri=`${origin}/api/meta/facebook/callback`,state=crypto.randomUUID(),response=NextResponse.redirect(`https://www.facebook.com/v23.0/dialog/oauth?client_id=${encodeURIComponent(appId)}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(state)}&config_id=${encodeURIComponent(configId)}&response_type=code`);response.cookies.set('meta_oauth_state',state,{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax',path:'/',maxAge:600});if(brandId)response.cookies.set('workspace_brand_id',brandId,{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax',path:'/',maxAge:600});return response;}
