@@ -1,14 +1,17 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 
-export async function GET(request: Request) {
-  const token = request.headers.get('x-meta-user-token');
-  if (!token) {
+export async function GET() {
+  const store = await cookies();
+  const userToken = store.get('meta_fb_user_token')?.value;
+
+  if (!userToken) {
     return NextResponse.json({ error: 'Facebook session expired. Please reconnect.' }, { status: 401 });
   }
 
   try {
     const response = await fetch(
-      `https://graph.facebook.com/v23.0/me/accounts?fields=id,name,access_token,username&access_token=${encodeURIComponent(token)}`,
+      `https://graph.facebook.com/v23.0/me/accounts?fields=id,name,username&access_token=${encodeURIComponent(userToken)}`,
       { cache: 'no-store' }
     );
     const data = await response.json();
