@@ -13,3 +13,5 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     </html>
   );
 }
+
+// Trigger a fresh Vercel deployment after configuration updates.
