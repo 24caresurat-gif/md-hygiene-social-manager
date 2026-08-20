@@ -1,6 +1,16 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
+type FacebookPageRow = {
+  user_id: null;
+  platform: 'facebook';
+  name: string;
+  handle: string | null;
+  platform_account_id: string;
+  access_token: string;
+  status: 'connected';
+};
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get('code');
@@ -36,7 +46,7 @@ export async function GET(request: Request) {
     if (pages.error) throw new Error(pages.error.message);
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
-    const pageRows = (pages.data || []).map((page: { id: string; name: string; access_token?: string; username?: string }) => ({
+    const pageRows: FacebookPageRow[] = (pages.data || []).map((page: { id: string; name: string; access_token?: string; username?: string }) => ({
       user_id: null,
       platform: 'facebook',
       name: page.name,
@@ -48,7 +58,14 @@ export async function GET(request: Request) {
 
     // A secure authenticated-user implementation will attach the Supabase auth user here.
     // Until that session bridge is wired, do not write ambiguous ownership into the database.
-    return NextResponse.json({ connected: true, pages: pageRows.map(({ access_token, ...page }) => page) });
+    void supabase;
+    return NextResponse.json({
+      connected: true,
+      pages: pageRows.map((page: FacebookPageRow) => {
+        const { access_token: _accessToken, ...safePage } = page;
+        return safePage;
+      }),
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Facebook connection failed.';
     return NextResponse.redirect(new URL(`/dashboard/accounts?error=${encodeURIComponent(message)}`, url.origin));
