@@ -1,65 +1,11 @@
 'use client';
 import { useEffect, useState } from 'react';
-import AppShell from '../components/AppShell';
 import { getSupabase } from '../../../lib/supabase-browser';
 
-type Brand={id:string;name:string;slug:string;logo_url?:string|null};
-type Account={id:string;platform:string;name:string;handle:string|null;brand_id:string|null};
-
-export default function BrandsPage(){
- const[brands,setBrands]=useState<Brand[]>([]),[accounts,setAccounts]=useState<Account[]>([]),[name,setName]=useState(''),[logo,setLogo]=useState<File|null>(null),[preview,setPreview]=useState(''),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(''),[success,setSuccess]=useState('');
-
- async function load(){
-  const s=(await getSupabase().auth.getSession()).data.session;
-  if(!s){location.href='/login';return}
-  const h={Authorization:`Bearer ${s.access_token}`};
-  const [br,ac]=await Promise.all([fetch('/api/brands',{headers:h,cache:'no-store'}),getSupabase().from('social_accounts').select('id,platform,name,handle,brand_id').order('created_at',{ascending:false})]);
-  const bd=await br.json();
-  if(!br.ok)throw Error(bd.error||'Unable to load workspaces');
-  if(ac.error)throw ac.error;
-  setBrands(bd.brands||[]);setAccounts((ac.data||[]) as Account[]);setLoading(false);
- }
- useEffect(()=>{load().catch(e=>{setError(e.message);setLoading(false)})},[]);
-
- function chooseLogo(file:File|null){
-  setError('');
-  if(!file){setLogo(null);setPreview('');return}
-  if(!file.type.startsWith('image/')){setError('Please select an image file.');return}
-  if(file.size>5*1024*1024){setError('Logo must be 5 MB or smaller.');return}
-  setLogo(file);
-  setPreview(URL.createObjectURL(file));
- }
-
- async function createBrand(){
-  if(!name.trim())return;
-  setBusy(true);setError('');setSuccess('');
-  try{
-   const supabase=getSupabase();
-   const session=(await supabase.auth.getSession()).data.session;
-   if(!session)throw Error('Your session has expired. Please sign in again.');
-   let logo_url:string|null=null;
-   if(logo){
-    const ext=(logo.name.split('.').pop()||'png').toLowerCase().replace(/[^a-z0-9]/g,'')||'png';
-    const path=`${session.user.id}/${crypto.randomUUID()}.${ext}`;
-    const upload=await supabase.storage.from('workspace-logos').upload(path,logo,{contentType:logo.type,upsert:false,cacheControl:'31536000'});
-    if(upload.error)throw upload.error;
-    logo_url=supabase.storage.from('workspace-logos').getPublicUrl(path).data.publicUrl;
-   }
-   const r=await fetch('/api/brands',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${session.access_token}`},body:JSON.stringify({name,logo_url})});
-   const d=await r.json();
-   if(!r.ok)throw Error(d.error||'Unable to create workspace');
-   setName('');setLogo(null);setPreview('');setSuccess(`${d.brand.name} workspace created successfully.`);await load();
-  }catch(e){setError(e instanceof Error?e.message:'Unable to create workspace')}finally{setBusy(false)}
- }
-
- async function assign(accountId:string,brandId:string){const{error:e}=await getSupabase().from('social_accounts').update({brand_id:brandId||null}).eq('id',accountId);if(e)setError(e.message);else{setSuccess('Account assignment updated.');await load()}}
-
- return <AppShell title="Workspaces"><style jsx>{`
- .create-workspace{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:22px;align-items:end}
- .field{display:grid;gap:8px}.field label{font-size:11px;font-weight:900;color:#52606d;letter-spacing:.08em;text-transform:uppercase}.field input[type=text]{width:100%;min-height:48px;border:1px solid #d7e3e7;border-radius:12px;padding:0 14px;font-size:14px;font-weight:700;outline:none}.field input[type=text]:focus{border-color:#078b87;box-shadow:0 0 0 3px rgba(7,139,135,.1)}
- .logo-upload{border:1px dashed #bfd1d6;border-radius:16px;padding:12px;display:flex;align-items:center;gap:12px;cursor:pointer;background:#fbfdfd}.logo-upload:hover{border-color:#078b87;background:#f3fbfa}.logo-preview{width:54px;height:54px;border-radius:14px;overflow:hidden;display:grid;place-items:center;background:#e8f8f7;color:#078b87;font-size:16px;font-weight:900;flex:0 0 54px}.logo-preview img{width:100%;height:100%;object-fit:cover}.upload-copy strong{display:block;font-size:12px;color:#17202b}.upload-copy span{display:block;margin-top:3px;font-size:10px;color:#82909a}.hidden-file{display:none}
- .create-actions{display:flex;gap:10px;align-items:center;margin-top:18px}.create-actions .btn{min-height:46px}.clear-logo{border:0;background:none;color:#a14d4d;font-size:11px;font-weight:800;cursor:pointer}
- @media(max-width:760px){.create-workspace{grid-template-columns:1fr}.create-actions{flex-wrap:wrap}}
- `}</style><div className="page-head"><div><span className="eyebrow">WORKSPACES</span><h1>Your Workspaces</h1><p>Each workspace keeps its dashboard, Facebook, Instagram, Google Business accounts and publishing separate.</p></div><button className="btn btn-soft" onClick={()=>location.href='/dashboard'}>← Dashboard</button></div>{error&&<div className="alert alert-error">⚠ {error}</div>}{success&&<div className="alert alert-success">✓ {success}</div>}
- <section className="panel connect-panel"><div><span className="eyebrow">CREATE WORKSPACE</span><h2>Create your workspace</h2><p>Enter a workspace name and optionally upload your brand logo.</p></div><div className="create-workspace"><div className="field"><label>Workspace Name</label><input type="text" value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. MD Hygiene" onKeyDown={e=>{if(e.key==='Enter')void createBrand()}}/><div><label className="logo-upload"><span className="logo-preview">{preview?<img src={preview} alt="Logo preview"/>:name.trim()?name.trim().slice(0,2).toUpperCase():'＋'}</span><span className="upload-copy"><strong>{preview?'Change workspace logo':'Upload workspace logo'}</strong><span>PNG, JPG, WEBP · Max 5 MB</span></span><input className="hidden-file" type="file" accept="image/png,image/jpeg,image/webp" onChange={e=>chooseLogo(e.target.files?.[0]||null)}/></label>{logo?<button type="button" className="clear-logo" onClick={()=>chooseLogo(null)}>Remove logo</button>:null}</div></div><div className="create-actions"><button className="btn btn-primary" disabled={busy||!name.trim()} onClick={()=>void createBrand()}>{busy?'Creating…':'Create Workspace'}</button></div></div></section>
- <section className="brand-card-grid">{loading?<div className="empty-state">Loading workspaces…</div>:brands.map(b=><article className="panel" key={b.id}><div className="panel-head"><div style={{display:'flex',alignItems:'center',gap:12}}><div className="logo-preview">{b.logo_url?<img src={b.logo_url} alt=""/>:b.name.slice(0,2).toUpperCase()}</div><div><span className="eyebrow">WORKSPACE</span><h2>{b.name}</h2></div></div><button className="btn btn-soft" onClick={()=>{try{localStorage.setItem('mdsm:selectedWorkspaceId',b.id)}catch{}location.href='/dashboard'}}>Open Workspace →</button></div><div className="account-list">{accounts.filter(a=>a.brand_id===b.id).map(a=><div className="account-row" key={a.id}><div className={`account-avatar ${a.platform}`}>{a.platform==='facebook'?'f':a.platform==='instagram'?'◎':'G'}</div><div className="account-info"><strong>{a.name}</strong><span>{a.handle?`@${a.handle}`:a.platform.replace('_',' ')}</span></div><span className="connected-pill">● Connected</span></div>)}{!accounts.some(a=>a.brand_id===b.id)&&<div className="empty-state">No accounts assigned yet.</div>}</div><label className="eyebrow">ASSIGN ACCOUNT</label><select defaultValue="" onChange={e=>e.target.value&&assign(e.target.value,b.id)}><option value="">Select an unassigned account…</option>{accounts.filter(a=>!a.brand_id).map(a=><option key={a.id} value={a.id}>{a.platform} — {a.name}</option>)}</select></article>)}</section></AppShell>}
+export default function CreateWorkspacePage(){
+ const[name,setName]=useState(''),[logo,setLogo]=useState<File|null>(null),[preview,setPreview]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState('');
+ useEffect(()=>{getSupabase().auth.getSession().then(({data})=>{if(!data.session)location.href='/login'})},[]);
+ function chooseLogo(file:File|null){setError('');if(!file){setLogo(null);setPreview('');return}if(!['image/png','image/jpeg','image/webp'].includes(file.type)){setError('Logo must be PNG, JPG or WEBP.');return}if(file.size>5*1024*1024){setError('Logo must be 5 MB or smaller.');return}setLogo(file);setPreview(URL.createObjectURL(file))}
+ async function create(){if(!name.trim())return;setBusy(true);setError('');try{const supabase=getSupabase();const session=(await supabase.auth.getSession()).data.session;if(!session)throw Error('Your session has expired. Please sign in again.');let logo_url:string|null=null;if(logo){const ext=logo.type==='image/jpeg'?'jpg':logo.type.split('/')[1];const path=`${session.user.id}/${crypto.randomUUID()}.${ext}`;const up=await supabase.storage.from('workspace-logos').upload(path,logo,{contentType:logo.type,upsert:false,cacheControl:'31536000'});if(up.error)throw up.error;logo_url=supabase.storage.from('workspace-logos').getPublicUrl(path).data.publicUrl}const r=await fetch('/api/brands',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${session.access_token}`},body:JSON.stringify({name:name.trim(),logo_url})});const d=await r.json().catch(()=>null);if(!r.ok)throw Error(d?.error||'Unable to create workspace.');try{localStorage.setItem('mdsm:selectedWorkspaceId',d.brand.id)}catch{}location.href='/dashboard'}catch(e){setError(e instanceof Error?e.message:'Unable to create workspace.');setBusy(false)}}
+ return <main className="stage"><style jsx>{`.stage{min-height:100vh;display:grid;place-items:center;padding:28px 18px;background:radial-gradient(circle at 15% 0%,rgba(20,184,166,.13),transparent 35%),#f7fafb;color:#17202b}.shell{width:min(760px,100%)}.back{border:0;background:transparent;color:#657381;font-weight:800;font-size:12px;cursor:pointer;margin-bottom:20px}.card{background:rgba(255,255,255,.97);border:1px solid #dfe8ec;border-radius:28px;padding:clamp(26px,5vw,48px);box-shadow:0 24px 70px rgba(15,23,42,.09)}.eyebrow{color:#078b87;font-size:11px;font-weight:900;letter-spacing:.14em;text-transform:uppercase}.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#14b8a6;margin-right:7px}h1{font-size:clamp(32px,5vw,46px);letter-spacing:-.045em;margin:12px 0 8px}.intro{margin:0 0 30px;color:#718096;font-size:14px;line-height:1.6}.logo-zone{display:flex;align-items:center;gap:18px;margin-bottom:28px}.logo{width:112px;height:112px;border-radius:28px;display:grid;place-items:center;overflow:hidden;background:#e7f8f6;border:1px solid #cfe5e6;color:#078b87;font-size:30px;font-weight:950;flex:0 0 112px}.logo img{width:100%;height:100%;object-fit:cover}.upload{display:inline-flex;align-items:center;border:1px solid #d7e4e7;border-radius:12px;background:#fff;padding:11px 14px;color:#17202b;font-size:12px;font-weight:900;cursor:pointer}.hidden{display:none}.hint{display:block;margin-top:8px;color:#82909a;font-size:10px}.remove{margin-top:8px;border:0;background:none;color:#b42318;font-size:10px;font-weight:800;cursor:pointer}.field{display:grid;gap:9px}.field label{font-size:11px;font-weight:900;color:#52606d;letter-spacing:.08em;text-transform:uppercase}.field input{height:52px;border:1px solid #d7e3e7;border-radius:13px;padding:0 15px;font-size:15px;font-weight:700;outline:none}.field input:focus{border-color:#078b87;box-shadow:0 0 0 4px rgba(7,139,135,.1)}.error{margin:18px 0;padding:12px 14px;border-radius:12px;background:#fff1f2;color:#b42318;font-size:12px;font-weight:700}.actions{display:flex;justify-content:flex-end;gap:10px;margin-top:30px}.cancel,.submit{height:48px;padding:0 18px;border-radius:12px;font-weight:900;font-size:12px;cursor:pointer}.cancel{border:1px solid #d7e4e7;background:#fff;color:#53606c}.submit{border:0;background:#17202b;color:#fff;box-shadow:0 12px 24px rgba(23,32,43,.16)}.submit:disabled{opacity:.5;cursor:not-allowed}@media(max-width:520px){.logo-zone{align-items:flex-start;flex-direction:column}.actions{justify-content:stretch}.cancel,.submit{flex:1}}
+ `}</style><div className="shell"><button className="back" onClick={()=>location.href='/dashboard'}>← Back to Workspaces</button><section className="card"><span className="eyebrow"><i className="dot"/> Stage 3 · Create Workspace</span><h1>Create New Workspace</h1><p className="intro">Set up your business workspace with a name and optional logo. After creation you will return to Stage 2 and see the new workspace card.</p><div className="logo-zone"><div className="logo">{preview?<img src={preview} alt="Workspace logo preview"/>:name.trim()?name.trim().slice(0,2).toUpperCase():'＋'}</div><div><label className="upload">＋ Upload Workspace Logo<input className="hidden" type="file" accept="image/png,image/jpeg,image/webp" onChange={e=>chooseLogo(e.target.files?.[0]||null)}/></label><span className="hint">PNG, JPG or WEBP · Maximum 5 MB</span>{logo&&<button className="remove" onClick={()=>chooseLogo(null)}>Remove logo</button>}</div></div><div className="field"><label>Workspace Name</label><input autoFocus value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. MD Hygiene" onKeyDown={e=>{if(e.key==='Enter')void create()}}/></div>{error&&<div className="error">⚠ {error}</div>}<div className="actions"><button className="cancel" onClick={()=>location.href='/dashboard'}>Cancel</button><button className="submit" disabled={busy||!name.trim()} onClick={()=>void create()}>{busy?'Creating…':'Create Workspace →'}</button></div></section></div></main>}
