@@ -22,6 +22,16 @@ export async function POST(req:NextRequest){
   if(accountsError) return NextResponse.json({error:accountsError.message},{status:500});
   if((accounts||[]).length!==accountIds.length)return NextResponse.json({error:'One or more selected social accounts are invalid for this workspace.'},{status:403});
   const actualPlatforms=[...new Set((accounts||[]).map(a=>a.platform))];
+  if(profile?.role!=='admin'){
+    const {data:permissions,error:permissionError}=await sb.from('workplace_permissions').select('platform,can_view,can_create').eq('user_id',user.id).eq('workplace_id',brandId).in('platform',actualPlatforms);
+    if(permissionError)return NextResponse.json({error:permissionError.message},{status:500});
+    const byPlatform=new Map((permissions||[]).map(p=>[p.platform,p]));
+    for(const platform of actualPlatforms){
+      const p=byPlatform.get(platform);
+      if(!p?.can_view)return NextResponse.json({error:`You do not have View permission for ${platform}.`},{status:403});
+      if(!p?.can_create)return NextResponse.json({error:`You do not have Create permission for ${platform}.`},{status:403});
+    }
+  }
   const {data:draft,error:draftError}=await sb.from('post_drafts').insert({user_id:user.id,brand_id:brandId,title:'Social Post',message,media_urls:mediaUrl?[mediaUrl]:[],platforms:platforms.length?platforms:actualPlatforms,account_ids:accountIds,approval_status:'pending',submitted_at:new Date().toISOString()}).select('id').single();
   if(draftError)return NextResponse.json({error:draftError.message},{status:500});
   const {data:approval,error:approvalError}=await sb.from('post_approvals').insert({draft_id:draft.id,workplace_id:brandId,submitted_by:user.id,status:'pending',submitted_at:new Date().toISOString()}).select('id,status').single();
