@@ -1,17 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import type { Database } from '@/lib/database.types';
 
-function admin() {
-  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { autoRefreshToken: false, persistSession: false } });
+type SupabaseClient = ReturnType<typeof createClient<Database>>;
+
+function admin(): SupabaseClient {
+  return createClient<Database>(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { autoRefreshToken: false, persistSession: false } });
 }
 async function userFromRequest(req: NextRequest) {
   const token = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
   if (!token) return null;
-  const client = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { global: { headers: { Authorization: `Bearer ${token}` } } });
+  const client = createClient<Database>(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { global: { headers: { Authorization: `Bearer ${token}` } } });
   const { data: { user } } = await client.auth.getUser(token);
   return user;
 }
-async function validateWorkspace(db: ReturnType<typeof admin>, userId: string, brandId: string, accountIds: string[]) {
+async function validateWorkspace(db: SupabaseClient, userId: string, brandId: string, accountIds: string[]) {
   const { data: brand } = await db.from('brands').select('id').eq('id', brandId).eq('user_id', userId).maybeSingle();
   if (!brand) return 'Workspace not found.';
   const ids: string[] = [...new Set(accountIds.filter(Boolean))];
