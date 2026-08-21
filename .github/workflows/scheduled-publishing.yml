@@ -1,0 +1,19 @@
+name: Scheduled Publishing
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger scheduled publisher
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          test -n "$CRON_SECRET" || { echo "CRON_SECRET repository secret is required"; exit 1; }
+          curl --fail-with-body --silent --show-error \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "https://md-hygiene-social-manager.vercel.app/api/cron/publish"
