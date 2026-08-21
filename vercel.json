@@ -1,5 +1,7 @@
 {
   "framework": "nextjs",
   "outputDirectory": ".next",
-  "crons": [{ "path": "/api/cron/publish", "schedule": "* * * * *" }]
+  "crons": [
+    { "path": "/api/cron/publish", "schedule": "* * * * *" }
+  ]
 }
