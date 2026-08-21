@@ -14,7 +14,7 @@ async function userFromRequest(req: NextRequest) {
 async function validateWorkspace(db: ReturnType<typeof admin>, userId: string, brandId: string, accountIds: string[]) {
   const { data: brand } = await db.from('brands').select('id').eq('id', brandId).eq('user_id', userId).maybeSingle();
   if (!brand) return 'Workspace not found.';
-  const ids = [...new Set(accountIds.filter(Boolean))];
+  const ids: string[] = [...new Set(accountIds.filter(Boolean))];
   if (!ids.length) return 'At least one social account is required.';
   const { data: accounts, error } = await db.from('social_accounts').select('id,brand_id').eq('user_id', userId).in('id', ids);
   if (error) return error.message;
@@ -40,12 +40,13 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const body = await req.json().catch(() => null);
   if (!body?.brandId || !Array.isArray(body.accountIds) || !body.accountIds.length || !body.scheduledFor) return NextResponse.json({ error: 'brandId, accountIds and scheduledFor are required.' }, { status: 400 });
+  const accountIds: string[] = body.accountIds.map((id: unknown) => String(id)).filter(Boolean);
   const when = new Date(body.scheduledFor);
   if (Number.isNaN(when.getTime()) || when.getTime() <= Date.now()) return NextResponse.json({ error: 'scheduledFor must be a valid future date.' }, { status: 400 });
   const db = admin();
-  const validationError = await validateWorkspace(db, user.id, String(body.brandId), body.accountIds.map(String));
+  const validationError = await validateWorkspace(db, user.id, String(body.brandId), accountIds);
   if (validationError) return NextResponse.json({ error: validationError }, { status: 403 });
-  const { data, error } = await db.from('scheduled_posts').insert({ user_id: user.id, brand_id: body.brandId, account_ids: body.accountIds, caption: String(body.caption || ''), link: body.link || null, media_url: body.mediaUrl || null, scheduled_for: when.toISOString(), status: body.status === 'draft' ? 'draft' : 'scheduled' }).select('*').single();
+  const { data, error } = await db.from('scheduled_posts').insert({ user_id: user.id, brand_id: body.brandId, account_ids: accountIds, caption: String(body.caption || ''), link: body.link || null, media_url: body.mediaUrl || null, scheduled_for: when.toISOString(), status: body.status === 'draft' ? 'draft' : 'scheduled' }).select('*').single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ post: data }, { status: 201 });
 }
