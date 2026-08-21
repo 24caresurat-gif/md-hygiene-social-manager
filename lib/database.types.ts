@@ -1,324 +1,52 @@
-export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: Json | undefined }
-  | Json[]
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
-  __InternalSupabase: {
-    PostgrestVersion: "14.15"
-  }
+  __InternalSupabase: { PostgrestVersion: "14.15" };
   public: {
     Tables: {
       brands: {
-        Row: {
-          created_at: string
-          id: string
-          logo_url: string | null
-          name: string
-          slug: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          logo_url?: string | null
-          name: string
-          slug: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          logo_url?: string | null
-          name?: string
-          slug?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
+        Row: { id: string; user_id: string; name: string; slug: string; logo_url: string | null; created_at: string; updated_at: string };
+        Insert: { id?: string; user_id: string; name: string; slug: string; logo_url?: string | null; created_at?: string; updated_at?: string };
+        Update: { id?: string; user_id?: string; name?: string; slug?: string; logo_url?: string | null; created_at?: string; updated_at?: string };
+        Relationships: [];
+      };
       post_drafts: {
-        Row: {
-          brand_id: string
-          created_at: string
-          id: string
-          media_urls: string[]
-          message: string | null
-          platforms: string[]
-          scheduled_at: string | null
-          status: string
-          title: string | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          brand_id: string
-          created_at?: string
-          id?: string
-          media_urls?: string[]
-          message?: string | null
-          platforms?: string[]
-          scheduled_at?: string | null
-          status?: string
-          title?: string | null
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          brand_id?: string
-          created_at?: string
-          id?: string
-          media_urls?: string[]
-          message?: string | null
-          platforms?: string[]
-          scheduled_at?: string | null
-          status?: string
-          title?: string | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
+        Row: { id: string; user_id: string; brand_id: string; title: string | null; message: string | null; media_urls: string[]; platforms: string[]; status: string; scheduled_at: string | null; created_at: string; updated_at: string };
+        Insert: { id?: string; user_id: string; brand_id: string; title?: string | null; message?: string | null; media_urls?: string[]; platforms?: string[]; status?: string; scheduled_at?: string | null; created_at?: string; updated_at?: string };
+        Update: { id?: string; user_id?: string; brand_id?: string; title?: string | null; message?: string | null; media_urls?: string[]; platforms?: string[]; status?: string; scheduled_at?: string | null; created_at?: string; updated_at?: string };
+        Relationships: [{ foreignKeyName: "post_drafts_brand_id_fkey"; columns: ["brand_id"]; isOneToOne: false; referencedRelation: "brands"; referencedColumns: ["id"] }];
+      };
       publishing_history: {
-        Row: {
-          brand_id: string | null
-          created_at: string
-          draft_id: string | null
-          error_message: string | null
-          id: string
-          message: string | null
-          platform: string
-          platform_post_id: string | null
-          published_at: string | null
-          social_account_id: string | null
-          status: string
-          user_id: string
-        }
-        Insert: {
-          brand_id?: string | null
-          created_at?: string
-          draft_id?: string | null
-          error_message?: string | null
-          id?: string
-          message?: string | null
-          platform: string
-          platform_post_id?: string | null
-          published_at?: string | null
-          social_account_id?: string | null
-          status: string
-          user_id: string
-        }
-        Update: {
-          brand_id?: string | null
-          created_at?: string
-          draft_id?: string | null
-          error_message?: string | null
-          id?: string
-          message?: string | null
-          platform?: string
-          platform_post_id?: string | null
-          published_at?: string | null
-          social_account_id?: string | null
-          status?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
+        Row: { id: string; user_id: string; brand_id: string | null; social_account_id: string | null; draft_id: string | null; platform: string; platform_post_id: string | null; message: string | null; status: string; error_message: string | null; published_at: string | null; created_at: string };
+        Insert: { id?: string; user_id: string; brand_id?: string | null; social_account_id?: string | null; draft_id?: string | null; platform: string; platform_post_id?: string | null; message?: string | null; status: string; error_message?: string | null; published_at?: string | null; created_at?: string };
+        Update: { id?: string; user_id?: string; brand_id?: string | null; social_account_id?: string | null; draft_id?: string | null; platform?: string; platform_post_id?: string | null; message?: string | null; status?: string; error_message?: string | null; published_at?: string | null; created_at?: string };
+        Relationships: [];
+      };
       scheduled_posts: {
-        Row: {
-          account_ids: string[]
-          attempts: number
-          brand_id: string
-          caption: string
-          created_at: string
-          id: string
-          last_error: string | null
-          link: string | null
-          media_url: string | null
-          published_at: string | null
-          scheduled_for: string
-          status: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          account_ids?: string[]
-          attempts?: number
-          brand_id: string
-          caption?: string
-          created_at?: string
-          id?: string
-          last_error?: string | null
-          link?: string | null
-          media_url?: string | null
-          published_at?: string | null
-          scheduled_for: string
-          status?: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          account_ids?: string[]
-          attempts?: number
-          brand_id?: string
-          caption?: string
-          created_at?: string
-          id?: string
-          last_error?: string | null
-          link?: string | null
-          media_url?: string | null
-          published_at?: string | null
-          scheduled_for?: string
-          status?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
+        Row: { id: string; user_id: string; brand_id: string; account_ids: string[]; caption: string; link: string | null; media_url: string | null; scheduled_for: string; status: string; attempts: number; last_error: string | null; published_at: string | null; created_at: string; updated_at: string };
+        Insert: { id?: string; user_id: string; brand_id: string; account_ids?: string[]; caption?: string; link?: string | null; media_url?: string | null; scheduled_for: string; status?: string; attempts?: number; last_error?: string | null; published_at?: string | null; created_at?: string; updated_at?: string };
+        Update: { id?: string; user_id?: string; brand_id?: string; account_ids?: string[]; caption?: string; link?: string | null; media_url?: string | null; scheduled_for?: string; status?: string; attempts?: number; last_error?: string | null; published_at?: string | null; created_at?: string; updated_at?: string };
+        Relationships: [{ foreignKeyName: "scheduled_posts_brand_id_fkey"; columns: ["brand_id"]; isOneToOne: false; referencedRelation: "brands"; referencedColumns: ["id"] }];
+      };
       social_accounts: {
-        Row: {
-          access_token: string | null
-          brand_id: string | null
-          created_at: string
-          handle: string | null
-          id: string
-          name: string
-          platform: string
-          platform_account_id: string
-          refresh_token: string | null
-          status: string
-          token_checked_at: string | null
-          token_error: string | null
-          token_expires_at: string | null
-          token_last_refreshed_at: string | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          access_token?: string | null
-          brand_id?: string | null
-          created_at?: string
-          handle?: string | null
-          id?: string
-          name: string
-          platform: string
-          platform_account_id: string
-          refresh_token?: string | null
-          status?: string
-          token_checked_at?: string | null
-          token_error?: string | null
-          token_expires_at?: string | null
-          token_last_refreshed_at?: string | null
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          access_token?: string | null
-          brand_id?: string | null
-          created_at?: string
-          handle?: string | null
-          id?: string
-          name?: string
-          platform?: string
-          platform_account_id?: string
-          refresh_token?: string | null
-          status?: string
-          token_checked_at?: string | null
-          token_error?: string | null
-          token_expires_at?: string | null
-          token_last_refreshed_at?: string | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
+        Row: { id: string; user_id: string; platform: string; name: string; handle: string | null; platform_account_id: string; access_token: string | null; status: string; created_at: string; updated_at: string; refresh_token: string | null; token_expires_at: string | null; brand_id: string | null; token_checked_at: string | null; token_last_refreshed_at: string | null; token_error: string | null };
+        Insert: { id?: string; user_id: string; platform: string; name: string; handle?: string | null; platform_account_id: string; access_token?: string | null; status?: string; created_at?: string; updated_at?: string; refresh_token?: string | null; token_expires_at?: string | null; brand_id?: string | null; token_checked_at?: string | null; token_last_refreshed_at?: string | null; token_error?: string | null };
+        Update: { id?: string; user_id?: string; platform?: string; name?: string; handle?: string | null; platform_account_id?: string; access_token?: string | null; status?: string; created_at?: string; updated_at?: string; refresh_token?: string | null; token_expires_at?: string | null; brand_id?: string | null; token_checked_at?: string | null; token_last_refreshed_at?: string | null; token_error?: string | null };
+        Relationships: [{ foreignKeyName: "social_accounts_brand_id_fkey"; columns: ["brand_id"]; isOneToOne: false; referencedRelation: "brands"; referencedColumns: ["id"] }];
+      };
       social_posts: {
-        Row: {
-          attempted_at: string | null
-          created_at: string
-          error_message: string | null
-          id: string
-          link: string | null
-          media_type: string
-          message: string
-          platform: string
-          platform_post_id: string | null
-          platform_response: Json | null
-          published_at: string | null
-          social_account_id: string | null
-          status: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          attempted_at?: string | null
-          created_at?: string
-          error_message?: string | null
-          id?: string
-          link?: string | null
-          media_type?: string
-          message?: string
-          platform: string
-          platform_post_id?: string | null
-          platform_response?: Json | null
-          published_at?: string | null
-          social_account_id?: string | null
-          status?: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          attempted_at?: string | null
-          created_at?: string
-          error_message?: string | null
-          id?: string
-          link?: string | null
-          media_type?: string
-          message?: string
-          platform?: string
-          platform_post_id?: string | null
-          platform_response?: Json | null
-          published_at?: string | null
-          social_account_id?: string | null
-          status?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      [_ in never]: never
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
-}
-
-type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
-
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
-
-export type Tables<DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"]) | { schema: keyof DatabaseWithoutInternals }, TableName extends DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals } ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] & DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"]) : never = never> = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals } ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] & DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends { Row: infer R } ? R : never : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"]) ? (DefaultSchema["Tables"] & DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends { Row: infer R } ? R : never : never
-
-export type TablesInsert<DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals }, TableName extends DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals } ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] : never = never> = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals } ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends { Insert: infer I } ? I : never : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"] ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends { Insert: infer I } ? I : never : never
-
-export type TablesUpdate<DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals }, TableName extends DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals } ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] : never = never> = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals } ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends { Update: infer U } ? U : never : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"] ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends { Update: infer U } ? U : never : never
-
-export type Enums<DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"] | { schema: keyof DatabaseWithoutInternals }, EnumName extends DefaultSchemaEnumNameOrOptions extends { schema: keyof DatabaseWithoutInternals } ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"] : never = never> = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals } ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Enums"][EnumName] : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Enums"] ? DefaultSchema["Enums"][DefaultSchemaTableNameOrOptions] : never
-
-export type CompositeTypes<PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"] | { schema: keyof DatabaseWithoutInternals }, CompositeTypeName extends PublicCompositeTypeNameOrOptions extends { schema: keyof DatabaseWithoutInternals } ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"] : never = never> = PublicCompositeTypeNameOrOptions extends { schema: keyof DatabaseWithoutInternals } ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName] : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"] ? DefaultSchema["CompositeTypes"][CompositeTypeName] : never
-
-export const Constants = { public: { Enums: {} } } as const
+        Row: { id: string; user_id: string; brand_id: string | null; social_account_id: string | null; platform: string; platform_post_id: string | null; message: string; media_type: string; status: string; published_at: string | null; created_at: string; updated_at: string; link: string | null; attempted_at: string | null; error_message: string | null; platform_response: Json | null };
+        Insert: { id?: string; user_id: string; brand_id?: string | null; social_account_id?: string | null; platform: string; platform_post_id?: string | null; message?: string; media_type?: string; status?: string; published_at?: string | null; created_at?: string; updated_at?: string; link?: string | null; attempted_at?: string | null; error_message?: string | null; platform_response?: Json | null };
+        Update: { id?: string; user_id?: string; brand_id?: string | null; social_account_id?: string | null; platform?: string; platform_post_id?: string | null; message?: string; media_type?: string; status?: string; published_at?: string | null; created_at?: string; updated_at?: string; link?: string | null; attempted_at?: string | null; error_message?: string | null; platform_response?: Json | null };
+        Relationships: [
+          { foreignKeyName: "social_posts_brand_id_fkey"; columns: ["brand_id"]; isOneToOne: false; referencedRelation: "brands"; referencedColumns: ["id"] },
+          { foreignKeyName: "social_posts_social_account_id_fkey"; columns: ["social_account_id"]; isOneToOne: false; referencedRelation: "social_accounts"; referencedColumns: ["id"] }
+        ];
+      };
+    };
+    Views: { [_ in never]: never };
+    Functions: { [_ in never]: never };
+    Enums: { [_ in never]: never };
+    CompositeTypes: { [_ in never]: never };
+  };
+};
