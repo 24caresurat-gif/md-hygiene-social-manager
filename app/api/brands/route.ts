@@ -17,10 +17,15 @@ async function authenticatedClient(request: Request) {
   return { supabase, user: data.user };
 }
 
+async function requireAdmin(supabase: ReturnType<typeof client>, userId: string) {
+  const { data, error } = await supabase.from('profiles').select('role,active').eq('id', userId).maybeSingle();
+  if (error) throw error;
+  if (data?.role !== 'admin' || data.active === false) throw new Error('Admin access required.');
+}
+
 export async function GET(request: Request) {
   try {
     const { supabase } = await authenticatedClient(request);
-    // RLS now returns only workplaces the current user is allowed to access.
     const { data, error } = await supabase.from('brands').select('id,name,slug,logo_url').order('name');
     if (error) throw error;
     return NextResponse.json({ brands: data || [] });
@@ -32,6 +37,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const { supabase, user } = await authenticatedClient(request);
+    await requireAdmin(supabase, user.id);
     const body = await request.json().catch(() => ({}));
     const name = String(body.name || '').trim();
     const logo_url = body.logo_url ? String(body.logo_url).trim() : null;
@@ -43,6 +49,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ brand: data }, { status: 201 });
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Unable to create workspace.';
-    return NextResponse.json({ error: message }, { status: message.includes('Authentication') || message.includes('session') ? 401 : 403 });
+    const status = message.includes('Authentication') || message.includes('session') ? 401 : 403;
+    return NextResponse.json({ error: message }, { status });
   }
 }
