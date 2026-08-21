@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/lib/database.types';
 
 type PublishBody = { accountId?: string; message?: string; link?: string; mediaType?: 'none' | 'image' | 'video' };
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!supabaseUrl || !anonKey) return NextResponse.json({ error: 'Supabase configuration is missing.' }, { status: 500 });
 
-  let supabase: ReturnType<typeof createClient<Database>> | null = null;
+  let supabase: SupabaseClient<Database> | null = null;
   let userId = '';
   let account: Account | null = null;
   const attemptedAt = new Date().toISOString();
