@@ -2,7 +2,8 @@
 import { useEffect, useState } from 'react';
 import { getSupabase } from '../../../lib/supabase-browser';
 
-type Member={id:string;user_id:string;active:boolean;profiles?:{full_name:string;role:string;active:boolean}|null};
+type Profile={full_name:string;role:string;active:boolean};
+type Member={id:string;user_id:string;active:boolean;profiles?:Profile|Profile[]|null};
 type Brand={id:string;name:string;slug:string};
 
 export default function AdminPage(){
@@ -11,7 +12,7 @@ export default function AdminPage(){
   const [b,m]=await Promise.all([
    getSupabase().from('brands').select('id,name,slug').order('name'),
    getSupabase().from('workplace_members').select('id,user_id,active,profiles(full_name,role,active)').order('created_at')
-  ]);if(b.error)throw b.error;if(m.error)throw m.error;setBrands(b.data||[]);setMembers((m.data||[]) as Member[]);
+  ]);if(b.error)throw b.error;if(m.error)throw m.error;setBrands(b.data||[]);setMembers((m.data||[]).map((row:any)=>({...row,profiles:Array.isArray(row.profiles)?row.profiles[0]??null:row.profiles??null})) as Member[]);
  }catch(e){setError(e instanceof Error?e.message:'Unable to load admin data.')}finally{setLoading(false)}}
  useEffect(()=>{void load()},[]);
  if(loading)return <main className="auth-page"><div className="muted">Loading admin…</div></main>;
