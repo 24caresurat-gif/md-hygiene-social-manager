@@ -1,0 +1,6 @@
+import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+
+function client(token:string){const url=process.env.NEXT_PUBLIC_SUPABASE_URL;const key=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;if(!url||!key)throw new Error('Supabase configuration is missing.');return createClient(url,key,{global:{headers:{Authorization:`Bearer ${token}`}}})}
+async function auth(request:Request){const token=request.headers.get('authorization')?.replace(/^Bearer\s+/i,'');if(!token) return null;const sb=client(token);const {data,error}=await sb.auth.getUser(token);if(error||!data.user)return null;return {sb,user:data.user}}
+export async function GET(request:Request){try{const a=await auth(request);if(!a)return NextResponse.json({error:'Authentication required.'},{status:401});const {data:p}=await a.sb.from('profiles').select('role,active').eq('id',a.user.id).maybeSingle();if(p?.role!=='admin'||p.active===false)return NextResponse.json({error:'Admin access required.'},{status:403});const {data,error}=await a.sb.from('brands').select('id,name,slug,logo_url').eq('user_id',a.user.id).order('name');if(error)throw error;return NextResponse.json({workspaces:data||[]})}catch(e){return NextResponse.json({error:e instanceof Error?e.message:'Unable to load workspaces.'},{status:500})}}
