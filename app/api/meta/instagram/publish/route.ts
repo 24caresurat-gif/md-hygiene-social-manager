@@ -2,6 +2,19 @@ import {NextResponse} from 'next/server';
 import {createClient} from '@supabase/supabase-js';
 
 type Body={accountId?:string;caption?:string;mediaUrl?:string;link?:string};
+const sleep=(ms:number)=>new Promise(resolve=>setTimeout(resolve,ms));
+
+async function waitForInstagramMedia(base:string,containerId:string,accessToken:string){
+  for(let attempt=0;attempt<8;attempt++){
+    const r=await fetch(`${base}/${containerId}?fields=status_code,status&access_token=${encodeURIComponent(accessToken)}`,{cache:'no-store'});
+    const j=await r.json().catch(()=>({}));
+    if(r.ok && j.status_code==='FINISHED') return;
+    if(r.ok && j.status_code==='ERROR') throw new Error(j.status||'Instagram media processing failed.');
+    if(!r.ok && j.error) throw new Error(j.error.message||'Unable to check Instagram media status.');
+    await sleep(2500);
+  }
+  throw new Error('Instagram media is still processing. Please try publishing again.');
+}
 
 export async function POST(request:Request){
   const token=request.headers.get('authorization')?.replace(/^Bearer\s+/i,'');
@@ -25,6 +38,7 @@ export async function POST(request:Request){
     const create=await fetch(`${base}/media`,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({image_url:mediaUrl,caption,access_token:account.access_token})});
     const creation=await create.json();
     if(!create.ok||creation.error||!creation.id)throw new Error(creation.error?.message||'Instagram media container creation failed.');
+    await waitForInstagramMedia(base,creation.id,account.access_token);
 
     const publish=await fetch(`${base}/media_publish`,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({creation_id:creation.id,access_token:account.access_token})});
     const result=await publish.json();
