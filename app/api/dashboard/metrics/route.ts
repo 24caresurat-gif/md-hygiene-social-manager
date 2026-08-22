@@ -2,91 +2,60 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 type Account={id:string;platform:string;name:string;handle:string|null;platform_account_id:string;access_token:string|null;status:string;brand_id:string|null};
-type MetricResult={followers:number|null;reach:number|null;engagement:number|null;posts:number|null;postsData:any[];warnings:string[]};
-const GRAPH_VERSION='v23.0';
+type MetricResult={followers:number|null;reach:number|null;engagement:number|null;posts:number|null;postsData:any[];warnings:string[];requiresReconnect?:boolean};
+const GRAPH_VERSION='v25.0';
 const GRAPH=`https://graph.facebook.com/${GRAPH_VERSION}`;
 
 async function graph(path:string,token:string){
   const s=path.includes('?')?'&':'?';
   const r=await fetch(`${GRAPH}${path}${s}access_token=${encodeURIComponent(token)}`,{cache:'no-store'});
   const d=await r.json().catch(()=>({}));
-  if(!r.ok||d?.error){
-    const e=d?.error;
-    throw new Error(e?.message||`Meta API request failed (${r.status})`);
-  }
+  if(!r.ok||d?.error){const e=d?.error;throw new Error(e?.message||`Meta API request failed (${r.status})`);}
   return d;
 }
-
-function sum(data:any,metric:string){
-  const i=(data?.data||[]).find((e:any)=>e.name===metric);
-  return (i?.values||[]).reduce((n:number,v:any)=>n+Number(v?.value||0),0);
-}
-
+function sum(data:any,metric:string){const i=(data?.data||[]).find((e:any)=>e.name===metric);return(i?.values||[]).reduce((n:number,v:any)=>n+Number(v?.value||0),0);}
 function message(prefix:string,e:unknown){return `${prefix}: ${e instanceof Error?e.message:'Meta API request failed.'}`;}
 
 async function facebook(a:Account):Promise<MetricResult>{
-  const base={followers:null,reach:null,engagement:null,posts:null,postsData:[],warnings:[] as string[]};
-  if(!a.access_token)return {...base,warnings:['Facebook access token is missing.']};
-  const result={...base};
-  try{
-    const p=await graph(`/${a.platform_account_id}?fields=followers_count`,a.access_token);
-    result.followers=typeof p?.followers_count==='number'?p.followers_count:null;
-  }catch(e){result.warnings.push(message('Facebook followers unavailable',e));}
-  try{
-    const ins=await graph(`/${a.platform_account_id}/insights?metric=page_reach,page_post_engagements&period=day&date_preset=last_28_days`,a.access_token);
-    result.reach=sum(ins,'page_reach');
-    result.engagement=sum(ins,'page_post_engagements');
-  }catch(e){result.warnings.push(message('Facebook insights unavailable',e));}
-  try{
-    const posts=await graph(`/${a.platform_account_id}/posts?fields=id,message,created_time,permalink_url&limit=10&summary=true`,a.access_token);
-    result.posts=typeof posts?.summary?.total_count==='number'?posts.summary.total_count:null;
-    result.postsData=(posts?.data||[]).map((p:any)=>({id:p.id,platform:'Facebook',title:p.message||'Facebook post',date:p.created_time,url:p.permalink_url||null,reach:null,engagement:null}));
-  }catch(e){result.warnings.push(message('Facebook posts unavailable',e));}
-  return result;
+ const base={followers:null,reach:null,engagement:null,posts:null,postsData:[],warnings:[] as string[]};
+ if(!a.access_token)return {...base,warnings:['Facebook access token is missing.']};
+ const result={...base};
+ try{const p=await graph(`/${a.platform_account_id}?fields=followers_count`,a.access_token);result.followers=typeof p?.followers_count==='number'?p.followers_count:null;}catch(e){result.warnings.push(message('Facebook followers unavailable',e));}
+ try{const ins=await graph(`/${a.platform_account_id}/insights?metric=page_post_engagements&period=day&date_preset=last_28_days`,a.access_token);result.engagement=sum(ins,'page_post_engagements');}catch(e){result.warnings.push(message('Facebook engagement unavailable',e));}
+ try{const posts=await graph(`/${a.platform_account_id}/posts?fields=id,message,created_time,permalink_url&limit=10&summary=true`,a.access_token);result.posts=typeof posts?.summary?.total_count==='number'?posts.summary.total_count:null;result.postsData=(posts?.data||[]).map((p:any)=>({id:p.id,platform:'Facebook',title:p.message||'Facebook post',date:p.created_time,url:p.permalink_url||null,reach:null,engagement:null}));}catch(e){result.warnings.push(message('Facebook posts unavailable',e));}
+ result.warnings.push('Facebook Reach is not available from the current Page Insights metric set; no substitute is shown as Reach.');
+ return result;
 }
 
 async function instagram(a:Account):Promise<MetricResult>{
-  const base={followers:null,reach:null,engagement:null,posts:null,postsData:[],warnings:[] as string[]};
-  if(!a.access_token)return {...base,warnings:['Instagram access token is missing.']};
-  const result={...base};
-  try{
-    const p=await graph(`/${a.platform_account_id}?fields=followers_count,media_count`,a.access_token);
-    result.followers=typeof p?.followers_count==='number'?p.followers_count:null;
-    result.posts=typeof p?.media_count==='number'?p.media_count:null;
-  }catch(e){result.warnings.push(message('Instagram profile metrics unavailable',e));}
-  try{
-    const i=await graph(`/${a.platform_account_id}/insights?metric=reach,accounts_engaged&period=day&metric_type=total_value`,a.access_token);
-    result.reach=sum(i,'reach');
-    result.engagement=sum(i,'accounts_engaged');
-  }catch(e){result.warnings.push(message('Instagram insights unavailable',e));}
-  try{
-    const media=await graph(`/${a.platform_account_id}/media?fields=id,caption,media_type,permalink,timestamp,like_count,comments_count&limit=10`,a.access_token);
-    result.postsData=(media?.data||[]).map((x:any)=>({id:x.id,platform:'Instagram',title:x.caption||'Instagram post',date:x.timestamp,url:x.permalink||null,reach:null,engagement:Number(x.like_count||0)+Number(x.comments_count||0)}));
-  }catch(e){result.warnings.push(message('Instagram posts unavailable',e));}
-  return result;
+ const base={followers:null,reach:null,engagement:null,posts:null,postsData:[],warnings:[] as string[],requiresReconnect:false};
+ if(!a.access_token)return {...base,warnings:['Instagram access token is missing.'],requiresReconnect:true};
+ const result={...base};
+ try{const p=await graph(`/${a.platform_account_id}?fields=followers_count,media_count`,a.access_token);result.followers=typeof p?.followers_count==='number'?p.followers_count:null;result.posts=typeof p?.media_count==='number'?p.media_count:null;}catch(e){const m=message('Instagram profile metrics unavailable',e);result.warnings.push(m);if(/invalid oauth access token|cannot parse access token/i.test(String(e)))result.requiresReconnect=true;}
+ try{const i=await graph(`/${a.platform_account_id}/insights?metric=reach,accounts_engaged&period=day&metric_type=total_value`,a.access_token);result.reach=sum(i,'reach');result.engagement=sum(i,'accounts_engaged');}catch(e){const m=message('Instagram insights unavailable',e);result.warnings.push(m);if(/invalid oauth access token|cannot parse access token/i.test(String(e)))result.requiresReconnect=true;}
+ try{const media=await graph(`/${a.platform_account_id}/media?fields=id,caption,media_type,permalink,timestamp,like_count,comments_count&limit=10`,a.access_token);result.postsData=(media?.data||[]).map((x:any)=>({id:x.id,platform:'Instagram',title:x.caption||'Instagram post',date:x.timestamp,url:x.permalink||null,reach:null,engagement:Number(x.like_count||0)+Number(x.comments_count||0)}));}catch(e){const m=message('Instagram posts unavailable',e);result.warnings.push(m);if(/invalid oauth access token|cannot parse access token/i.test(String(e)))result.requiresReconnect=true;}
+ return result;
 }
-
 function googleBusiness():MetricResult{return{followers:null,reach:null,engagement:null,posts:null,postsData:[],warnings:['Google Business live analytics is not available from the current adapter.']};}
 
 export async function GET(request:Request){
-  const token=request.headers.get('authorization')?.replace(/^Bearer\s+/i,'');
-  if(!token)return NextResponse.json({error:'Authentication required.'},{status:401});
-  const url=new URL(request.url);const accountId=url.searchParams.get('accountId');const brandId=url.searchParams.get('brandId');
-  const supabaseUrl=process.env.NEXT_PUBLIC_SUPABASE_URL,anonKey=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if(!supabaseUrl||!anonKey)return NextResponse.json({error:'Supabase configuration is missing.'},{status:500});
-  try{
-    const supabase=createClient(supabaseUrl,anonKey,{global:{headers:{Authorization:`Bearer ${token}`}}});
-    const{data:u,error:ue}=await supabase.auth.getUser(token);if(ue||!u.user)return NextResponse.json({error:'Invalid session.'},{status:401});
-    let q=supabase.from('social_accounts').select('id,platform,name,handle,platform_account_id,access_token,status,brand_id').eq('user_id',u.user.id).eq('status','connected');
-    if(brandId&&brandId!=='all')q=q.eq('brand_id',brandId);if(accountId&&accountId!=='all')q=q.eq('id',accountId);
-    const{data,error}=await q;if(error)throw error;const connected=(data||[])as Account[];
-    const results=await Promise.all(connected.map(a=>a.platform==='instagram'?instagram(a):a.platform==='google_business'?googleBusiness():facebook(a)));
-    const totals={totalPosts:results.every(x=>x.posts===null)?null:results.reduce((n,x)=>n+(x.posts||0),0),reach:results.every(x=>x.reach===null)?null:results.reduce((n,x)=>n+(x.reach||0),0),engagement:results.every(x=>x.engagement===null)?null:results.reduce((n,x)=>n+(x.engagement||0),0),followers:results.every(x=>x.followers===null)?null:results.reduce((n,x)=>n+(x.followers||0),0)};
-    const recentPosts=results.flatMap(x=>x.postsData).sort((a,b)=>new Date(b.date).getTime()-new Date(a.date).getTime()).slice(0,5);
-    const warnings=results.flatMap((x,i)=>x.warnings.map(w=>`${connected[i]?.name||connected[i]?.platform||'Account'} — ${w}`));
-    const ids=connected.map(a=>a.id);let tp=supabase.from('social_posts').select('*',{count:'exact',head:true}).eq('user_id',u.user.id).eq('status','published');
-    if(brandId&&brandId!=='all')tp=tp.eq('brand_id',brandId);if(accountId&&accountId!=='all')tp=tp.eq('social_account_id',accountId);else if(ids.length)tp=tp.in('social_account_id',ids);else tp=tp.eq('social_account_id','00000000-0000-0000-0000-000000000000');
-    const{count}=await tp;
-    return NextResponse.json({source:'meta_graph_api',fetchedAt:new Date().toISOString(),selectedBrandId:brandId||'all',selectedAccountId:accountId||'all',accounts:connected.map(a=>({id:a.id,platform:a.platform,name:a.name,handle:a.handle,brand_id:a.brand_id})),stats:{...totals,trackedPublished:count||0},recentPosts,warnings});
-  }catch(e){return NextResponse.json({error:e instanceof Error?e.message:'Unable to load live dashboard metrics.'},{status:500});}
+ const token=request.headers.get('authorization')?.replace(/^Bearer\s+/i,'');if(!token)return NextResponse.json({error:'Authentication required.'},{status:401});
+ const url=new URL(request.url);const accountId=url.searchParams.get('accountId');const brandId=url.searchParams.get('brandId');
+ const supabaseUrl=process.env.NEXT_PUBLIC_SUPABASE_URL,anonKey=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;if(!supabaseUrl||!anonKey)return NextResponse.json({error:'Supabase configuration is missing.'},{status:500});
+ try{
+  const supabase=createClient(supabaseUrl,anonKey,{global:{headers:{Authorization:`Bearer ${token}`}}});
+  const{data:u,error:ue}=await supabase.auth.getUser(token);if(ue||!u.user)return NextResponse.json({error:'Invalid session.'},{status:401});
+  let q=supabase.from('social_accounts').select('id,platform,name,handle,platform_account_id,access_token,status,brand_id').eq('user_id',u.user.id).eq('status','connected');
+  if(brandId&&brandId!=='all')q=q.eq('brand_id',brandId);if(accountId&&accountId!=='all')q=q.eq('id',accountId);
+  const{data,error}=await q;if(error)throw error;const connected=(data||[])as Account[];
+  const results=await Promise.all(connected.map(a=>a.platform==='instagram'?instagram(a):a.platform==='google_business'?googleBusiness():facebook(a)));
+  const totals={totalPosts:results.every(x=>x.posts===null)?null:results.reduce((n,x)=>n+(x.posts||0),0),reach:results.every(x=>x.reach===null)?null:results.reduce((n,x)=>n+(x.reach||0),0),engagement:results.every(x=>x.engagement===null)?null:results.reduce((n,x)=>n+(x.engagement||0),0),followers:results.every(x=>x.followers===null)?null:results.reduce((n,x)=>n+(x.followers||0),0)};
+  const recentPosts=results.flatMap(x=>x.postsData).sort((a,b)=>new Date(b.date).getTime()-new Date(a.date).getTime()).slice(0,5);
+  const warnings=results.flatMap((x,i)=>x.warnings.map(w=>`${connected[i]?.name||connected[i]?.platform||'Account'} — ${w}`));
+  const reconnectAccounts=results.map((x,i)=>x.requiresReconnect?{id:connected[i].id,platform:connected[i].platform,name:connected[i].name}:null).filter(Boolean);
+  const ids=connected.map(a=>a.id);let tp=supabase.from('social_posts').select('*',{count:'exact',head:true}).eq('user_id',u.user.id).eq('status','published');
+  if(brandId&&brandId!=='all')tp=tp.eq('brand_id',brandId);if(accountId&&accountId!=='all')tp=tp.eq('social_account_id',accountId);else if(ids.length)tp=tp.in('social_account_id',ids);else tp=tp.eq('social_account_id','00000000-0000-0000-0000-000000000000');
+  const{count}=await tp;
+  return NextResponse.json({source:'meta_graph_api',fetchedAt:new Date().toISOString(),selectedBrandId:brandId||'all',selectedAccountId:accountId||'all',accounts:connected.map(a=>({id:a.id,platform:a.platform,name:a.name,handle:a.handle,brand_id:a.brand_id})),stats:{...totals,trackedPublished:count||0},recentPosts,warnings,reconnectAccounts});
+ }catch(e){return NextResponse.json({error:e instanceof Error?e.message:'Unable to load live dashboard metrics.'},{status:500});}
 }
