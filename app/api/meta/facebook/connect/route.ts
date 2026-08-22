@@ -1,7 +1,6 @@
 import {NextResponse} from 'next/server';
 import {cookies} from 'next/headers';
 import {createClient} from '@supabase/supabase-js';
-import {inspectMetaToken} from '../../../../../lib/meta-token';
 
 type MetaPage={id:string;name:string;access_token?:string;username?:string};
 
@@ -21,8 +20,9 @@ export async function POST(request:Request){
     const page=(pages.data||[]).find((item:MetaPage)=>item.id===body.pageId) as MetaPage|undefined;
     if(!page||!page.access_token)throw new Error('Selected Facebook Page was not found or has no Page token.');
 
-    const tokenInfo=await inspectMetaToken(page.access_token);
-    if(!tokenInfo.valid)throw new Error(tokenInfo.error||'Facebook Page token is invalid. Please reconnect Facebook.');
+    const verify=await fetch(`https://graph.facebook.com/v23.0/${encodeURIComponent(page.id)}?fields=id,name&access_token=${encodeURIComponent(page.access_token)}`,{cache:'no-store'});
+    const verified=await verify.json();
+    if(!verify.ok||verified.error||verified.id!==page.id)throw new Error(verified.error?.message||'Selected Facebook Page token is invalid. Please reconnect Facebook.');
 
     const supabase=createClient(supabaseUrl,anonKey,{global:{headers:{Authorization:`Bearer ${userAccessToken}`}}});
     const{data:userData,error:userError}=await supabase.auth.getUser(userAccessToken);
@@ -32,11 +32,11 @@ export async function POST(request:Request){
     const{error:insertError}=await supabase.from('social_accounts').upsert({
       user_id:userData.user.id,platform:'facebook',name:page.name,handle:page.username||null,platform_account_id:page.id,
       access_token:page.access_token,status:'connected',brand_id:brandId||null,updated_at:now,
-      token_expires_at:tokenInfo.expiresAt,token_checked_at:now,token_last_refreshed_at:now,token_status:tokenInfo.status,token_error:null,
+      token_expires_at:null,token_checked_at:now,token_last_refreshed_at:now,token_status:'active',token_error:null,
     },{onConflict:'user_id,platform,platform_account_id'});
     if(insertError)throw new Error(insertError.message);
 
-    const response=NextResponse.json({connected:true,page:{id:page.id,name:page.name,handle:page.username||null},token:{status:tokenInfo.status,expiresAt:tokenInfo.expiresAt}});
+    const response=NextResponse.json({connected:true,page:{id:page.id,name:page.name,handle:page.username||null},token:{status:'active',expiresAt:null}});
     response.cookies.set('meta_fb_user_token','',{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax',path:'/',maxAge:0});
     response.cookies.set('workspace_brand_id','',{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax',path:'/',maxAge:0});
     return response;
