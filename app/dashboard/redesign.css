@@ -1,0 +1,61 @@
+/* MD Hygiene Social Manager - dashboard layout polish */
+html,body{overflow-x:hidden}
+.app-shell{min-height:100dvh}
+.sidebar{width:208px;flex-basis:208px;padding:18px 10px}
+.logo-block{gap:9px;padding:0 7px 20px}
+.logo-mark{width:44px;height:44px;border-radius:13px;font-size:15px}
+.logo-title,.logo-title span{font-size:14px}
+.logo-title small{font-size:6px;margin-top:4px}
+.sidebar nav{gap:3px}
+.nav-item{gap:10px;padding:10px 10px;border-radius:9px;font-size:12px}
+.nav-item b{width:20px;font-size:16px}
+.side-user{margin-top:10px;padding:9px;border-radius:11px;gap:7px}
+.side-user .user-avatar{width:32px;height:32px}
+.side-user strong{font-size:11px}.side-user small{font-size:9px}
+.main-header{height:64px;padding:0 22px;gap:14px}
+.main-header>strong{font-size:15px;white-space:nowrap}
+.search-box{height:38px;width:min(390px,42vw);margin-left:auto;margin-right:auto}
+.header-actions{gap:10px}
+.header-actions select{max-width:150px!important;padding:7px 9px!important;font-size:11px}
+.header-profile{gap:7px}.header-profile strong{font-size:11px}
+.page-content{padding:26px 28px 44px;max-width:none}
+.dashboard-content{padding:26px 28px 44px;max-width:none}
+.workspace-overview{padding:24px 26px 40px!important;min-height:calc(100dvh - 64px)!important}
+.workspace-overview .top{margin-bottom:18px}
+.workspace-overview .top h1{font-size:30px}
+.workspace-overview .stats{gap:12px}
+.workspace-overview .stat{padding:15px;border-radius:14px}
+.workspace-overview .channels{gap:12px}
+.workspace-overview .channel{padding:16px;border-radius:15px}
+.menu-btn{display:none}
+.sidebar-backdrop{display:none}
+.drawer-close{display:none}
+@media(max-width:1200px){.sidebar{width:200px;flex-basis:200px}.search-box{width:300px}.page-content{padding-left:22px;padding-right:22px}.workspace-overview{padding-left:22px!important;padding-right:22px!important}}
+@media(max-width:760px){
+  .sidebar{width:238px!important;flex-basis:238px!important;padding:18px 11px!important}
+  .sidebar-backdrop.show{display:block;position:fixed;inset:0;background:rgba(15,23,42,.38);z-index:90}
+  .drawer-close{display:block!important;margin-left:auto;width:30px;height:30px;background:#f1f5f9;color:#475569;border-radius:8px;font-size:20px;line-height:1}
+  .main-header{height:58px;padding:0 12px;gap:9px}
+  .menu-btn{display:block!important;background:#f3f6f8;color:#344054;border-radius:9px;width:34px;height:34px;font-size:18px}
+  .main-header>strong{font-size:14px}
+  .search-box{display:none}
+  .header-actions{margin-left:auto;gap:6px}
+  .header-actions>button:first-child{display:none}
+  .header-actions select{max-width:112px!important;padding:7px 6px!important;font-size:10px!important}
+  .header-profile{padding:0}.header-profile strong{display:none}
+  .mini-logo{width:32px;height:32px}
+  .page-content{padding:18px 12px 32px}
+  .dashboard-content{padding:18px 12px 32px}
+  .workspace-overview{padding:18px 12px 30px!important;min-height:calc(100dvh - 58px)!important}
+  .workspace-overview .top h1{font-size:25px}
+  .workspace-overview .top p{font-size:11px;line-height:1.45}
+  .workspace-overview .actions{width:100%}.workspace-overview .actions button{flex:1}
+  .workspace-overview .stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+  .workspace-overview .stat{padding:13px;border-radius:12px}.workspace-overview .stat strong{font-size:21px}
+  .workspace-overview .channels{grid-template-columns:1fr;gap:10px}
+  .workspace-overview .channel{padding:14px;border-radius:13px}
+}
+@media(max-width:390px){
+  .sidebar{width:226px!important}.workspace-overview .stats{grid-template-columns:1fr}
+  .header-actions select{max-width:92px!important}.main-header>strong{max-width:82px;overflow:hidden;text-overflow:ellipsis}
+}
