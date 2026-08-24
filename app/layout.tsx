@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import './dashboard/ui.css';
 import './design-system.css';
+import './google-business-retirement.css';
 
 export const metadata: Metadata = {
   title: 'MD Hygiene Social Manager',
