@@ -37,7 +37,8 @@ export default function LoginPage() {
       const memberships = Array.isArray(sessionData?.memberships)
         ? sessionData.memberships.filter((m: any) => m?.workspace_id && m?.active !== false)
         : [];
-      const isAdminOrOwner = loginType === 'admin' || profileRole === 'admin' || profileRole === 'owner';
+      const membershipRole = memberships.some((m: any) => ['admin', 'owner'].includes(String(m?.role || '').toLowerCase()));
+      const isAdminOrOwner = ['admin', 'owner'].includes(profileRole) || membershipRole;
 
       if (isAdminOrOwner) {
         try { localStorage.removeItem('mdsm:selectedWorkspaceId'); } catch {}
