@@ -17,7 +17,6 @@ const nav=[
   ['Publishing History','history','/dashboard/history','publishing'],
   ['Analytics','analytics','/dashboard/analytics','analytics'],
   ['Media Library','media','/dashboard/media','content'],
-  ['Settings','settings','/dashboard/settings','workspace_settings'],
 ] as const;
 
 function Icon({name,size=18}:{name:IconName;size?:number}){
@@ -73,7 +72,6 @@ export default function AppShell({children,title='Dashboard'}:{children:ReactNod
   })()},[selected]);
 
   const visibleNav=useMemo(()=>nav.filter(([, , ,module])=>{
-    if(module==='workspace_settings') return access?.is_owner_or_admin===true;
     if(access?.is_owner_or_admin)return true;
     const p=access?.permissions.find(x=>x.module===module);
     return p?.can_view===true;
@@ -82,7 +80,7 @@ export default function AppShell({children,title='Dashboard'}:{children:ReactNod
   useEffect(()=>{
     if(accessLoading||!access)return;
     const current=nav.find(([label])=>label===title);
-    if(current){const module=current[3];const allowed=module==='workspace_settings'?access.is_owner_or_admin:access.is_owner_or_admin||access.permissions.some(p=>p.module===module&&p.can_view);if(!allowed)location.href='/dashboard';}
+    if(current){const module=current[3];const allowed=access.is_owner_or_admin||access.permissions.some(p=>p.module===module&&p.can_view);if(!allowed)location.href='/dashboard';}
   },[access,accessLoading,title]);
 
   async function signOut(){setProfileOpen(false);await getSupabase().auth.signOut();try{localStorage.removeItem('mdsm:selectedWorkspaceId')}catch{}location.href='/login'}
