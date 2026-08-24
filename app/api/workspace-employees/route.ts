@@ -34,11 +34,7 @@ export async function GET(request: Request) {
     if (!workspaceId) return NextResponse.json({ error: 'workspace_id is required.' }, { status: 400 });
     const admin = adminClient();
     await assertWorkspaceOwner(admin, workspaceId, user.id);
-    const { data, error } = await admin
-      .from('workplace_members')
-      .select('id,user_id,employee_id,role,active,created_at,profiles:user_id(full_name)')
-      .eq('workplace_id', workspaceId)
-      .order('created_at', { ascending: true });
+    const { data, error } = await admin.from('workplace_members').select('id,user_id,employee_id,role,active,created_at,profiles:user_id(full_name)').eq('workplace_id', workspaceId).order('created_at', { ascending: true });
     if (error) throw error;
     return NextResponse.json({ members: data || [] });
   } catch (e) {
@@ -62,42 +58,29 @@ export async function POST(request: Request) {
 
     const admin = adminClient();
     await assertWorkspaceOwner(admin, workspaceId, user.id);
-    const { data: existing } = await admin.from('workplace_members').select('id').eq('workplace_id', workspaceId).ilike('employee_id', employeeId).maybeSingle();
-    if (existing) return NextResponse.json({ error: 'That Employee ID is already used in this workspace.' }, { status: 409 });
+    const { data: existing } = await admin.from('workplace_members').select('id').ilike('employee_id', employeeId).maybeSingle();
+    if (existing) return NextResponse.json({ error: 'That Employee ID is already in use.' }, { status: 409 });
 
     const loginEmail = `${employeeId.toLowerCase()}@employee.md-hygiene.local`;
     const { data: created, error: createError } = await admin.auth.admin.createUser({ email: loginEmail, password, email_confirm: true });
     if (createError || !created.user) throw createError || new Error('Unable to create employee account.');
 
     const { error: profileError } = await admin.from('profiles').upsert({ id: created.user.id, full_name: fullName, role, active: true }, { onConflict: 'id' });
-    if (profileError) {
-      await admin.auth.admin.deleteUser(created.user.id);
-      throw profileError;
-    }
-    const { error: memberError } = await admin.from('workplace_members').insert({ workplace_id: workspaceId, user_id: created.user.id, employee_id: employeeId, role, active: true });
-    if (memberError) {
-      await admin.auth.admin.deleteUser(created.user.id);
-      throw memberError;
-    }
+    if (profileError) { await admin.auth.admin.deleteUser(created.user.id); throw profileError; }
+
+    const { data: member, error: memberError } = await admin.from('workplace_members').insert({ workplace_id: workspaceId, user_id: created.user.id, employee_id: employeeId, role, active: true }).select('id,user_id,employee_id,role,active').single();
+    if (memberError || !member) { await admin.auth.admin.deleteUser(created.user.id); throw memberError || new Error('Unable to assign employee to workspace.'); }
 
     const platforms = ['dashboard', 'creative', 'calendar', 'publish', 'analytics'];
-    const { error: permissionError } = await admin.from('workplace_permissions').insert(platforms.map((platform) => ({
-      workplace_id: workspaceId,
-      user_id: created.user!.id,
-      platform,
-      can_view: true,
-      can_create: role !== 'member' || platform !== 'analytics',
-      can_edit: role !== 'member',
-      can_submit: role !== 'member',
-      can_publish: role === 'admin' || role === 'manager',
-    })));
+    const { error: permissionError } = await admin.from('workplace_permissions').insert(platforms.map((platform) => ({ workplace_id: workspaceId, user_id: created.user!.id, platform, can_view: true, can_create: role !== 'member' || platform !== 'analytics', can_edit: role !== 'member', can_submit: role !== 'member', can_publish: role === 'admin' || role === 'manager' })));
     if (permissionError) {
-      await admin.from('workplace_members').delete().eq('id', memberError ? '' : created.user.id);
+      await admin.from('workplace_members').delete().eq('id', member.id);
+      await admin.from('profiles').delete().eq('id', created.user.id);
       await admin.auth.admin.deleteUser(created.user.id);
       throw permissionError;
     }
 
-    return NextResponse.json({ member: { user_id: created.user.id, employee_id: employeeId, full_name: fullName, role, active: true } }, { status: 201 });
+    return NextResponse.json({ member: { ...member, full_name: fullName } }, { status: 201 });
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Unable to create employee.';
     return NextResponse.json({ error: message }, { status: message.includes('Authentication') || message.includes('session') ? 401 : 500 });
@@ -119,10 +102,7 @@ export async function PATCH(request: Request) {
     if (role) update.role = role;
     const { data, error } = await admin.from('workplace_members').update(update).eq('id', memberId).eq('workplace_id', workspaceId).select('id,user_id,employee_id,role,active').single();
     if (error) throw error;
-    if (role) await admin.from('profiles').update({ role, active }).eq('id', data.user_id);
-    else await admin.from('profiles').update({ active }).eq('id', data.user_id);
+    await admin.from('profiles').update({ role: role || data.role, active }).eq('id', data.user_id);
     return NextResponse.json({ member: data });
-  } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : 'Unable to update employee.' }, { status: 500 });
-  }
+  } catch (e) { return NextResponse.json({ error: e instanceof Error ? e.message : 'Unable to update employee.' }, { status: 500 }); }
 }
