@@ -1,0 +1,4 @@
+/* Google Business is retired from this product. The dashboard still carries a legacy hard-coded channel card; keep it out of the user-facing UI without altering the active Facebook/Instagram flows. */
+.workspace-overview .channels{grid-template-columns:repeat(2,minmax(0,1fr));}
+.workspace-overview .channels > .channel:nth-child(3){display:none;}
+@media(max-width:1050px){.workspace-overview .channels{grid-template-columns:1fr;}}
