@@ -1,4 +1,4 @@
-import { NextResponse } from '@next/server';
+import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 type Account={id:string;platform:string;name:string;handle:string|null;platform_account_id:string;access_token:string|null;status:string;brand_id:string|null;workspace_id:string|null};
 type MetricResult={followers:number|null;reach:number|null;engagement:number|null;posts:number|null;postsData:any[];warnings:string[];requiresReconnect?:boolean};
