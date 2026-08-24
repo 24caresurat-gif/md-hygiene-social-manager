@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 type PublishBody = { accountId?: string; message?: string; link?: string; mediaType?: 'none' | 'image' | 'video' };
-type Account = { id: string; name: string; platform_account_id: string; access_token: string | null; platform: string; status: string; brand_id: string | null };
+type Account = { id: string; name: string; platform_account_id: string; access_token: string | null; platform: string; status: string; workspace_id: string | null; brand_id: string | null };
 export async function POST(request: Request) {
   const token = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
   if (!token) return NextResponse.json({ error: 'Your Social Manager session has expired.' }, { status: 401 });
@@ -18,11 +18,16 @@ export async function POST(request: Request) {
     const { data: userData, error: userError } = await supabase.auth.getUser(token);
     if (userError || !userData.user) return NextResponse.json({ error: 'Invalid Social Manager session.' }, { status: 401 });
     const userId = userData.user.id;
-    const { data: profile } = await supabase.from('profiles').select('role,active').eq('id', userId).maybeSingle();
-    if (profile?.role !== 'admin' || profile.active === false) return NextResponse.json({ error: 'Admin approval is required before publishing.' }, { status: 403 });
-    const { data: found, error: accountError } = await supabase.from('social_accounts').select('id,name,platform_account_id,access_token,platform,status,brand_id').eq('id', accountId).eq('user_id', userId).eq('platform', 'facebook').single();
-    if (accountError || !found) return NextResponse.json({ error: 'Connected Facebook Page not found.' }, { status: 404 });
-    const account = found as Account;
+    const { data: accountRow, error: accountError } = await supabase.from('social_accounts').select('id,name,platform_account_id,access_token,platform,status,workspace_id,brand_id').eq('id', accountId).eq('platform', 'facebook').single();
+    if (accountError || !accountRow) return NextResponse.json({ error: 'Connected Facebook Page not found.' }, { status: 404 });
+    const account = accountRow as Account;
+    if (!account.workspace_id) return NextResponse.json({ error: 'Facebook Page is not assigned to a workspace.' }, { status: 403 });
+    const { data: member } = await supabase.from('workplace_members').select('role,active').eq('workspace_id', account.workspace_id).eq('user_id', userId).maybeSingle();
+    if (!member?.active) return NextResponse.json({ error: 'You do not have access to this workspace.' }, { status: 403 });
+    if (member.role !== 'owner' && member.role !== 'admin') {
+      const { data: permission } = await supabase.from('workspace_member_permissions').select('can_publish').eq('workspace_id', account.workspace_id).eq('user_id', userId).eq('module', 'publishing').maybeSingle();
+      if (!permission?.can_publish) return NextResponse.json({ error: 'Publishing permission is required.' }, { status: 403 });
+    }
     if (account.status !== 'connected' || !account.access_token) return NextResponse.json({ error: 'Facebook Page connection is not active. Please reconnect it.' }, { status: 400 });
     const pageId = account.platform_account_id, pageToken = account.access_token; let endpoint = `https://graph.facebook.com/v23.0/${pageId}/feed`; let payload: FormData | URLSearchParams = new URLSearchParams({ message, access_token: pageToken });
     if (mediaType === 'image' && media) { endpoint = `https://graph.facebook.com/v23.0/${pageId}/photos`; const form = new FormData(); form.append('source', media, media.name); form.append('caption', message); form.append('published', 'true'); form.append('access_token', pageToken); if (link) form.append('link', link); payload = form; } else if (mediaType === 'video' && media) { endpoint = `https://graph.facebook.com/v23.0/${pageId}/videos`; const form = new FormData(); form.append('source', media, media.name); form.append('description', message); form.append('published', 'true'); form.append('access_token', pageToken); payload = form; } else if (link) (payload as URLSearchParams).set('link', link);
