@@ -32,7 +32,23 @@ export default function LoginPage() {
       if (error) throw error;
       const token = data.session?.access_token;
       if (!token) throw new Error('Login succeeded but no session was created.');
-      await validateSession(token);
+      const sessionData = await validateSession(token);
+      const profileRole = String(sessionData?.profile?.role || '').toLowerCase();
+      const memberships = Array.isArray(sessionData?.memberships)
+        ? sessionData.memberships.filter((m: any) => m?.workspace_id && m?.active !== false)
+        : [];
+      const isAdminOrOwner = loginType === 'admin' || profileRole === 'admin' || profileRole === 'owner';
+
+      if (isAdminOrOwner) {
+        try { localStorage.removeItem('mdsm:selectedWorkspaceId'); } catch {}
+      } else {
+        const assignedWorkspace = memberships[0];
+        if (!assignedWorkspace?.workspace_id) {
+          throw new Error('No active workspace is assigned to this account. Please contact your workspace administrator.');
+        }
+        try { localStorage.setItem('mdsm:selectedWorkspaceId', String(assignedWorkspace.workspace_id)); } catch {}
+      }
+
       window.location.assign('/dashboard');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Unable to sign in. Please try again.');
