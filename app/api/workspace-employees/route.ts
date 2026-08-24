@@ -34,9 +34,30 @@ export async function GET(request: Request) {
     if (!workspaceId) return NextResponse.json({ error: 'workspace_id is required.' }, { status: 400 });
     const admin = adminClient();
     await assertWorkspaceManager(admin, workspaceId, user.id);
-    const { data, error } = await admin.from('workplace_members').select('id,user_id,employee_id,role,active,created_at,profiles:user_id(full_name)').eq('workspace_id', workspaceId).order('created_at', { ascending: true });
-    if (error) throw error;
-    return NextResponse.json({ members: data || [] });
+
+    const { data: members, error: memberError } = await admin
+      .from('workplace_members')
+      .select('id,user_id,employee_id,role,active,created_at,workspace_id')
+      .eq('workspace_id', workspaceId)
+      .order('created_at', { ascending: true });
+    if (memberError) throw memberError;
+
+    const userIds = [...new Set((members || []).map((m: any) => String(m.user_id)).filter(Boolean))];
+    const profilesById = new Map<string, { full_name?: string }>();
+    if (userIds.length) {
+      const { data: profiles, error: profileError } = await admin
+        .from('profiles')
+        .select('id,full_name')
+        .in('id', userIds);
+      if (profileError) throw profileError;
+      for (const profile of profiles || []) profilesById.set(String(profile.id), { full_name: profile.full_name || '' });
+    }
+
+    const result = (members || []).map((member: any) => ({
+      ...member,
+      profiles: profilesById.get(String(member.user_id)) || null,
+    }));
+    return NextResponse.json({ members: result });
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Unable to load employees.';
     return NextResponse.json({ error: message }, { status: message.includes('Authentication') || message.includes('session') ? 401 : 403 });
