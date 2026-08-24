@@ -17,12 +17,19 @@ async function authenticatedClient(request: Request) {
   return { supabase, user: data.user };
 }
 
+function makeSlug(name: string) {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || `workspace-${Date.now()}`;
+}
+
 export async function GET(request: Request) {
   try {
     const { supabase } = await authenticatedClient(request);
-    const { data, error } = await supabase.from('brands').select('id,name,slug,logo_url').order('name');
+    const { data, error } = await supabase
+      .from('workspaces')
+      .select('id,name,slug,logo_url,owner_user_id,created_at,brands(id,name,slug,logo_url)')
+      .order('name');
     if (error) throw error;
-    return NextResponse.json({ brands: data || [] });
+    return NextResponse.json({ workspaces: data || [], brands: (data || []).map((w: any) => ({ id: w.id, name: w.name, slug: w.slug, logo_url: w.logo_url })) });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Unable to load workspaces.' }, { status: 500 });
   }
@@ -36,10 +43,38 @@ export async function POST(request: Request) {
     const logo_url = body.logo_url ? String(body.logo_url).trim() : null;
     if (!name) return NextResponse.json({ error: 'Workspace name is required.' }, { status: 400 });
     if (logo_url && logo_url.length > 2048) return NextResponse.json({ error: 'Logo URL is too long.' }, { status: 400 });
-    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-    const { data, error } = await supabase.from('brands').insert({ user_id: user.id, name, slug, logo_url }).select('id,name,slug,logo_url').single();
-    if (error) throw error;
-    return NextResponse.json({ brand: data }, { status: 201 });
+
+    const slug = makeSlug(name);
+    const workspaceId = crypto.randomUUID();
+    const { data: workspace, error: workspaceError } = await supabase
+      .from('workspaces')
+      .insert({ id: workspaceId, owner_user_id: user.id, name, slug, logo_url })
+      .select('id,name,slug,logo_url,owner_user_id,created_at')
+      .single();
+    if (workspaceError) throw workspaceError;
+
+    // Transitional bridge: current features still reference brands, so every
+    // new workspace starts with one primary brand linked to that workspace.
+    const { data: brand, error: brandError } = await supabase
+      .from('brands')
+      .insert({ id: workspaceId, workspace_id: workspaceId, user_id: user.id, name, slug, logo_url })
+      .select('id,name,slug,logo_url')
+      .single();
+    if (brandError) {
+      await supabase.from('workspaces').delete().eq('id', workspaceId);
+      throw brandError;
+    }
+
+    const { error: membershipError } = await supabase
+      .from('workplace_members')
+      .upsert({ workplace_id: workspaceId, workspace_id: workspaceId, user_id: user.id, role: 'owner', active: true }, { onConflict: 'workplace_id,user_id' });
+    if (membershipError) {
+      await supabase.from('brands').delete().eq('id', workspaceId);
+      await supabase.from('workspaces').delete().eq('id', workspaceId);
+      throw membershipError;
+    }
+
+    return NextResponse.json({ workspace, brand }, { status: 201 });
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Unable to create workspace.';
     return NextResponse.json({ error: message }, { status: message.includes('Authentication') || message.includes('session') ? 401 : 403 });
@@ -55,10 +90,28 @@ export async function PATCH(request: Request) {
     const logo_url = body.logo_url ? String(body.logo_url).trim() : null;
     if (!id || !name) return NextResponse.json({ error: 'Workspace ID and name are required.' }, { status: 400 });
     if (logo_url && logo_url.length > 2048) return NextResponse.json({ error: 'Logo URL is too long.' }, { status: 400 });
-    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-    const { data, error } = await supabase.from('brands').update({ name, slug, logo_url }).eq('id', id).eq('user_id', user.id).select('id,name,slug,logo_url').single();
-    if (error) throw error;
-    return NextResponse.json({ brand: data });
+    const slug = makeSlug(name);
+
+    const { data: workspace, error: workspaceError } = await supabase
+      .from('workspaces')
+      .update({ name, slug, logo_url })
+      .eq('id', id)
+      .eq('owner_user_id', user.id)
+      .select('id,name,slug,logo_url,owner_user_id,created_at')
+      .single();
+    if (workspaceError) throw workspaceError;
+
+    const { data: brand, error: brandError } = await supabase
+      .from('brands')
+      .update({ name, slug, logo_url })
+      .eq('workspace_id', id)
+      .eq('user_id', user.id)
+      .select('id,name,slug,logo_url')
+      .limit(1)
+      .maybeSingle();
+    if (brandError) throw brandError;
+
+    return NextResponse.json({ workspace, brand });
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Unable to update workspace.';
     return NextResponse.json({ error: message }, { status: message.includes('Authentication') || message.includes('session') ? 401 : 403 });
