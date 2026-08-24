@@ -111,6 +111,7 @@ export default function SettingsPage() {
     <section className="panel" style={{ padding: 24, maxWidth: 820, marginTop: 20 }}>
       <span className="eyebrow">TEAM ACCESS</span><h2 style={{ marginTop: 6 }}>Employees &amp; Permissions</h2>
       <p className="muted">Create, assign, change roles, deactivate or remove employees from this workspace.</p>
+      <button className="btn" onClick={() => location.href = '/dashboard/settings/access'} style={{ marginTop: 12 }}>Manage Employee Access →</button>
       <form onSubmit={createEmployee} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 20 }}>
         <label>Employee ID<input required value={form.employee_id} onChange={e => setForm({ ...form, employee_id: e.target.value })} placeholder="EMP001" style={inputStyle} /></label>
         <label>Employee Name<input required value={form.full_name} onChange={e => setForm({ ...form, full_name: e.target.value })} placeholder="Employee name" style={inputStyle} /></label>
