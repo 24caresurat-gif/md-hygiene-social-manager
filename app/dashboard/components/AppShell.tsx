@@ -5,7 +5,7 @@ import {getSupabase} from '../../../lib/supabase-browser';
 type Workspace={id:string;name:string;logo_url?:string|null};
 type Permission={module:string;can_view:boolean;can_create:boolean;can_edit:boolean;can_submit:boolean;can_approve:boolean;can_publish:boolean;can_manage:boolean};
 type Access={role:string;employee_id?:string|null;permissions:Permission[];is_owner_or_admin:boolean};
-type IconName='dashboard'|'accounts'|'create'|'creative'|'drafts'|'calendar'|'history'|'analytics'|'media'|'settings'|'search'|'bell'|'menu'|'chevron';
+type IconName='dashboard'|'accounts'|'create'|'creative'|'drafts'|'calendar'|'approval'|'history'|'analytics'|'media'|'settings'|'search'|'bell'|'menu'|'chevron';
 
 const nav=[
   ['Dashboard','dashboard','/dashboard','dashboard'],
@@ -14,6 +14,7 @@ const nav=[
   ['Creative Intelligence','creative','/dashboard/creative-insights','creative'],
   ['Drafts','drafts','/dashboard/drafts','drafts'],
   ['Calendar','calendar','/dashboard/calendar','calendar'],
+  ['Approvals','approval','/dashboard/admin/approvals','approval'],
   ['Publishing History','history','/dashboard/history','publishing'],
   ['Analytics','analytics','/dashboard/analytics','analytics'],
   ['Media Library','media','/dashboard/media','content'],
@@ -28,10 +29,11 @@ function Icon({name,size=18}:{name:IconName;size?:number}){
     case 'creative': return <svg {...common}><path d="m12 3 1.7 5.3L19 10l-5.3 1.7L12 17l-1.7-5.3L5 10l5.3-1.7Z"/><path d="m19 16 .8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8Z"/></svg>;
     case 'drafts': return <svg {...common}><path d="M6 3.5h9l3 3V20.5H6Z"/><path d="M15 3.5v3h3"/><path d="M9 12h6M9 16h4"/></svg>;
     case 'calendar': return <svg {...common}><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M16 2.5v4M8 2.5v4M3 9.5h18"/></svg>;
+    case 'approval': return <svg {...common}><circle cx="12" cy="12" r="8.5"/><path d="m8.5 12 2.3 2.3 4.8-5"/></svg>;
     case 'history': return <svg {...common}><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6"/><path d="M3.5 4.5v5h5"/><path d="M12 7v5l3 2"/></svg>;
     case 'analytics': return <svg {...common}><path d="M4 19V9M10 19V5M16 19v-7M22 19V3"/></svg>;
     case 'media': return <svg {...common}><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m4.5 17 4.5-4.5 3.2 3.2 2.3-2.3 5 3.6"/></svg>;
-    case 'settings': return <svg {...common}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.7 1.7-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V20h-2.4v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L8 17l.1-.1A1.7 1.7 0 0 0 8.4 15a1.7 1.7 0 0 0-1.6-1H6v-2.4h.8a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L8 8.6l1.7-1.7.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1.9-.3l.1-.1 1.7 1.7-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0-1.6 1H22V14h-.8a1.7 1.7 0 0 0-1.8 1Z"/></svg>;
+    case 'settings': return <svg {...common}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.7 1.7-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V20h-2.4v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L8 17l.1-.1A1.7 1.7 0 0 0 8.4 15a1.7 1.7 0 0 0-1.6-1H6v-2.4h.8a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L8 8.6l1.7-1.7.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1.9-.3l.1-.1 1.7 1.7-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.7 1H22V14h-.8a1.7 1.7 0 0 0-1.8 1Z"/></svg>;
     case 'search': return <svg {...common}><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>;
     case 'bell': return <svg {...common}><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>;
     case 'menu': return <svg {...common}><path d="M4 7h16M4 12h16M4 17h16"/></svg>;
