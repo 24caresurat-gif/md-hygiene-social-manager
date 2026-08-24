@@ -20,10 +20,10 @@ async function getCaller(request: Request) {
   return data.user;
 }
 
-async function assertWorkspaceOwner(admin: ReturnType<typeof adminClient>, workspaceId: string, userId: string) {
-  const { data, error } = await admin.from('brands').select('id,name').eq('id', workspaceId).eq('user_id', userId).maybeSingle();
+async function assertWorkspaceManager(admin: ReturnType<typeof adminClient>, workspaceId: string, userId: string) {
+  const { data, error } = await admin.from('workplace_members').select('workspace_id,role,active').eq('workspace_id', workspaceId).eq('user_id', userId).eq('active', true).maybeSingle();
   if (error) throw error;
-  if (!data) throw new Error('Only the workspace owner can manage employee logins.');
+  if (!data || !['owner', 'admin'].includes(data.role)) throw new Error('Only the workspace owner or admin can manage employee logins.');
   return data;
 }
 
@@ -33,8 +33,8 @@ export async function GET(request: Request) {
     const workspaceId = new URL(request.url).searchParams.get('workspace_id');
     if (!workspaceId) return NextResponse.json({ error: 'workspace_id is required.' }, { status: 400 });
     const admin = adminClient();
-    await assertWorkspaceOwner(admin, workspaceId, user.id);
-    const { data, error } = await admin.from('workplace_members').select('id,user_id,employee_id,role,active,created_at,profiles:user_id(full_name)').eq('workplace_id', workspaceId).order('created_at', { ascending: true });
+    await assertWorkspaceManager(admin, workspaceId, user.id);
+    const { data, error } = await admin.from('workplace_members').select('id,user_id,employee_id,role,active,created_at,profiles:user_id(full_name)').eq('workspace_id', workspaceId).order('created_at', { ascending: true });
     if (error) throw error;
     return NextResponse.json({ members: data || [] });
   } catch (e) {
@@ -58,33 +58,35 @@ export async function POST(request: Request) {
     if (password.length < 8) return NextResponse.json({ error: 'Password must be at least 8 characters.' }, { status: 400 });
 
     const admin = adminClient();
-    await assertWorkspaceOwner(admin, workspaceId, user.id);
+    await assertWorkspaceManager(admin, workspaceId, user.id);
     const { data: existing } = await admin.from('workplace_members').select('id').ilike('employee_id', employeeId).maybeSingle();
     if (existing) return NextResponse.json({ error: 'That Employee ID is already in use.' }, { status: 409 });
 
     const loginEmail = `${employeeId.toLowerCase()}@employee.md-hygiene.local`;
-    const { data: created, error: createError } = await admin.auth.admin.createUser({ email: loginEmail, password, email_confirm: true });
+    const { data: created, error: createError } = await admin.auth.admin.createUser({ email: loginEmail, password, email_confirm: true, user_metadata: { full_name: fullName, employee_id: employeeId } });
     if (createError || !created.user) throw createError || new Error('Unable to create employee account.');
     createdUserId = created.user.id;
 
-    // profiles currently allows only admin/staff. Keep the workspace-specific role
-    // (member/manager/admin) in workplace_members while mapping it to the profile role.
-    const profileRole = role === 'admin' ? 'admin' : 'staff';
+    const profileRole = 'staff';
     const { error: profileError } = await admin.from('profiles').upsert({ id: created.user.id, full_name: fullName, role: profileRole, active: true }, { onConflict: 'id' });
     if (profileError) throw profileError;
 
-    const { data: member, error: memberError } = await admin.from('workplace_members').insert({ workplace_id: workspaceId, user_id: created.user.id, employee_id: employeeId, role, active: true }).select('id,user_id,employee_id,role,active').single();
+    const { data: member, error: memberError } = await admin.from('workplace_members').insert({ workspace_id: workspaceId, workplace_id: workspaceId, user_id: created.user.id, employee_id: employeeId, role, active: true }).select('id,user_id,employee_id,role,active,workspace_id').single();
     if (memberError || !member) throw memberError || new Error('Unable to assign employee to workspace.');
 
-    // workplace_permissions currently accepts these platform keys.
-    const platforms = ['facebook', 'instagram', 'google_business'];
-    const { error: permissionError } = await admin.from('workplace_permissions').insert(platforms.map((platform) => ({ workplace_id: workspaceId, user_id: created.user!.id, platform, can_view: true, can_create: role !== 'member' || platform !== 'google_business', can_edit: role !== 'member', can_submit: role !== 'member', can_publish: role === 'admin' || role === 'manager' })));
-    if (permissionError) throw permissionError;
+    const { data: defaults, error: defaultError } = await admin.rpc('workspace_role_defaults', { p_role: role });
+    if (defaultError) throw defaultError;
+    const permissionRows = (defaults || []).map((p: any) => ({ workspace_id: workspaceId, user_id: created.user.id, module: p.module, can_view: p.can_view, can_create: p.can_create, can_edit: p.can_edit, can_submit: p.can_submit, can_approve: p.can_approve, can_publish: p.can_publish, can_manage: p.can_manage }));
+    if (permissionRows.length) {
+      const { error: permissionError } = await admin.from('workspace_member_permissions').insert(permissionRows);
+      if (permissionError) throw permissionError;
+    }
 
     return NextResponse.json({ member: { ...member, full_name: fullName } }, { status: 201 });
   } catch (e) {
     if (createdUserId) {
       const admin = adminClient();
+      await admin.from('workspace_member_permissions').delete().eq('user_id', createdUserId);
       await admin.from('workplace_permissions').delete().eq('user_id', createdUserId);
       await admin.from('workplace_members').delete().eq('user_id', createdUserId);
       await admin.from('profiles').delete().eq('id', createdUserId);
@@ -105,12 +107,22 @@ export async function PATCH(request: Request) {
     const role = ['admin', 'manager', 'member'].includes(body.role) ? body.role : null;
     if (!workspaceId || !memberId) return NextResponse.json({ error: 'workspace_id and member_id are required.' }, { status: 400 });
     const admin = adminClient();
-    await assertWorkspaceOwner(admin, workspaceId, user.id);
+    await assertWorkspaceManager(admin, workspaceId, user.id);
     const update: Record<string, unknown> = { active };
     if (role) update.role = role;
-    const { data, error } = await admin.from('workplace_members').update(update).eq('id', memberId).eq('workplace_id', workspaceId).select('id,user_id,employee_id,role,active').single();
+    const { data, error } = await admin.from('workplace_members').update(update).eq('id', memberId).eq('workspace_id', workspaceId).select('id,user_id,employee_id,role,active').single();
     if (error) throw error;
-    await admin.from('profiles').update({ role: role === 'admin' ? 'admin' : 'staff', active }).eq('id', data.user_id);
+    await admin.from('profiles').update({ role: 'staff', active }).eq('id', data.user_id);
+    if (role) {
+      const { data: defaults, error: defaultError } = await admin.rpc('workspace_role_defaults', { p_role: role });
+      if (defaultError) throw defaultError;
+      await admin.from('workspace_member_permissions').delete().eq('workspace_id', workspaceId).eq('user_id', data.user_id);
+      const rows = (defaults || []).map((p: any) => ({ workspace_id: workspaceId, user_id: data.user_id, module: p.module, can_view: p.can_view, can_create: p.can_create, can_edit: p.can_edit, can_submit: p.can_submit, can_approve: p.can_approve, can_publish: p.can_publish, can_manage: p.can_manage }));
+      if (rows.length) {
+        const { error: permissionError } = await admin.from('workspace_member_permissions').insert(rows);
+        if (permissionError) throw permissionError;
+      }
+    }
     return NextResponse.json({ member: data });
   } catch (e) { return NextResponse.json({ error: e instanceof Error ? e.message : 'Unable to update employee.' }, { status: 500 }); }
 }
