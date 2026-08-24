@@ -20,7 +20,6 @@ async function authenticatedClient(request: Request) {
 export async function GET(request: Request) {
   try {
     const { supabase } = await authenticatedClient(request);
-    // RLS now returns only workplaces the current user is allowed to access.
     const { data, error } = await supabase.from('brands').select('id,name,slug,logo_url').order('name');
     if (error) throw error;
     return NextResponse.json({ brands: data || [] });
@@ -43,6 +42,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ brand: data }, { status: 201 });
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Unable to create workspace.';
+    return NextResponse.json({ error: message }, { status: message.includes('Authentication') || message.includes('session') ? 401 : 403 });
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const { supabase, user } = await authenticatedClient(request);
+    const body = await request.json().catch(() => ({}));
+    const id = String(body.id || '').trim();
+    const name = String(body.name || '').trim();
+    const logo_url = body.logo_url ? String(body.logo_url).trim() : null;
+    if (!id || !name) return NextResponse.json({ error: 'Workspace ID and name are required.' }, { status: 400 });
+    if (logo_url && logo_url.length > 2048) return NextResponse.json({ error: 'Logo URL is too long.' }, { status: 400 });
+    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const { data, error } = await supabase.from('brands').update({ name, slug, logo_url }).eq('id', id).eq('user_id', user.id).select('id,name,slug,logo_url').single();
+    if (error) throw error;
+    return NextResponse.json({ brand: data });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : 'Unable to update workspace.';
     return NextResponse.json({ error: message }, { status: message.includes('Authentication') || message.includes('session') ? 401 : 403 });
   }
 }
