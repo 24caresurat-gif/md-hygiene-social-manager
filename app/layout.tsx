@@ -1,8 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import './dashboard/ui.css';
-import './madgicx-theme.css';
-import './dashboard/redesign.css';
+import './design-system.css';
 
 export const metadata: Metadata = {
   title: 'MD Hygiene Social Manager',
