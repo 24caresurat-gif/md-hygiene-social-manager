@@ -5,7 +5,7 @@ import AppShell from '../../components/AppShell';
 import { getSupabase } from '../../../../lib/supabase-browser';
 
 type Member={id:string;user_id:string;employee_id:string;role:string;active:boolean;profiles?:{full_name?:string}|null};
-type Permission={module:string;can_view:boolean;can_create:boolean;can_edit:boolean;can_submit:boolean;can_approve:boolean;can_publish:boolean;can_manage:boolean};
+type Permission={id?:string;user_id:string;workspace_id?:string;module:string;can_view:boolean;can_create:boolean;can_edit:boolean;can_submit:boolean;can_approve:boolean;can_publish:boolean;can_manage:boolean};
 type Access={role:string;is_owner_or_admin:boolean};
 
 const modules=[
@@ -31,8 +31,8 @@ export default function EmployeeAccessPage(){
  }
  async function loadPermissions(userId:string){
   setSelected(userId);setMessage('');try{const t=await token();const r=await fetch(`/api/admin/permissions?workspace_id=${encodeURIComponent(id)}`,{headers:{Authorization:`Bearer ${t}`},cache:'no-store'});const d=await r.json();if(!r.ok)throw new Error(d?.error||'Unable to load permissions.');const next:Record<string,Permission>={};(d.permissions||[]).filter((p:Permission)=>p.user_id===userId).forEach((p:Permission)=>{next[p.module]=p});setPermissions(next);}catch(e){setMessage(e instanceof Error?e.message:'Unable to load permissions.');}}
- function toggle(module:string,action:string){setPermissions(cur=>{const base:Permission=cur[module]||{module,can_view:false,can_create:false,can_edit:false,can_submit:false,can_approve:false,can_publish:false,can_manage:false};return {...cur,[module]:{...base,[action]:!base[action as keyof Permission]}}})}
- async function saveAll(){if(!selectedMember)return;setSaving(true);setMessage('');try{const t=await token();for(const [module,label] of modules){const p=permissions[module]||{module,can_view:false,can_create:false,can_edit:false,can_submit:false,can_approve:false,can_publish:false,can_manage:false};const r=await fetch('/api/admin/permissions',{method:'PUT',headers:{Authorization:`Bearer ${t}`,'Content-Type':'application/json'},body:JSON.stringify({workspace_id:id,user_id:selectedMember.user_id,module,...p})});const d=await r.json();if(!r.ok)throw new Error(d?.error||`Unable to save ${label}.`)}setMessage('Employee access saved successfully.')}catch(e){setMessage(e instanceof Error?e.message:'Unable to save employee access.')}finally{setSaving(false)}}
+ function toggle(module:string,action:string){setPermissions(cur=>{const base:Permission=cur[module]||{user_id:selected,module,can_view:false,can_create:false,can_edit:false,can_submit:false,can_approve:false,can_publish:false,can_manage:false};return {...cur,[module]:{...base,[action]:!base[action as keyof Permission]}}})}
+ async function saveAll(){if(!selectedMember)return;setSaving(true);setMessage('');try{const t=await token();for(const [module,label] of modules){const p=permissions[module]||{user_id:selectedMember.user_id,module,can_view:false,can_create:false,can_edit:false,can_submit:false,can_approve:false,can_publish:false,can_manage:false};const r=await fetch('/api/admin/permissions',{method:'PUT',headers:{Authorization:`Bearer ${t}`,'Content-Type':'application/json'},body:JSON.stringify({workspace_id:id,user_id:selectedMember.user_id,module,...p})});const d=await r.json();if(!r.ok)throw new Error(d?.error||`Unable to save ${label}.`)}setMessage('Employee access saved successfully.')}catch(e){setMessage(e instanceof Error?e.message:'Unable to save employee access.')}finally{setSaving(false)}}
  useEffect(()=>{void load()},[]);
  if(loading)return <AppShell title="Settings"><div className="muted">Loading employee access…</div></AppShell>;
  return <AppShell title="Settings"><div className="page-head"><div><span className="eyebrow">TEAM ACCESS</span><h1>Employee Access</h1><p>Choose an employee and control exactly what they can view, create, edit, submit, approve, publish or manage.</p></div></div>
