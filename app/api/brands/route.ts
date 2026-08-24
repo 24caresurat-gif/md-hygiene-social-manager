@@ -23,13 +23,21 @@ function makeSlug(name: string) {
 
 export async function GET(request: Request) {
   try {
-    const { supabase } = await authenticatedClient(request);
+    const { supabase, user } = await authenticatedClient(request);
     const { data, error } = await supabase
-      .from('workspaces')
-      .select('id,name,slug,logo_url,owner_user_id,created_at,brands(id,name,slug,logo_url)')
-      .order('name');
+      .from('workplace_members')
+      .select('workspace_id,role,active,workspaces(id,name,slug,logo_url,owner_user_id,created_at)')
+      .eq('user_id', user.id)
+      .eq('active', true)
+      .order('created_at', { ascending: true });
     if (error) throw error;
-    return NextResponse.json({ workspaces: data || [], brands: (data || []).map((w: any) => ({ id: w.id, name: w.name, slug: w.slug, logo_url: w.logo_url })) });
+
+    const workspaces = (data || [])
+      .map((row: any) => row.workspaces)
+      .filter(Boolean)
+      .map((w: any) => ({ id: w.id, name: w.name, slug: w.slug, logo_url: w.logo_url, owner_user_id: w.owner_user_id, created_at: w.created_at }));
+
+    return NextResponse.json({ workspaces, brands: workspaces });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Unable to load workspaces.' }, { status: 500 });
   }
@@ -53,8 +61,6 @@ export async function POST(request: Request) {
       .single();
     if (workspaceError) throw workspaceError;
 
-    // Transitional bridge: current features still reference brands, so every
-    // new workspace starts with one primary brand linked to that workspace.
     const { data: brand, error: brandError } = await supabase
       .from('brands')
       .insert({ id: workspaceId, workspace_id: workspaceId, user_id: user.id, name, slug, logo_url })
