@@ -8,23 +8,29 @@ function client(token: string) {
   return createClient(url, key, { global: { headers: { Authorization: `Bearer ${token}` } } });
 }
 
-async function admin(request: Request) {
+async function caller(request: Request) {
   const token = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
   if (!token) return null;
   const sb = client(token);
   const { data: u, error } = await sb.auth.getUser(token);
   if (error || !u.user) return null;
-  const { data: p } = await sb.from('profiles').select('role,active').eq('id', u.user.id).maybeSingle();
-  return p?.role === 'admin' && p.active !== false ? { sb, user: u.user } : null;
+  return { sb, user: u.user };
+}
+
+async function canManage(a: Awaited<ReturnType<typeof caller>>, workspaceId: string) {
+  if (!a) return false;
+  const { data } = await a.sb.from('workplace_members').select('role,active').eq('workspace_id', workspaceId).eq('user_id', a.user.id).maybeSingle();
+  return !!data && data.active && (data.role === 'owner' || data.role === 'admin');
 }
 
 export async function GET(request: Request) {
   try {
-    const a = await admin(request);
-    if (!a) return NextResponse.json({ error: 'Admin access required.' }, { status: 403 });
-    const { data, error } = await a.sb
-      .from('workplace_permissions')
-      .select('id,user_id,workplace_id,platform,can_view,can_create,can_edit,can_submit,can_publish');
+    const a = await caller(request);
+    if (!a) return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
+    const workspaceId = new URL(request.url).searchParams.get('workspace_id');
+    if (workspaceId && !(await canManage(a, workspaceId))) return NextResponse.json({ error: 'Workspace admin access required.' }, { status: 403 });
+    const query = a.sb.from('workspace_member_permissions').select('id,user_id,workspace_id,module,can_view,can_create,can_edit,can_submit,can_approve,can_publish,can_manage');
+    const { data, error } = workspaceId ? await query.eq('workspace_id', workspaceId) : await query;
     if (error) throw error;
     return NextResponse.json({ permissions: data || [] });
   } catch (e) {
@@ -34,30 +40,28 @@ export async function GET(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    const a = await admin(request);
-    if (!a) return NextResponse.json({ error: 'Admin access required.' }, { status: 403 });
+    const a = await caller(request);
+    if (!a) return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
     const b = await request.json();
     const user_id = String(b.user_id || '');
-    const workplace_id = String(b.workplace_id || '');
-    const platform = String(b.platform || '');
-    if (!user_id || !workplace_id || !['facebook', 'instagram', 'google_business'].includes(platform)) {
-      return NextResponse.json({ error: 'user_id, workplace_id and valid platform are required.' }, { status: 400 });
-    }
+    const workspace_id = String(b.workspace_id || '');
+    const module = String(b.module || '');
+    const allowed = ['dashboard','content','creative','calendar','analytics','drafts','approval','publishing','social_accounts','team','workspace_settings'];
+    if (!user_id || !workspace_id || !allowed.includes(module)) return NextResponse.json({ error: 'user_id, workspace_id and valid module are required.' }, { status: 400 });
+    if (!(await canManage(a, workspace_id))) return NextResponse.json({ error: 'Workspace admin access required.' }, { status: 403 });
     const row = {
       user_id,
-      workplace_id,
-      platform,
-      can_view: b.can_view !== false,
+      workspace_id,
+      module,
+      can_view: b.can_view === true,
       can_create: b.can_create === true,
       can_edit: b.can_edit === true,
       can_submit: b.can_submit === true,
+      can_approve: b.can_approve === true,
       can_publish: b.can_publish === true,
+      can_manage: b.can_manage === true,
     };
-    const { data, error } = await a.sb
-      .from('workplace_permissions')
-      .upsert(row, { onConflict: 'workplace_id,user_id,platform' })
-      .select()
-      .single();
+    const { data, error } = await a.sb.from('workspace_member_permissions').upsert(row, { onConflict: 'workspace_id,user_id,module' }).select().single();
     if (error) throw error;
     return NextResponse.json({ permission: data });
   } catch (e) {
