@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { refreshGoogleToken } from '../../../../../lib/google-business';
+import { getGoogleConnectionBySocialAccount, updateGoogleConnection } from '../../../../../lib/google-business-sync';
 
 async function authUser(request:Request){
   const token=request.headers.get('authorization')?.replace(/^Bearer\\s+/i,'');
@@ -30,18 +31,16 @@ export async function POST(request:Request){
     if(!member.data||!['owner','admin','manager'].includes(role))return NextResponse.json({error:'You do not have permission to reply to reviews in this workspace.'},{status:403});
     const profile=await supabase.from('google_business_profiles').select('social_account_id').eq('id',review.data.profile_id).eq('workspace_id',review.data.workspace_id).maybeSingle();
     if(profile.error)throw profile.error;
-    const social=await supabase.from('social_accounts').select('id,access_token,refresh_token,token_expires_at').eq('id',profile.data?.social_account_id||'').eq('workspace_id',review.data.workspace_id).maybeSingle();
-    if(social.error)throw social.error;
-    if(!social.data)return NextResponse.json({error:'Google connection not found.'},{status:404});
-    let accessToken=String(social.data.access_token||'');
-    if(social.data.refresh_token&&(!social.data.token_expires_at||new Date(social.data.token_expires_at).getTime()<=Date.now()+60000)){
+    const connection=await getGoogleConnectionBySocialAccount(String(profile.data?.social_account_id||'')); 
+    if(!connection)return NextResponse.json({error:'Google connection not found.'},{status:404});
+    let accessToken=String(connection.access_token||'');
+    if(connection.refresh_token&&(!connection.token_expires_at||new Date(connection.token_expires_at).getTime()<=Date.now()+60000)){
       const clientId=process.env.GOOGLE_CLIENT_ID,clientSecret=process.env.GOOGLE_CLIENT_SECRET;
       if(!clientId||!clientSecret)return NextResponse.json({error:'Google OAuth credentials are not configured.'},{status:500});
-      const refreshed=await refreshGoogleToken({refreshToken:social.data.refresh_token,clientId,clientSecret});
+      const refreshed=await refreshGoogleToken({refreshToken:connection.refresh_token,clientId,clientSecret});
       accessToken=refreshed.access_token;
       const expiresAt=refreshed.expires_in?new Date(Date.now()+Number(refreshed.expires_in)*1000).toISOString():null;
-      const update=await supabase.from('social_accounts').update({access_token:accessToken,token_expires_at:expiresAt,token_checked_at:new Date().toISOString(),token_last_refreshed_at:new Date().toISOString(),token_status:'active',token_error:null}).eq('id',social.data.id).eq('workspace_id',review.data.workspace_id);
-      if(update.error)throw update.error;
+      await updateGoogleConnection(String(connection.id),{access_token:accessToken,token_expires_at:expiresAt,token_checked_at:new Date().toISOString(),token_last_refreshed_at:new Date().toISOString(),token_status:'active',token_error:null});
     }
     if(!accessToken)throw new Error('Google access token is missing.');
     const googleResponse=await fetch('https://mybusiness.googleapis.com/v4/'+review.data.google_review_id+'/reply',{method:'PUT',headers:{Authorization:'Bearer '+accessToken,'Content-Type':'application/json'},body:JSON.stringify({comment:reply}),cache:'no-store'});
