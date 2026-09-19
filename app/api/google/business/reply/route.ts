@@ -71,9 +71,16 @@ export async function DELETE(request:Request){
     if(!member.data||!['owner','admin','manager'].includes(role))return NextResponse.json({error:'You do not have permission to manage replies in this workspace.'},{status:403});
     const profile=await supabase.from('google_business_profiles').select('social_account_id').eq('id',review.data.profile_id).eq('workspace_id',review.data.workspace_id).maybeSingle();
     if(profile.error)throw profile.error;
-    const social=await supabase.from('social_accounts').select('access_token').eq('id',profile.data?.social_account_id||'').eq('workspace_id',review.data.workspace_id).maybeSingle();
+    const social=await supabase.from('social_accounts').select('id,access_token,refresh_token,token_expires_at').eq('id',profile.data?.social_account_id||'').eq('workspace_id',review.data.workspace_id).maybeSingle();
     if(social.error)throw social.error;
-    const accessToken=String(social.data?.access_token||'');
+    let accessToken=String(social.data?.access_token||'');
+    if(social.data?.refresh_token&&(!social.data?.token_expires_at||new Date(social.data.token_expires_at).getTime()<=Date.now()+60000)){
+      const clientId=process.env.GOOGLE_CLIENT_ID,clientSecret=process.env.GOOGLE_CLIENT_SECRET;
+      if(!clientId||!clientSecret)throw new Error('Google OAuth credentials are not configured.');
+      const refreshed=await refreshGoogleToken({refreshToken:social.data.refresh_token,clientId,clientSecret});
+      accessToken=refreshed.access_token;
+      await supabase.from('social_accounts').update({access_token:accessToken,token_expires_at:refreshed.expires_in?new Date(Date.now()+Number(refreshed.expires_in)*1000).toISOString():null,token_checked_at:new Date().toISOString(),token_last_refreshed_at:new Date().toISOString(),token_status:'active',token_error:null}).eq('id',social.data.id).eq('workspace_id',review.data.workspace_id);
+    }
     if(!accessToken)throw new Error('Google access token is missing. Reconnect Google before deleting a reply.');
     const googleResponse=await fetch('https://mybusiness.googleapis.com/v4/'+review.data.google_review_id+'/reply',{method:'DELETE',headers:{Authorization:'Bearer '+accessToken},cache:'no-store'});
     const googleData=await googleResponse.json().catch(()=>({}));
