@@ -18,6 +18,7 @@ const nav=[
   ['Publishing History','history','/dashboard/history','publishing'],
   ['Analytics','analytics','/dashboard/analytics','analytics'],
   ['Media Library','media','/dashboard/media','content'],
+  ['Google Business & Reviews','accounts','/dashboard/gmb','social_accounts'],
 ] as const;
 
 function Icon({name,size=18}:{name:IconName;size?:number}){
