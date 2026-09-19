@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { listGoogleAccounts, refreshGoogleToken } from '../../../../lib/google-business';
-import { importGoogleAccount } from '../../../../lib/google-business-sync';
+import { listGoogleAccounts, refreshGoogleToken } from '../../../../../lib/google-business';
+import { importGoogleAccount } from '../../../../../lib/google-business-sync';
 
 export async function POST(request:Request){
   try{
