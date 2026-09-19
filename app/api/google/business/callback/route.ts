@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { exchangeGoogleCode, listGoogleAccounts } from '../../../../../lib/google-business';
-import { importGoogleAccount, saveGoogleSocialAccount } from '../../../../../lib/google-business-sync';
+import { importGoogleAccount, saveGoogleConnection, saveGoogleSocialAccount } from '../../../../../lib/google-business-sync';
 
 function cookie(request:Request,name:string){
   const raw=request.headers.get('cookie')?.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`))?.[1]||'';
@@ -45,6 +45,7 @@ export async function GET(request:Request){
       const socialAccountId=await saveGoogleSocialAccount({
         supabase,userId:userData.user.id,workspaceId,brandId:brand?.id||null,account,tokenData
       });
+      await saveGoogleConnection({socialAccountId,userId:userData.user.id,workspaceId,accountName:String(account?.name||''),tokenData});
       const result=await importGoogleAccount({supabase,workspaceId,socialAccountId,account,accessToken:tokenData.access_token});
       locations+=result.locations;reviews+=result.reviews;
     }
