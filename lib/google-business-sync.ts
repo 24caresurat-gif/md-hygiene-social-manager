@@ -25,6 +25,13 @@ export async function saveGoogleConnection(args:{
   return result.data.id as string;
 }
 
+export async function getGoogleConnectionBySocialAccount(socialAccountId:string){
+  const db=adminDb();
+  const result=await db.from('google_business_connections').select('id,social_account_id,account_name,access_token,refresh_token,token_expires_at,token_status').eq('social_account_id',socialAccountId).maybeSingle();
+  if(result.error)throw result.error;
+  return result.data||null;
+}
+
 export async function getGoogleConnectionsByWorkspace(workspaceId:string){
   const db=adminDb();
   const result=await db.from('google_business_connections').select('id,social_account_id,account_name,access_token,refresh_token,token_expires_at,token_status').eq('workspace_id',workspaceId);
