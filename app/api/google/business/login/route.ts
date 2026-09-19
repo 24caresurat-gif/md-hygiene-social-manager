@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { GOOGLE_BUSINESS_SCOPE } from '../../../../lib/google-business';
+import { GOOGLE_BUSINESS_SCOPE } from '../../../../../lib/google-business';
 
 export async function POST(request:Request){
   try{
