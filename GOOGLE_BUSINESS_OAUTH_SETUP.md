@@ -56,3 +56,16 @@ The Google Business Profile API supports reading reviews and updating review rep
 ## 5. Important
 
 There is no Google Business Profile API sandbox. Test with an actual Business Profile account and use a non-destructive read/import flow first.
+
+## 6. AI review suggestions
+
+The review suggestion endpoint uses the OpenAI Responses API when OPENAI_API_KEY is available. It defaults to the cost-sensitive gpt-5.6-luna model and keeps the API key server-side.
+
+Optional Vercel variables:
+
+```
+OPENAI_API_KEY=your_openai_api_key
+OPENAI_REVIEW_MODEL=gpt-5.6-luna
+```
+
+Without an OpenAI key, the app uses a safe template fallback and records the model as template-fallback.
