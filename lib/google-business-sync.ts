@@ -6,6 +6,38 @@ import {
   ratingToNumber,
 } from './google-business';
 
+import { createClient } from '@supabase/supabase-js';
+
+function adminDb(){
+  const url=process.env.NEXT_PUBLIC_SUPABASE_URL,key=process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if(!url||!key)throw new Error('Server database configuration is missing.');
+  return createClient(url,key,{auth:{autoRefreshToken:false,persistSession:false}});
+}
+
+export async function saveGoogleConnection(args:{
+  socialAccountId:string; userId:string; workspaceId:string; accountName:string; tokenData:any;
+}){
+  const db=adminDb();
+  const now=new Date().toISOString();
+  const payload={social_account_id:args.socialAccountId,user_id:args.userId,workspace_id:args.workspaceId,account_name:args.accountName,access_token:null,refresh_token:args.tokenData.refresh_token||null,token_expires_at:null,token_checked_at:now,token_last_refreshed_at:now,token_status:'active',token_error:null,updated_at:now};
+  const result=await db.from('google_business_connections').upsert(payload,{onConflict:'social_account_id'}).select('id').single();
+  if(result.error)throw result.error;
+  return result.data.id as string;
+}
+
+export async function getGoogleConnectionsByWorkspace(workspaceId:string){
+  const db=adminDb();
+  const result=await db.from('google_business_connections').select('id,social_account_id,account_name,access_token,refresh_token,token_expires_at,token_status').eq('workspace_id',workspaceId);
+  if(result.error)throw result.error;
+  return result.data||[];
+}
+
+export async function updateGoogleConnection(id:string,patch:any){
+  const db=adminDb();
+  const result=await db.from('google_business_connections').update({...patch,updated_at:new Date().toISOString()}).eq('id',id);
+  if(result.error)throw result.error;
+}
+
 export async function saveGoogleSocialAccount(args:{
   supabase:any; userId:string; workspaceId:string; brandId:string|null;
   account:any; tokenData:any;
@@ -21,7 +53,7 @@ export async function saveGoogleSocialAccount(args:{
     user_id:args.userId,workspace_id:args.workspaceId,brand_id:args.brandId,
     platform:'google_business',name:args.account?.accountName||resource,handle:args.account?.type||null,
     platform_account_id:resource,access_token:args.tokenData.access_token,
-    refresh_token:args.tokenData.refresh_token||existing.data?.refresh_token||null,
+    refresh_token:null,
     token_expires_at:args.tokenData.expires_in?new Date(Date.now()+Number(args.tokenData.expires_in)*1000).toISOString():null,
     token_checked_at:now,token_last_refreshed_at:now,token_status:'active',token_error:null,status:'connected',updated_at:now
   };
