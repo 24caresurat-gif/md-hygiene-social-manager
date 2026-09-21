@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { getSupabase } from '../../../lib/supabase-browser';
 
 type Member = { id: string; user_id: string; employee_id: string; role: string; active: boolean; profiles?: { full_name?: string } | null };
+type Connection = { id: string; platform: string; name: string; handle: string | null; status: string; token_expires_at?: string | null; token_error?: string | null };
 
 export default function SettingsPage() {
   const [id, setId] = useState('');
@@ -12,6 +13,8 @@ export default function SettingsPage() {
   const [email, setEmail] = useState('');
   const [msg, setMsg] = useState('');
   const [members, setMembers] = useState<Member[]>([]);
+  const [connections, setConnections] = useState<Connection[]>([]);
+  const [connectionBusy, setConnectionBusy] = useState('');
   const [teamMsg, setTeamMsg] = useState('');
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({ employee_id: '', full_name: '', password: '', role: 'member' });
@@ -22,6 +25,74 @@ export default function SettingsPage() {
     return session.access_token;
   }
 
+  async function loadConnections(workspaceId: string) {
+    try {
+      const token = await sessionToken();
+      const client = getSupabase();
+      const user = (await client.auth.getUser()).data.user;
+      if (!user) throw new Error('Session expired');
+      const { data, error } = await client.from('social_accounts')
+        .select('id,platform,name,handle,status,token_expires_at,token_error')
+        .eq('user_id', user.id).eq('brand_id', workspaceId)
+        .in('platform', ['facebook', 'instagram', 'google_business'])
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setConnections((data || []) as Connection[]);
+    } catch (e) {
+      setTeamMsg(e instanceof Error ? e.message : 'Unable to load connected channels.');
+    }
+  }
+
+  async function startConnection(platform: 'facebook' | 'instagram' | 'google_business') {
+    setConnectionBusy(platform); setTeamMsg('');
+    try {
+      if (platform === 'facebook') {
+        window.location.href = '/api/meta/facebook/login?brandId=' + encodeURIComponent(id);
+        return;
+      }
+      const token = await sessionToken();
+      if (platform === 'instagram') {
+        const r = await fetch('/api/meta/instagram/login?brandId=' + encodeURIComponent(id), { headers: { Authorization: 'Bearer ' + token }, cache: 'no-store' });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok || !d.url) throw new Error(d?.error || 'Instagram connection is not configured.');
+        window.location.href = d.url;
+        return;
+      }
+      const r = await fetch('/api/google/business/login', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workspaceId: id })
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.url) throw new Error(d?.error || 'Google Business connection is not configured.');
+      window.location.href = d.url;
+    } catch (e) {
+      setTeamMsg(e instanceof Error ? e.message : 'Connection failed.');
+    } finally {
+      setConnectionBusy('');
+    }
+  }
+
+  async function disconnectConnection(account: Connection) {
+    if (!window.confirm('Disconnect ' + account.name + '? Posts, drafts and analytics history will not be deleted.')) return;
+    setConnectionBusy('disconnect:' + account.id); setTeamMsg('');
+    try {
+      const token = await sessionToken();
+      const r = await fetch('/api/social-accounts/disconnect', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accountId: account.id })
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d?.error || 'Disconnect failed.');
+      setTeamMsg(account.name + ' disconnected successfully.');
+      await loadConnections(id);
+    } catch (e) {
+      setTeamMsg(e instanceof Error ? e.message : 'Disconnect failed.');
+    } finally {
+      setConnectionBusy('');
+    }
+  }
   async function loadMembers(workspaceId: string) {
     try {
       const token = await sessionToken();
@@ -46,6 +117,7 @@ export default function SettingsPage() {
         const b = (d.brands || []).find((x: any) => x.id === saved);
         if (b) { setName(b.name || ''); setLogo(b.logo_url || ''); }
       }
+      await loadConnections(saved);
       await loadMembers(saved);
     };
     void run();
@@ -97,7 +169,9 @@ export default function SettingsPage() {
     } catch (e) { setTeamMsg(e instanceof Error ? e.message : 'Unable to remove employee.'); }
   }
 
-  return <main className="workspace-settings-shell">
+  const connected = (platform: string) => connections.find(account => account.platform === platform);
+
+  return <AppShell title="Settings"><div className="workspace-settings-shell">
     <style jsx>{`
       .workspace-settings-shell{min-height:100vh;background:#f7fafb;color:#17202b;padding:28px 32px 48px}
       .settings-inner{max-width:1180px;margin:0 auto}
@@ -106,7 +180,7 @@ export default function SettingsPage() {
       .settings-top h1{margin:6px 0 7px;font-size:32px;letter-spacing:-.04em}
       .settings-top p{margin:0;color:#71808a;font-size:12px;line-height:1.6}
       .back-btn{border:1px solid #dce6ea;background:#fff;color:#35424c;border-radius:10px;padding:10px 13px;font-size:10px;font-weight:900;cursor:pointer}
-      .grid{display:grid;gap:18px;max-width:920px}
+      .grid{display:grid;gap:18px;max-width:1080px}
       .panel{background:#fff;border:1px solid #e0e8eb;border-radius:18px;padding:22px;box-shadow:0 10px 30px rgba(15,23,42,.04)}
       .panel h2{margin:0 0 5px;font-size:18px}.muted{color:#76838d;font-size:11px}
       .fields{display:grid;gap:14px;margin-top:18px}.field{display:grid;gap:6px;font-size:11px;font-weight:850}
@@ -116,16 +190,46 @@ export default function SettingsPage() {
       .member-list{display:grid;gap:10px;margin-top:20px;padding-top:18px;border-top:1px solid #edf1f2}.member-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 14px;border:1px solid #e7edf0;border-radius:12px}.member-copy strong{display:block;font-size:12px}.member-copy span{display:block;color:#7d8992;font-size:10px;margin-top:3px}.member-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap;justify-content:flex-end}.role-select{padding:9px 10px;border:1px solid #dce6ea;border-radius:10px;background:#fff;font-weight:800;font-size:10px}
       .notice{margin-top:12px;padding:10px 12px;border:1px solid #d7ebe8;background:#f3fbfa;color:#1e5e59;border-radius:10px;font-size:11px;font-weight:750}
       .account-row{display:flex;align-items:center;justify-content:space-between;gap:14px}.account-email{font-size:12px;font-weight:850}
+      .connection-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:18px}.connection-card{border:1px solid #e3eaed;border-radius:16px;padding:16px;background:#fafcfc;display:grid;gap:13px}.connection-icon{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:#eef5f6;color:#17202b;font-size:19px;font-weight:950}.connection-copy{display:grid;gap:12px}.connection-title{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.connection-title h3{margin:0;font-size:15px}.connection-title p{margin:4px 0 0;color:#77838d;font-size:10px;line-height:1.5}.connection-status{padding:5px 8px;border-radius:999px;background:#eef1f3;color:#6f7b84;font-size:9px;font-weight:900;white-space:nowrap}.connection-status.connected{background:#edf9f1;color:#087443}.connected-account{display:grid;gap:3px;padding:10px 11px;border:1px solid #e5eaed;border-radius:11px;background:#fff}.connected-account strong{font-size:10px;color:#2a3640;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.connected-account span{font-size:9px;color:#7a8790;line-height:1.45}.empty-connection{border-style:dashed}.connection-actions{display:flex;gap:7px;flex-wrap:wrap}.connection-actions .btn{flex:1}
+      @media(max-width:980px){.connection-grid{grid-template-columns:1fr}.connection-title{align-items:flex-start}}
       @media(max-width:780px){.workspace-settings-shell{padding:20px 15px 36px}.settings-top{flex-direction:column}.team-grid{grid-template-columns:1fr}.team-grid .full{grid-column:auto}.member-row,.account-row{align-items:flex-start;flex-direction:column}.member-actions{justify-content:flex-start}}
     `}</style>
     <div className="settings-inner">
       <header className="settings-top"><div><span className="eyebrow">WORKSPACE SETTINGS</span><h1>Workspace Settings</h1><p>Manage only this workspace. Dashboard navigation stays outside this focused settings area.</p></div><button className="back-btn" onClick={() => location.href = '/dashboard'}>← Back to Workspace</button></header>
       <div className="grid">
+        <section className="panel" id="connections">
+          <span className="eyebrow">CHANNEL CONNECTIONS</span>
+          <h2 style={{ marginTop: 6 }}>Connect Facebook, Instagram &amp; Google Business</h2>
+          <p className="muted">All channel OAuth connections live here. The rest of the system works without connection setup; connect accounts only when you are ready to publish or sync live data.</p>
+          <div className="connection-grid">
+            {([
+              ['facebook', 'Facebook', 'Facebook Pages, publishing and account management.', 'f'],
+              ['instagram', 'Instagram', 'Instagram Business publishing and insights.', '◎'],
+              ['google_business', 'Google Business', 'Business Profile locations, reviews and replies.', 'G'],
+            ] as const).map(([platform, title, description, icon]) => {
+              const account = connected(platform);
+              return <article className="connection-card" key={platform}>
+                <div className="connection-icon">{icon}</div>
+                <div className="connection-copy">
+                  <div className="connection-title"><div><h3>{title}</h3><p>{description}</p></div><span className={account ? 'connection-status connected' : 'connection-status'}>{account ? 'Connected' : 'Not connected'}</span></div>
+                  {account ? <div className="connected-account"><strong>{account.name}</strong><span>{account.handle ? '@' + account.handle : account.platform.replace('_', ' ')}{account.token_error ? ' · ' + account.token_error : ''}</span></div> : <div className="connected-account empty-connection"><strong>Ready to connect</strong><span>OAuth setup is the only external step remaining.</span></div>}
+                </div>
+                <div className="connection-actions">
+                  <button className="btn btn-primary" disabled={!!connectionBusy} onClick={() => void startConnection(platform)}>{connectionBusy === platform ? 'Opening…' : account ? 'Reconnect' : 'Connect'}</button>
+                  {account && <button className="btn btn-danger" disabled={connectionBusy === 'disconnect:' + account.id} onClick={() => void disconnectConnection(account)}>{connectionBusy === 'disconnect:' + account.id ? 'Disconnecting…' : 'Disconnect'}</button>}
+                  {account && platform === 'google_business' && <button className="btn" onClick={() => location.href = '/dashboard/gmb'}>Open GMB →</button>}
+                </div>
+              </article>;
+            })}
+          </div>
+          {teamMsg && <div className="notice">{teamMsg}</div>}
+        </section>
+
         <section className="panel"><h2>Workspace</h2><p className="muted">Changes apply only to the selected workspace.</p><div className="fields"><label className="field">Workspace Name<input className="input" value={name} onChange={e => setName(e.target.value)} /></label><label className="field">Logo URL<input className="input" value={logo} onChange={e => setLogo(e.target.value)} placeholder="https://…" /></label></div><div className="actions"><button className="btn btn-primary" onClick={save}>Save Workspace</button>{msg && <div className="notice">{msg}</div>}</div></section>
         <section className="panel"><span className="eyebrow">TEAM ACCESS</span><h2 style={{ marginTop: 6 }}>Employees &amp; Permissions</h2><p className="muted">Create employees, change roles, activate or remove them, and open the full permission matrix.</p><div className="actions"><button className="btn" onClick={() => location.href = '/dashboard/settings/access'}>Manage Employee Access →</button></div><form onSubmit={createEmployee} className="team-grid"><label className="field">Employee ID<input required className="input" value={form.employee_id} onChange={e => setForm({ ...form, employee_id: e.target.value })} placeholder="EMP001" /></label><label className="field">Employee Name<input required className="input" value={form.full_name} onChange={e => setForm({ ...form, full_name: e.target.value })} placeholder="Employee name" /></label><label className="field">Password<input required minLength={8} type="password" className="input" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} placeholder="Minimum 8 characters" /></label><label className="field">Role<select className="input" value={form.role} onChange={e => setForm({ ...form, role: e.target.value })}><option value="member">Member</option><option value="manager">Manager</option><option value="admin">Admin</option></select></label><button className="btn btn-primary full" disabled={creating}>{creating ? 'Creating…' : '+ Create Employee Login'}</button></form>{teamMsg && <div className="notice">{teamMsg}</div>}
         <div className="member-list">{members.length===0 ? <div className="muted">No employees assigned to this workspace yet.</div> : members.map(member => <div key={member.id} className="member-row"><div className="member-copy"><strong>{member.profiles?.full_name || 'Employee'}</strong><span>{member.employee_id} · {member.role} · {member.active ? 'Active' : 'Inactive'}</span></div><div className="member-actions">{member.role !== 'owner' && <select className="role-select" value={member.role} onChange={e => updateMember(member,{role:e.target.value})}><option value="member">Member</option><option value="manager">Manager</option><option value="admin">Admin</option></select>}{member.role !== 'owner' && <button className="btn" onClick={() => updateMember(member,{active:!member.active})}>{member.active?'Deactivate':'Activate'}</button>}{member.role !== 'owner' && <button className="btn btn-danger" onClick={() => removeMember(member)}>Remove</button>}</div></div>)}</div></section>
         <section className="panel"><h2>Account</h2><div className="account-row"><div><div className="account-email">{email || '—'}</div><div className="muted" style={{ marginTop: 3 }}>Signed-in account</div></div><button className="btn" onClick={() => location.href = '/dashboard/accounts'}>Manage Connected Channels →</button></div></section>
       </div>
     </div>
-  </main>;
+  </div></AppShell>;
 }
