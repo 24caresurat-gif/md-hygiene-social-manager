@@ -15,6 +15,7 @@ export default function SettingsPage() {
   const [members, setMembers] = useState<Member[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [connectionBusy, setConnectionBusy] = useState('');
+  const [connectionMsg, setConnectionMsg] = useState('');
   const [teamMsg, setTeamMsg] = useState('');
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({ employee_id: '', full_name: '', password: '', role: 'member' });
@@ -27,7 +28,6 @@ export default function SettingsPage() {
 
   async function loadConnections(workspaceId: string) {
     try {
-      const token = await sessionToken();
       const client = getSupabase();
       const user = (await client.auth.getUser()).data.user;
       if (!user) throw new Error('Session expired');
@@ -39,12 +39,12 @@ export default function SettingsPage() {
       if (error) throw error;
       setConnections((data || []) as Connection[]);
     } catch (e) {
-      setTeamMsg(e instanceof Error ? e.message : 'Unable to load connected channels.');
+      setConnectionMsg(e instanceof Error ? e.message : 'Unable to load connected channels.');
     }
   }
 
   async function startConnection(platform: 'facebook' | 'instagram' | 'google_business') {
-    setConnectionBusy(platform); setTeamMsg('');
+    setConnectionBusy(platform); setConnectionMsg('');
     try {
       if (platform === 'facebook') {
         window.location.href = '/api/meta/facebook/login?brandId=' + encodeURIComponent(id);
@@ -67,7 +67,7 @@ export default function SettingsPage() {
       if (!r.ok || !d.url) throw new Error(d?.error || 'Google Business connection is not configured.');
       window.location.href = d.url;
     } catch (e) {
-      setTeamMsg(e instanceof Error ? e.message : 'Connection failed.');
+      setConnectionMsg(e instanceof Error ? e.message : 'Connection failed.');
     } finally {
       setConnectionBusy('');
     }
@@ -75,7 +75,7 @@ export default function SettingsPage() {
 
   async function disconnectConnection(account: Connection) {
     if (!window.confirm('Disconnect ' + account.name + '? Posts, drafts and analytics history will not be deleted.')) return;
-    setConnectionBusy('disconnect:' + account.id); setTeamMsg('');
+    setConnectionBusy('disconnect:' + account.id); setConnectionMsg('');
     try {
       const token = await sessionToken();
       const r = await fetch('/api/social-accounts/disconnect', {
@@ -85,10 +85,10 @@ export default function SettingsPage() {
       });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(d?.error || 'Disconnect failed.');
-      setTeamMsg(account.name + ' disconnected successfully.');
+      setConnectionMsg(account.name + ' disconnected successfully.');
       await loadConnections(id);
     } catch (e) {
-      setTeamMsg(e instanceof Error ? e.message : 'Disconnect failed.');
+      setConnectionMsg(e instanceof Error ? e.message : 'Disconnect failed.');
     } finally {
       setConnectionBusy('');
     }
@@ -222,7 +222,7 @@ export default function SettingsPage() {
               </article>;
             })}
           </div>
-          {teamMsg && <div className="notice">{teamMsg}</div>}
+          {connectionMsg && <div className="notice">{connectionMsg}</div>}
         </section>
 
         <section className="panel"><h2>Workspace</h2><p className="muted">Changes apply only to the selected workspace.</p><div className="fields"><label className="field">Workspace Name<input className="input" value={name} onChange={e => setName(e.target.value)} /></label><label className="field">Logo URL<input className="input" value={logo} onChange={e => setLogo(e.target.value)} placeholder="https://…" /></label></div><div className="actions"><button className="btn btn-primary" onClick={save}>Save Workspace</button>{msg && <div className="notice">{msg}</div>}</div></section>
