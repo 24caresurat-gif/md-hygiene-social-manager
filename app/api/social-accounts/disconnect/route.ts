@@ -27,6 +27,14 @@ export async function POST(req: Request) {
   if (findError) return NextResponse.json({ error: findError.message }, { status: 400 });
   if (!account) return NextResponse.json({ error: 'Account not found' }, { status: 404 });
 
+  if (account.platform === 'google_business') {
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!serviceKey) return NextResponse.json({ error: 'Supabase service configuration is missing.' }, { status: 500 });
+    const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } });
+    const { error: connectionError } = await admin.from('google_business_connections').delete().eq('social_account_id', accountId);
+    if (connectionError) return NextResponse.json({ error: connectionError.message }, { status: 400 });
+  }
+
   const { error } = await supabase
     .from('social_accounts')
     .delete()
