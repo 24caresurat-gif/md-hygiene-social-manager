@@ -19,6 +19,7 @@ const nav=[
   ['Analytics','analytics','/dashboard/analytics','analytics'],
   ['Media Library','media','/dashboard/media','content'],
   ['Google Business & Reviews','accounts','/dashboard/gmb','social_accounts'],
+  ['Settings','settings','/dashboard/settings','settings'],
 ] as const;
 
 function Icon({name,size=18}:{name:IconName;size?:number}){
@@ -76,6 +77,7 @@ export default function AppShell({children,title='Dashboard'}:{children:ReactNod
 
   const visibleNav=useMemo(()=>nav.filter(([, , ,module])=>{
     if(access?.is_owner_or_admin)return true;
+    if(module==='settings')return false;
     const p=access?.permissions.find(x=>x.module===module);
     return p?.can_view===true;
   }),[access]);
