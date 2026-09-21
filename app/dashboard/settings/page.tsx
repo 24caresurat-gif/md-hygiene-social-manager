@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { getSupabase } from '../../../lib/supabase-browser';
+import AppShell from '../components/AppShell';
 
 type Member = { id: string; user_id: string; employee_id: string; role: string; active: boolean; profiles?: { full_name?: string } | null };
 type Connection = { id: string; platform: string; name: string; handle: string | null; status: string; token_expires_at?: string | null; token_error?: string | null };
