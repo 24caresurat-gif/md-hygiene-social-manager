@@ -29,6 +29,20 @@ export async function POST(req: NextRequest) {
     ? [...new Set(body.platforms.map(String))]
     : [];
 
+  // --- Scheduling support -------------------------------------------------
+  // scheduledFor is sent by app/dashboard/publish/page.tsx but was previously
+  // ignored entirely, so every post published immediately regardless of the
+  // date/time chosen in the UI. We now honour it: a valid future timestamp
+  // creates a row in scheduled_posts (picked up later by /api/cron/publish)
+  // instead of publishing/submitting immediately.
+  const scheduledForRaw = body?.scheduledFor ? String(body.scheduledFor) : null;
+  const scheduledDate = scheduledForRaw ? new Date(scheduledForRaw) : null;
+  const isScheduled = !!(
+    scheduledDate &&
+    !Number.isNaN(scheduledDate.getTime()) &&
+    scheduledDate.getTime() > Date.now()
+  );
+
   if (!workspaceId || !accountIds.length || !message) {
     return NextResponse.json(
       { error: 'Workspace, account and caption are required.' },
@@ -81,8 +95,34 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'You do not have Submit permission for Content.' }, { status: 403 });
   }
 
-  // Owner/Admin may publish without approval; Manager/Member submit for review.
+  // Owner/Admin may publish/schedule without approval; Manager/Member submit for review.
   const approvalStatus = role === 'owner' || role === 'admin' ? 'approved' : 'pending';
+
+  if (isScheduled) {
+    const { data: scheduled, error: scheduledError } = await sb
+      .from('scheduled_posts')
+      .insert({
+        user_id: user.id,
+        brand_id: workspaceId,
+        workspace_id: workspaceId,
+        account_ids: accountIds,
+        caption: message,
+        link,
+        media_url: mediaUrl,
+        scheduled_for: scheduledDate!.toISOString(),
+        status: 'scheduled',
+        approval_status: approvalStatus,
+      })
+      .select('id,status,approval_status,scheduled_for')
+      .single();
+
+    if (scheduledError) return NextResponse.json({ error: scheduledError.message }, { status: 500 });
+
+    return NextResponse.json(
+      { scheduled: true, scheduledPost: scheduled, approvalStatus },
+      { status: 201 },
+    );
+  }
 
   const { data: draft, error: draftError } = await sb
     .from('post_drafts')
