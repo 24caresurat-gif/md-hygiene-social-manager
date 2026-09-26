@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { getSupabase } from '../../../lib/supabase-browser';
 import AppShell from '../components/AppShell';
+import WhatsAppConnect from './WhatsAppConnect';
 
 type Member = { id: string; user_id: string; employee_id: string; role: string; active: boolean; profiles?: { full_name?: string } | null };
 type Connection = { id: string; platform: string; name: string; handle: string | null; status: string; token_expires_at?: string | null; token_error?: string | null };
@@ -225,6 +226,13 @@ export default function SettingsPage() {
             })}
           </div>
           {connectionMsg && <div className="notice">{connectionMsg}</div>}
+        </section>
+
+        <section className="panel" id="whatsapp">
+          <span className="eyebrow">WHATSAPP BUSINESS</span>
+          <h2 style={{ marginTop: 6 }}>Connect WhatsApp Business</h2>
+          <p className="muted">Connect the business number through Meta Embedded Signup. This supports WhatsApp Business app coexistence; after onboarding, the contacts-only sync can populate the WhatsApp Contacts export screen.</p>
+          <WhatsAppConnect workspaceId={id} />
         </section>
 
         <section className="panel"><h2>Workspace</h2><p className="muted">Changes apply only to the selected workspace.</p><div className="fields"><label className="field">Workspace Name<input className="input" value={name} onChange={e => setName(e.target.value)} /></label><label className="field">Logo URL<input className="input" value={logo} onChange={e => setLogo(e.target.value)} placeholder="https://…" /></label></div><div className="actions"><button className="btn btn-primary" onClick={save}>Save Workspace</button>{msg && <div className="notice">{msg}</div>}</div></section>
