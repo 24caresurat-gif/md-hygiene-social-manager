@@ -1,3 +1,3 @@
 # Deployment trigger
 
-This file exists to trigger the connected Vercel production deployment from `main`.
+Vercel production deployment trigger for the current `main` branch.
