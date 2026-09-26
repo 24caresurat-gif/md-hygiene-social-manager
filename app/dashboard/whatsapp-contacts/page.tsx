@@ -24,7 +24,7 @@ export default function WhatsAppContactsPage() {
       setWorkspaceId(id);
       const session = (await getSupabase().auth.getSession()).data.session;
       if (!session) { location.href = '/login'; return; }
-      const r = await fetch('/api/whatsapp/contacts', {
+      const r = await fetch('/api/whatsapp/contacts?workspaceId=' + encodeURIComponent(id), {
         headers: { Authorization: `Bearer ${session.access_token}` }, cache: 'no-store'
       });
       const d = await r.json().catch(() => ({}));
