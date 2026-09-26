@@ -1,3 +1,3 @@
 # Deployment trigger
 
-Vercel production deployment trigger for the current `main` branch.
+Fresh Vercel production build trigger after GMB JSX syntax fixes.
