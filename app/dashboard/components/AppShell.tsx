@@ -19,6 +19,7 @@ const nav=[
   ['Analytics','analytics','/dashboard/analytics','analytics'],
   ['Media Library','media','/dashboard/media','content'],
   ['Google Business & Reviews','accounts','/dashboard/gmb','social_accounts'],
+  ['WhatsApp Contacts','accounts','/dashboard/whatsapp-contacts','social_accounts'],
   ['Settings','settings','/dashboard/settings','settings'],
 ] as const;
 
