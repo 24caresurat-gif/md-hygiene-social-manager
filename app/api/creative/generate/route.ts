@@ -1,10 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 
 export const runtime = 'nodejs';
+
+async function requireUser(req: Request) {
+  const token = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
+  if (!token) return null;
+  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+    auth: { persistSession: false },
+  });
+  const { data } = await supabase.auth.getUser(token);
+  return data.user || null;
+}
 
 export async function POST(req: NextRequest) {
   const key = process.env.OPENAI_API_KEY;
   if (!key) return NextResponse.json({ error: 'AI generation is not configured. Add OPENAI_API_KEY in Vercel environment variables.' }, { status: 503 });
+
+  const user = await requireUser(req);
+  if (!user) return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
 
   try {
     const body = await req.json();
