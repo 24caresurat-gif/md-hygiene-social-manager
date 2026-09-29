@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import AppShell from '../../components/AppShell';
-import { getSupabase } from '../../../lib/supabase-browser';
+import { getSupabase } from '../../../../lib/supabase-browser';
 
 type Template={id:string;name:string;language:string;status:string};
 type Contact={id:string;name:string|null;phone:string};
