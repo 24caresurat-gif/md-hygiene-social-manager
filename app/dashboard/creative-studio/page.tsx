@@ -3,7 +3,7 @@ import {useEffect,useState} from 'react';
 import AppShell from '../components/AppShell';
 import {getSupabase} from '../../../lib/supabase-browser';
 const formats=[['9:16','Reels / Stories','1024x1536'],['4:5','Feed','1024x1536'],['1:1','Square','1024x1024'],['16:9','Landscape','1536x1024']];
-const variations=[1,2,3,4];
+const variations=[1,2];
 export default function CreativeStudioPage(){
  const [brandId,setBrandId]=useState(''); const [accountIds,setAccountIds]=useState<string[]>([]); const [file,setFile]=useState<File|null>(null),[preview,setPreview]=useState(''); const [format,setFormat]=useState('9:16'),[count,setCount]=useState(2),[prompt,setPrompt]=useState('Create a professional MD Hygiene social creative focused on product benefit, trust and a clean premium look.'),[status,setStatus]=useState(''),[busy,setBusy]=useState(false),[saving,setSaving]=useState(false),[images,setImages]=useState<string[]>([]),[selected,setSelected]=useState(0);
  useEffect(()=>{(async()=>{const id=new URLSearchParams(location.search).get('brandId')||localStorage.getItem('mdsm:selectedWorkspaceId')||'';setBrandId(id);if(!id)return;try{const sb=getSupabase(),{data:{user}}=await sb.auth.getUser();if(!user){location.href='/login';return}const {data,error}=await sb.from('social_accounts').select('id').eq('user_id',user.id).eq('brand_id',id).eq('status','connected').order('platform');if(error)throw error;setAccountIds((data||[]).map(a=>a.id));}catch(e){setStatus(e instanceof Error?e.message:'Unable to load connected accounts.')}})()},[]);
