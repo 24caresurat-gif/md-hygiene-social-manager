@@ -46,6 +46,9 @@ async function inbound(db: any, connection: any, value: any, message: any) {
   }, { onConflict: 'workspace_id,phone' }).select('id,name').single();
   if (contactError) throw contactError;
 
+  const { data: duplicate } = await db.from('whatsapp_messages').select('id').eq('connection_id', connection.id).eq('provider_message_id', providerId).maybeSingle();
+  if (duplicate) return;
+
   const textPreview = preview(message).slice(0,220);
   const { data: conversation, error: conversationError } = await db.from('whatsapp_conversations').upsert({
     workspace_id: connection.workspace_id,
@@ -61,9 +64,6 @@ async function inbound(db: any, connection: any, value: any, message: any) {
     updated_at: now.toISOString(),
   }, { onConflict: 'workspace_id,phone' }).select('id,unread_count').single();
   if (conversationError) throw conversationError;
-
-  const { data: duplicate } = await db.from('whatsapp_messages').select('id').eq('connection_id', connection.id).eq('provider_message_id', providerId).maybeSingle();
-  if (duplicate) return;
 
   const type = String(message?.type || 'unknown');
   const mediaObject = message?.[type];
