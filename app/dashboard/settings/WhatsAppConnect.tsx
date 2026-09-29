@@ -26,9 +26,8 @@ export default function WhatsAppConnect({ workspaceId, onConnected }: Props) {
     let mounted = true;
     const loadConnection = async () => {
       try {
-        const token = (await import('../../../lib/supabase-browser')).getSupabase
-          ? (await (await import('../../../lib/supabase-browser')).getSupabase().auth.getSession()).data.session?.access_token
-          : '';
+        const sb = await import('../../../lib/supabase-browser');
+        const token = (await sb.getSupabase().auth.getSession()).data.session?.access_token || '';
         const r = await fetch('/api/whatsapp/connection?workspaceId=' + encodeURIComponent(workspaceId), {
           headers: { Authorization: 'Bearer ' + (token || '') }, cache: 'no-store'
         });
