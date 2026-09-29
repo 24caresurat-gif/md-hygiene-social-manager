@@ -7,3 +7,6 @@ Fresh Vercel production build trigger after GMB JSX syntax fixes.
 
 
 Vercel build trigger after restoring gmb/page.tsx source: 48c08bb.
+
+
+Latest GMB parser hardening: cc807b64.
