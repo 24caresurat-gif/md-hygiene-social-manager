@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getActiveConnection, graphRequest, jsonError, requireWhatsAppAccess, WhatsAppHttpError } from '../../../../../lib/whatsapp-server';
+import { getActiveConnection, graphRequest, jsonError, requireWhatsAppAccess, WhatsAppHttpError } from '../../../../../../lib/whatsapp-server';
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
