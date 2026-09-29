@@ -1,125 +1,173 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-function client(token: string) {
+function publicClient(token: string) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) throw new Error('Supabase configuration is missing.');
-  return createClient(url, key, { global: { headers: { Authorization: `Bearer ${token}` } } });
+  return createClient(url, key, { global: { headers: { Authorization: \`Bearer \${token}\` } } });
 }
 
-async function authenticatedClient(request: Request) {
+function adminClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) throw new Error('Server database configuration is missing.');
+  return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
+}
+
+async function authenticate(request: Request) {
   const token = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
   if (!token) throw new Error('Authentication required.');
-  const supabase = client(token);
+  const supabase = publicClient(token);
   const { data, error } = await supabase.auth.getUser(token);
   if (error || !data.user) throw new Error('Invalid session.');
-  return { supabase, user: data.user };
+  return { token, user: data.user };
+}
+
+async function canManageWorkspace(db: ReturnType<typeof adminClient>, workspaceId: string, userId: string) {
+  const { data: workspace, error: workspaceError } = await db
+    .from('workspaces')
+    .select('id,owner_user_id')
+    .eq('id', workspaceId)
+    .maybeSingle();
+  if (workspaceError) throw workspaceError;
+  if (!workspace) return { exists: false, allowed: false };
+
+  if (workspace.owner_user_id === userId) {
+    return { exists: true, allowed: true };
+  }
+
+  const { data: membership, error: membershipError } = await db
+    .from('workplace_members')
+    .select('role,active')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', userId)
+    .eq('active', true)
+    .maybeSingle();
+  if (membershipError) throw membershipError;
+
+  return {
+    exists: true,
+    allowed: Boolean(membership && ['owner', 'admin'].includes(String(membership.role || '').toLowerCase())),
+  };
 }
 
 function makeSlug(name: string) {
-  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || `workspace-${Date.now()}`;
+  return name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 120)
+    || \`workspace-\${Date.now()}\`;
 }
 
 export async function GET(request: Request) {
   try {
-    const { supabase, user } = await authenticatedClient(request);
+    const { token, user } = await authenticate(request);
+    const supabase = publicClient(token);
+
     const { data, error } = await supabase
       .from('workplace_members')
       .select('workspace_id,role,active,workspaces(id,name,slug,logo_url,owner_user_id,created_at)')
       .eq('user_id', user.id)
       .eq('active', true)
       .order('created_at', { ascending: true });
+
     if (error) throw error;
 
     const workspaces = (data || [])
-      .map((row: any) => row.workspaces)
-      .filter(Boolean)
-      .map((w: any) => ({ id: w.id, name: w.name, slug: w.slug, logo_url: w.logo_url, owner_user_id: w.owner_user_id, created_at: w.created_at }));
+      .map((row: any) => row.workspaces ? { ...row.workspaces, membership_role: row.role } : null)
+      .filter(Boolean);
 
     return NextResponse.json({ workspaces, brands: workspaces });
   } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : 'Unable to load workspaces.' }, { status: 500 });
+    const message = e instanceof Error ? e.message : 'Unable to load workspaces.';
+    return NextResponse.json({ error: message }, { status: /Authentication|session/i.test(message) ? 401 : 500 });
   }
 }
 
 export async function POST(request: Request) {
+  let workspaceId: string | null = null;
   try {
-    const { supabase, user } = await authenticatedClient(request);
+    const { user } = await authenticate(request);
     const body = await request.json().catch(() => ({}));
     const name = String(body.name || '').trim();
     const logo_url = body.logo_url ? String(body.logo_url).trim() : null;
+
     if (!name) return NextResponse.json({ error: 'Workspace name is required.' }, { status: 400 });
+    if (name.length > 120) return NextResponse.json({ error: 'Workspace name must be 120 characters or less.' }, { status: 400 });
     if (logo_url && logo_url.length > 2048) return NextResponse.json({ error: 'Logo URL is too long.' }, { status: 400 });
 
+    const db = adminClient();
+    workspaceId = crypto.randomUUID();
     const slug = makeSlug(name);
-    const workspaceId = crypto.randomUUID();
-    const { data: workspace, error: workspaceError } = await supabase
+
+    const { data: workspace, error: workspaceError } = await db
       .from('workspaces')
       .insert({ id: workspaceId, owner_user_id: user.id, name, slug, logo_url })
       .select('id,name,slug,logo_url,owner_user_id,created_at')
       .single();
     if (workspaceError) throw workspaceError;
 
-    const { data: brand, error: brandError } = await supabase
+    const { data: brand, error: brandError } = await db
       .from('brands')
       .insert({ id: workspaceId, workspace_id: workspaceId, user_id: user.id, name, slug, logo_url })
       .select('id,name,slug,logo_url')
       .single();
-    if (brandError) {
-      await supabase.from('workspaces').delete().eq('id', workspaceId);
-      throw brandError;
-    }
+    if (brandError) throw brandError;
 
-    const { error: membershipError } = await supabase
+    const { error: membershipError } = await db
       .from('workplace_members')
-      .upsert({ workplace_id: workspaceId, workspace_id: workspaceId, user_id: user.id, role: 'owner', active: true }, { onConflict: 'workplace_id,user_id' });
-    if (membershipError) {
-      await supabase.from('brands').delete().eq('id', workspaceId);
-      await supabase.from('workspaces').delete().eq('id', workspaceId);
-      throw membershipError;
-    }
+      .insert({ workplace_id: workspaceId, workspace_id: workspaceId, user_id: user.id, role: 'owner', active: true });
+    if (membershipError) throw membershipError;
 
     return NextResponse.json({ workspace, brand }, { status: 201 });
   } catch (e) {
+    if (workspaceId) {
+      try { await adminClient().from('workspaces').delete().eq('id', workspaceId); } catch {}
+    }
     const message = e instanceof Error ? e.message : 'Unable to create workspace.';
-    return NextResponse.json({ error: message }, { status: message.includes('Authentication') || message.includes('session') ? 401 : 403 });
+    return NextResponse.json({ error: message }, { status: /Authentication|session/i.test(message) ? 401 : 500 });
   }
 }
 
 export async function PATCH(request: Request) {
   try {
-    const { supabase, user } = await authenticatedClient(request);
+    const { user } = await authenticate(request);
     const body = await request.json().catch(() => ({}));
     const id = String(body.id || '').trim();
     const name = String(body.name || '').trim();
-    const logo_url = body.logo_url ? String(body.logo_url).trim() : null;
-    if (!id || !name) return NextResponse.json({ error: 'Workspace ID and name are required.' }, { status: 400 });
-    if (logo_url && logo_url.length > 2048) return NextResponse.json({ error: 'Logo URL is too long.' }, { status: 400 });
-    const slug = makeSlug(name);
+    const logo_url = Object.prototype.hasOwnProperty.call(body, 'logo_url') ? (body.logo_url ? String(body.logo_url).trim() : null) : undefined;
 
-    const { data: workspace, error: workspaceError } = await supabase
+    if (!id || !name) return NextResponse.json({ error: 'Workspace ID and name are required.' }, { status: 400 });
+    if (name.length > 120) return NextResponse.json({ error: 'Workspace name must be 120 characters or less.' }, { status: 400 });
+    if (logo_url && logo_url.length > 2048) return NextResponse.json({ error: 'Logo URL is too long.' }, { status: 400 });
+
+    const db = adminClient();
+    const access = await canManageWorkspace(db, id, user.id);
+    if (!access.exists) return NextResponse.json({ error: 'Workspace not found.' }, { status: 404 });
+    if (!access.allowed) return NextResponse.json({ error: 'Only the workspace owner or admin can update workspace settings.' }, { status: 403 });
+
+    const update: Record<string, unknown> = { name, slug: makeSlug(name), updated_at: new Date().toISOString() };
+    if (logo_url !== undefined) update.logo_url = logo_url;
+
+    const { data: workspace, error: workspaceError } = await db
       .from('workspaces')
-      .update({ name, slug, logo_url })
+      .update(update)
       .eq('id', id)
-      .eq('owner_user_id', user.id)
       .select('id,name,slug,logo_url,owner_user_id,created_at')
       .single();
     if (workspaceError) throw workspaceError;
 
-    const { data: brand, error: brandError } = await supabase
+    const brandUpdate: Record<string, unknown> = { name, slug: update.slug, updated_at: update.updated_at };
+    if (logo_url !== undefined) brandUpdate.logo_url = logo_url;
+    const { data: brand, error: brandError } = await db
       .from('brands')
-      .update({ name, slug, logo_url })
-      .eq('workspace_id', id)
-      .eq('user_id', user.id)
+      .update(brandUpdate)
+      .eq('id', id)
       .select('id,name,slug,logo_url')
-      .limit(1)
       .maybeSingle();
     if (brandError) throw brandError;
 
     return NextResponse.json({ workspace, brand });
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Unable to update workspace.';
-    return NextResponse.json({ error: message }, { status: message.includes('Authentication') || message.includes('session') ? 401 : 403 });
+    return NextResponse.json({ error: message }, { status: /Authentication|session/i.test(message) ? 401 : 500 });
   }
 }
