@@ -60,7 +60,7 @@ export async function PUT(request: Request) {
     const user_id = String(b.user_id || '');
     const workspace_id = String(b.workspace_id || '');
     const module = String(b.module || '');
-    const allowed = ['dashboard','content','creative','calendar','analytics','drafts','approval','publishing','social_accounts','team','workspace_settings'];
+    const allowed = ['dashboard','content','creative','calendar','analytics','drafts','approval','publishing','social_accounts','whatsapp','team','workspace_settings'];
     if (!user_id || !workspace_id || !allowed.includes(module)) {
       return NextResponse.json({ error: 'user_id, workspace_id and valid module are required.' }, { status: 400 });
     }
