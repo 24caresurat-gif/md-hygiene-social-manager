@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { getSupabase } from '../../../lib/supabase-browser';
-export type Brand={id:string;name:string;slug:string;logo_url?:string|null};
+export type Brand={id:string;name:string;slug:string;logo_url?:string|null;membership_role?:string|null};
 export const ALL_BRANDS_ID='__all_workspaces__';
 export default function BrandSelector({value,onChange,onLoaded,showCreate=false}:{value:string;onChange:(id:string)=>void;onLoaded?:(workspaces:Brand[])=>void;showCreate?:boolean}){
  const[workspaces,setWorkspaces]=useState<Brand[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState('');
