@@ -1,1 +1,529 @@
-J3VzZSBjbGllbnQnOwppbXBvcnQge3VzZUVmZmVjdCx1c2VTdGF0ZX0gZnJvbSAncmVhY3QnOwppbXBvcnQgQXBwU2hlbGwgZnJvbSAnLi4vY29tcG9uZW50cy9BcHBTaGVsbCc7CmltcG9ydCB7Z2V0U3VwYWJhc2V9IGZyb20gJy4uLy4uLy4uL2xpYi9zdXBhYmFzZS1icm93c2VyJzsKCnR5cGUgTG9jYXRpb249e2lkOnN0cmluZztidXNpbmVzc19uYW1lOnN0cmluZztsb2NhdGlvbl9pZDpzdHJpbmc7YWRkcmVzczpzdHJpbmd8bnVsbDtwaG9uZTpzdHJpbmd8bnVsbDt3ZWJzaXRlOnN0cmluZ3xudWxsO2NhdGVnb3J5OnN0cmluZ3xudWxsO3Jldmlld191cmw6c3RyaW5nfG51bGw7c3RhdHVzOnN0cmluZ307CnR5cGUgUmV2aWV3PXtpZDpzdHJpbmc7cmV2aWV3ZXJfbmFtZTpzdHJpbmd8bnVsbDtyYXRpbmc6bnVtYmVyfG51bGw7Y29tbWVudDpzdHJpbmd8bnVsbDtyZXZpZXdfdGltZTpzdHJpbmd8bnVsbDtyZXBseV90ZXh0OnN0cmluZ3xudWxsO3JlcGx5X3N0YXR1czpzdHJpbmd9Owp0eXBlIFN1Z2dlc3Rpb249e2lkOnN0cmluZztjb250ZW50OnN0cmluZzttb2RlbDpzdHJpbmd8bnVsbDtjcmVhdGVkX2F0OnN0cmluZ307Cgpjb25zdCBkYXRlTGFiZWw9KHY6c3RyaW5nfG51bGwpPT57aWYoIXYpcmV0dXJuICdEYXRlIHVuYXZhaWxhYmxlJztjb25zdCBkPW5ldyBEYXRlKHYpO3JldHVybiBOdW1iZXIuaXNOYU4oZC5nZXRUaW1lKCkpPydEYXRlIHVuYXZhaWxhYmxlJzpkLnRvTG9jYWxlRGF0ZVN0cmluZyh1bmRlZmluZWQse2RheTonbnVtZXJpYycsbW9udGg6J3Nob3J0Jyx5ZWFyOidudW1lcmljJ30pfTsKCmV4cG9ydCBkZWZhdWx0IGZ1bmN0aW9uIEdtYlBhZ2UoKXsKIGNvbnN0W3dvcmtzcGFjZUlkLHNldFdvcmtzcGFjZUlkXT11c2VTdGF0ZSgnJyksW2xvY2F0aW9ucyxzZXRMb2NhdGlvbnNdPXVzZVN0YXRlPExvY2F0aW9uW10+KFtdKSxbcmV2aWV3cyxzZXRSZXZpZXdzXT11c2VTdGF0ZTxSZXZpZXdbXT4oW10pLFtsb2FkaW5nLHNldExvYWRpbmddPXVzZVN0YXRlKHRydWUpLFtidXN5LHNldEJ1c3ldPXVzZVN0YXRlKCcnKSxbbWVzc2FnZSxzZXRNZXNzYWdlXT11c2VTdGF0ZSgnJyksW2Vycm9yLHNldEVycm9yXT11c2VTdGF0ZSgnJyksW2VkaXRpbmcsc2V0RWRpdGluZ109dXNlU3RhdGU8c3RyaW5nfG51bGw+KG51bGwpLFtyZXBseSxzZXRSZXBseV09dXNlU3RhdGUoJycpLFtzdWdnZXN0aW9uLHNldFN1Z2dlc3Rpb25dPXVzZVN0YXRlPFJlY29yZDxzdHJpbmcsU3VnZ2VzdGlvbnx1bmRlZmluZWQ+Pih7fSk7CiBhc3luYyBmdW5jdGlvbiB0b2tlbigpe2NvbnN0IHM9KGF3YWl0IGdldFN1cGFiYXNlKCkuYXV0aC5nZXRTZXNzaW9uKCkpLmRhdGEuc2Vzc2lvbjtpZighcyl7bG9jYXRpb24uaHJlZj0nL2xvZ2luJzt0aHJvdyBuZXcgRXJyb3IoJ1lvdXIgc2Vzc2lvbiBoYXMgZXhwaXJlZC4nKX1yZXR1cm4gcy5hY2Nlc3NfdG9rZW59CiBhc3luYyBmdW5jdGlvbiBsb2FkKGlkOnN0cmluZyl7c2V0TG9hZGluZyh0cnVlKTt0cnl7Y29uc3Qgc2I9Z2V0U3VwYWJhc2UoKTtjb25zdCBbbCxyXT1hd2FpdCBQcm9taXNlLmFsbChbc2IuZnJvbSgnZ29vZ2xlX2J1c2luZXNzX3Byb2ZpbGVzJykuc2VsZWN0KCdpZCxidXNpbmVzc19uYW1lLGxvY2F0aW9uX2lkLGFkZHJlc3MscGhvbmUsd2Vic2l0ZSxjYXRlZ29yeSxyZXZpZXdfdXJsLHN0YXR1cycpLmVxKCd3b3Jrc3BhY2VfaWQnLGlkKS5vcmRlcignYnVzaW5lc3NfbmFtZScpLHNiLmZyb20oJ2dvb2dsZV9idXNpbmVzc19yZXZpZXdzJykuc2VsZWN0KCdpZCxyZXZpZXdlcl9uYW1lLHJhdGluZyxjb21tZW50LHJldmlld190aW1lLHJlcGx5X3RleHQscmVwbHlfc3RhdHVzJykuZXEoJ3dvcmtzcGFjZV9pZCcsaWQpLm9yZGVyKCdyZXZpZXdfdGltZScse2FzY2VuZGluZzpmYWxzZX0pLmxpbWl0KDUwKV0pO2lmKGwuZXJyb3IpdGhyb3cgbC5lcnJvcjtpZihyLmVycm9yKXRocm93IHIuZXJyb3I7c2V0TG9jYXRpb25zKChsLmRhdGF8fFtdKSBhcyBMb2NhdGlvbltdKTtzZXRSZXZpZXdzKChyLmRhdGF8fFtdKSBhcyBSZXZpZXdbXSl9Y2F0Y2goZSl7c2V0RXJyb3IoZSBpbnN0YW5jZW9mIEVycm9yP2UubWVzc2FnZTonVW5hYmxlIHRvIGxvYWQgR29vZ2xlIEJ1c2luZXNzIGRhdGEuJyl9ZmluYWxseXtzZXRMb2FkaW5nKGZhbHNlKX19CiB1c2VFZmZlY3QoKCk9PntsZXQgaWQ9Jyc7dHJ5e2lkPWxvY2FsU3RvcmFnZS5nZXRJdGVtKCdtZHNtOnNlbGVjdGVkV29ya3NwYWNlSWQnKXx8Jyd9Y2F0Y2h7fXNldFdvcmtzcGFjZUlkKGlkKTtjb25zdCBwPW5ldyBVUkxTZWFyY2hQYXJhbXMobG9jYXRpb24uc2VhcmNoKTtpZihwLmdldCgnZ29vZ2xlJyk9PT0nY29ubmVjdGVkJylzZXRNZXNzYWdlKCdHb29nbGUgY29ubmVjdGVkIHN1Y2Nlc3NmdWxseS4nKTtpZihwLmdldCgnZ29vZ2xlX2Vycm9yJykpc2V0RXJyb3IocC5nZXQoJ2dvb2dsZV9lcnJvcicpfHwnR29vZ2xlIGNvbm5lY3Rpb24gZmFpbGVkLicpO2lmKGlkKXZvaWQgbG9hZChpZCk7ZWxzZSBzZXRMb2FkaW5nKGZhbHNlKX0sW10pOwogZnVuY3Rpb24gY29ubmVjdCgpe2xvY2F0aW9uLmhyZWY9Jy9kYXNoYm9hcmQvc2V0dGluZ3MjY29ubmVjdGlvbnMnfQogYXN5bmMgZnVuY3Rpb24gc3luYygpe3NldEJ1c3koJ3N5bmMnKTtzZXRFcnJvcignJyk7dHJ5e2NvbnN0IHQ9YXdhaXQgdG9rZW4oKTtjb25zdCByPWF3YWl0IGZldGNoKCcvYXBpL2dvb2dsZS9idXNpbmVzcy9zeW5jJyx7bWV0aG9kOidQT1NUJyxoZWFkZXJzOntBdXRob3JpemF0aW9uOidCZWFyZXIgJyt0LCdDb250ZW50LVR5cGUnOidhcHBsaWNhdGlvbi9qc29uJ30sYm9keTpKU09OLnN0cmluZ2lmeSh7d29ya3NwYWNlSWR9KX0pO2NvbnN0IGQ9YXdhaXQgci5qc29uKCk7aWYoIXIub2spdGhyb3cgRXJyb3IoZD8uZXJyb3J8fCdTeW5jIGZhaWxlZC4nKTtzZXRNZXNzYWdlKCdTeW5jIGNvbXBsZXRlOiAnKyhkLmxvY2F0aW9uc3x8MCkrJyBsb2NhdGlvbnMgYW5kICcrKGQucmV2aWV3c3x8MCkrJyByZXZpZXdzIHByb2Nlc3NlZC4nKTthd2FpdCBsb2FkKHdvcmtzcGFjZUlkKX1jYXRjaChlKXtzZXRFcnJvcihlIGluc3RhbmNlb2YgRXJyb3I/ZS5tZXNzYWdlOidTeW5jIGZhaWxlZCcpfWZpbmFsbHl7c2V0QnVzeSgnJyl9fQogYXN5bmMgZnVuY3Rpb24gZ2VuZXJhdGUocmV2aWV3SWQ6c3RyaW5nKXtzZXRCdXN5KCdhaTonK3Jldmlld0lkKTtzZXRFcnJvcignJyk7dHJ5e2NvbnN0IHQ9YXdhaXQgdG9rZW4oKTtjb25zdCByPWF3YWl0IGZldGNoKCcvYXBpL2dvb2dsZS9idXNpbmVzcy9zdWdnZXN0aW9uJyx7bWV0aG9kOidQT1NUJyxoZWFkZXJzOntBdXRob3JpemF0aW9uOidCZWFyZXIgJyt0LCdDb250ZW50LVR5cGUnOidhcHBsaWNhdGlvbi9qc29uJ30sYm9keTpKU09OLnN0cmluZ2lmeSh7cmV2aWV3SWR9KX0pO2NvbnN0IGQ9YXdhaXQgci5qc29uKCk7aWYoIXIub2spdGhyb3cgRXJyb3IoZD8uZXJyb3J8fCdTdWdnZXN0aW9uIGdlbmVyYXRpb24gZmFpbGVkLicpO3NldFN1Z2dlc3Rpb24odj0+KHsuLi52LFtyZXZpZXdJZF06ZC5zdWdnZXN0aW9ufSkpfWNhdGNoKGUpe3NldEVycm9yKGUgaW5zdGFuY2VvZiBFcnJvcj9lLm1lc3NhZ2U6J1N1Z2dlc3Rpb24gZ2VuZXJhdGlvbiBmYWlsZWQnKX1maW5hbGx5e3NldEJ1c3koJycpfX0KIGFzeW5jIGZ1bmN0aW9uIHNhdmVSZXBseShyZXZpZXdJZDpzdHJpbmcsZG9EZWxldGU9ZmFsc2Upe3NldEJ1c3koJ3JlcGx5OicrcmV2aWV3SWQpO3NldEVycm9yKCcnKTt0cnl7Y29uc3QgdD1hd2FpdCB0b2tlbigpO2NvbnN0IHI9YXdhaXQgZmV0Y2goJy9hcGkvZ29vZ2xlL2J1c2luZXNzL3JlcGx5Jyx7bWV0aG9kOmRvRGVsZXRlPydERUxFVEUnOidQT1NUJyxoZWFkZXJzOntBdXRob3JpemF0aW9uOidCZWFyZXIgJyt0LCdDb250ZW50LVR5cGUnOidhcHBsaWNhdGlvbi9qc29uJ30sYm9keTpKU09OLnN0cmluZ2lmeShkb0RlbGV0ZT97cmV2aWV3SWR9OntyZXZpZXdJZCxyZXBseX0pfSk7Y29uc3QgZD1hd2FpdCByLmpzb24oKTtpZighci5vaykgdGhyb3cgRXJyb3IoZD8uZXJyb3J8fCdSZXBseSB1cGRhdGUgZmFpbGVkLicpO3NldEVkaXRpbmcobnVsbCk7c2V0UmVwbHkoJycpO3NldE1lc3NhZ2UoZG9EZWxldGU/J1JlcGx5IHJlbW92ZWQuJzonUmVwbHkgcHVibGlzaGVkIHRvIEdvb2dsZS4nKTthd2FpdCBsb2FkKHdvcmtzcGFjZUlkKX1jYXRjaChlKXtzZXRFcnJvcihlIGluc3RhbmNlb2YgRXJyb3I/ZS5tZXNzYWdlOidSZXBseSB1cGRhdGUgZmFpbGVkJyl9ZmluYWxseXtzZXRCdXN5KCcnKX19CiBmdW5jdGlvbiBhcHBseVN1Z2dlc3Rpb24ocjpSZXZpZXcpe2NvbnN0IHM9c3VnZ2VzdGlvbltyLmlkXTtpZihzKXtzZXRFZGl0aW5nKHIuaWQpO3NldFJlcGx5KHMuY29udGVudCl9fQogcmV0dXJuIDxBcHBTaGVsbCB0aXRsZT0nR29vZ2xlIEJ1c2luZXNzICYgUmV2aWV3cyc+PHN0eWxlIGpzeD57Jy5nbWJ7ZGlzcGxheTpncmlkO2dhcDoxNnB4fS5jb25uZWN0e2Rpc3BsYXk6ZmxleDtqdXN0aWZ5LWNvbnRlbnQ6c3BhY2UtYmV0d2VlbjthbGlnbi1pdGVtczpjZW50ZXI7Z2FwOjIwcHg7cGFkZGluZzoyMHB4fS5jb25uZWN0IGgye21hcmdpbjo1cHggMH0uY29ubmVjdCBwe21hcmdpbjowO21heC13aWR0aDo3NjBweH0uYWN0aW9uc3tkaXNwbGF5OmZsZXg7Z2FwOjhweDtmbGV4LXdyYXA6d3JhcH0uc3RhdHN7ZGlzcGxheTpncmlkO2dyaWQtdGVtcGxhdGUtY29sdW1uczpyZXBlYXQoMywxZnIpO2dhcDoxMnB4fS5zdGF0e3BhZGRpbmc6MTZweH0uc3RhdCBzcGFue2Rpc3BsYXk6YmxvY2s7Y29sb3I6IzY2NzA4NTtmb250LXNpemU6MTBweDtmb250LXdlaWdodDo4MDB9LnN0YXQgc3Ryb25ne2Rpc3BsYXk6YmxvY2s7Zm9udC1zaXplOjI0cHg7bWFyZ2luLXRvcDo2cHh9LmxvY2F0aW9uc3tkaXNwbGF5OmdyaWQ7Z3JpZC10ZW1wbGF0ZS1jb2x1bW5zOnJlcGVhdCgyLDFmcik7Z2FwOjE0cHg7cGFkZGluZzowIDE4cHggMThweH0ubG9je3BhZGRpbmc6MTZweH0ubG9jaGVhZHtkaXNwbGF5OmZsZXg7anVzdGlmeS1jb250ZW50OnNwYWNlLWJldHdlZW47Z2FwOjEwcHh9LmxvYyBoM3ttYXJnaW46MCAwIDRweDtmb250LXNpemU6MTRweH0ubG9jIHAsLm1ldGF7bWFyZ2luOjA7Y29sb3I6IzY2NzA4NTtmb250LXNpemU6MTBweDtsaW5lLWhlaWdodDoxLjV9LmJhZGdle3BhZGRpbmc6NnB4IDlweDtib3JkZXItcmFkaXVzOjk5OXB4O2JhY2tncm91bmQ6I2VkZjhmMTtjb2xvcjojMTQ4MDRhO2ZvbnQtc2l6ZTo5cHg7Zm9udC13ZWlnaHQ6OTAwO2hlaWdodDptYXgtY29udGVudH0ubWV0YXtkaXNwbGF5OmdyaWQ7Z2FwOjVweDttYXJnaW4tdG9wOjEycHg7cGFkZGluZy10b3A6MTBweDtib3JkZXItdG9wOjFweCBzb2xpZCAjZWRmMGYzfS5yZXZpZXdze292ZXJmbG93OmhpZGRlbn0ucmV2aWV3e3BhZGRpbmc6MTZweCAxOHB4O2JvcmRlci10b3A6MXB4IHNvbGlkICNlZGYwZjN9LnJldmlld2dyaWR7ZGlzcGxheTpncmlkO2dyaWQtdGVtcGxhdGUtY29sdW1uczoxNjBweCA1OHB4IG1pbm1heCgwLDFmcikgMTAwcHg7Z2FwOjEycHh9LnJldmlld2VyIHN0cm9uZywucmV2aWV3ZXIgc21hbGx7ZGlzcGxheTpibG9ja30ucmV2aWV3ZXIgc3Ryb25ne2ZvbnQtc2l6ZToxMXB4fS5yZXZpZXdlciBzbWFsbHtmb250LXNpemU6OXB4O2NvbG9yOiM4YTk1YTM7bWFyZ2luLXRvcDozcHh9LnN0YXJze2ZvbnQtc2l6ZToxMXB4O2ZvbnQtd2VpZ2h0OjkwMH0uY29tbWVudHtmb250LXNpemU6MTBweDtsaW5lLWhlaWdodDoxLjU1O2NvbG9yOiM0NzU0Njc7d2hpdGUtc3BhY2U6cHJlLXdyYXB9LnJlcGx5LXN0YXR1c3tmb250LXNpemU6OXB4O2ZvbnQtd2VpZ2h0OjkwMDt0ZXh0LWFsaWduOnJpZ2h0fS5yZXBsaWVke2NvbG9yOiMxNDgwNGF9LnBlbmRpbmd7Y29sb3I6I2I1NDcwOH0udG9vbHN7ZGlzcGxheTpmbGV4O2dhcDo3cHg7ZmxleC13cmFwOndyYXA7bWFyZ2luLXRvcDoxMXB4fS50b29se2JvcmRlcjoxcHggc29saWQgI2RjZTVlODtib3JkZXItcmFkaXVzOjlweDtiYWNrZ3JvdW5kOiNmZmY7cGFkZGluZzo4cHggMTBweDtmb250LXNpemU6OXB4O2ZvbnQtd2VpZ2h0Ojg1MDtjdXJzb3I6cG9pbnRlcn0udG9vbC5wcmltYXJ5e2JhY2tncm91bmQ6I2VkZjhmNztjb2xvcjojMDg3ZjdiO2JvcmRlci1jb2xvcjojY2RlN2U1fS50b29sLmRhbmdlcntjb2xvcjojYjQyMzE4fS5yZXBseWJveHttYXJnaW4tdG9wOjEwcHg7cGFkZGluZzoxMnB4O2JhY2tncm91bmQ6I2Y4ZmFmYjtib3JkZXI6MXB4IHNvbGlkICNlNWVhZWU7Ym9yZGVyLXJhZGl1czoxMXB4fS5yZXBseWJveCB0ZXh0YXJlYXt3aWR0aDoxMDAlO21pbi1oZWlnaHQ6ODZweDtib3JkZXI6MXB4IHNvbGlkICNkYmU0ZTg7Ym9yZGVyLXJhZGl1czo5cHg7cGFkZGluZzoxMHB4O3Jlc2l6ZTp2ZXJ0aWNhbH0uc3VnZ2VzdGlvbnttYXJnaW4tdG9wOjhweDtwYWRkaW5nOjEwcHg7YmFja2dyb3VuZDojZWRmOGY3O2JvcmRlci1yYWRpdXM6OXB4O2ZvbnQtc2l6ZToxMHB4O2NvbG9yOiMyNDVmNWM7d2hpdGUtc3BhY2U6cHJlLXdyYXB9Lm1vZHVsZS1ncmlke2Rpc3BsYXk6Z3JpZDtncmlkLXRlbXBsYXRlLWNvbHVtbnM6cmVwZWF0KDIsMWZyKTtnYXA6MTRweH0ubW9kdWxle3BhZGRpbmc6MThweH0ubW9kdWxlIGgye2ZvbnQtc2l6ZToxNXB4O21hcmdpbjo0cHggMH0ubW9kdWxlIHB7Zm9udC1zaXplOjExcHh9LmVtcHR5e3BhZGRpbmc6NDBweCAyMHB4O3RleHQtYWxpZ246Y2VudGVyO2NvbG9yOiM2NjcwODU7Zm9udC1zaXplOjExcHh9QG1lZGlhKG1heC13aWR0aDo5MDBweCl7LmNvbm5lY3R7YWxpZ24taXRlbXM6ZmxleC1zdGFydDtmbGV4LWRpcmVjdGlvbjpjb2x1bW59LnN0YXRzLC5sb2NhdGlvbnMsLm1vZHVsZS1ncmlke2dyaWQtdGVtcGxhdGUtY29sdW1uczoxZnJ9LnJldmlld2dyaWR7Z3JpZC10ZW1wbGF0ZS1jb2x1bW5zOjFmciA1OHB4fS5jb21tZW50e2dyaWQtY29sdW1uOjEvLTF9LnJlcGx5LXN0YXR1c3t0ZXh0LWFsaWduOmxlZnR9fSd9Pjwvc3R5bGU+CiA8ZGl2IGNsYXNzTmFtZT0nZ21iJz48ZGl2IGNsYXNzTmFtZT0ncGFnZS1oZWFkJz48ZGl2PjxkaXYgY2xhc3NOYW1lPSdleWVicm93Jz5HT09HTEUgQlVTSU5FU1MgUFJPRklMRTwvZGl2PjxoMT5Hb29nbGUgQnVzaW5lc3MgJmFtcDsgUmV2aWV3czwvaDE+PHA+TGl2ZSB3b3Jrc3BhY2Utc2NvcGVkIGxvY2F0aW9ucyBhbmQgcmV2aWV3cy4gR29vZ2xlIGNyZWRlbnRpYWxzIGFyZSB0aGUgb25seSByZW1haW5pbmcgZXh0ZXJuYWwgc2V0dXAuPC9wPjwvZGl2PjwvZGl2PgogfGVycm9yJiY8ZGl2IGNsYXNzTmFtZT0nYWxlcnQgYWxlcnQtZXJyb3InPntlcnJvcn08L2Rpdj59e21lc3NhZ2UmJjxkaXYgY2xhc3NOYW1lPSdhbGVydCBhbGVydC1zdWNjZXNzJz57bWVzc2FnZX08L2Rpdj59CiA8c2VjdGlvbiBjbGFzc05hbWU9J3BhbmVsIGNvbm5lY3QnPjxkaXY+PGRpdiBjbGFzc05hbWU9J2V5ZWJyb3cnPkNPTk5FQ1RJT048L2Rpdj48aDI+e2xvY2F0aW9ucy5sZW5ndGg/J0dvb2dsZSBpcyBjb25uZWN0ZWQnOidPcGVuIENvbm5lY3Rpb24gU2V0dGluZ3MgQnVzaW5lc3MgUHJvZmlsZSd9PC9oMj48cD5Db25uZWN0IHRoZSBHb29nbGUgYWNjb3VudCB0aGF0IG1hbmFnZXMgdGhpcyB3b3Jrc3BhY2UuIFRva2VucyByZW1haW4gc2VydmVyLXNpZGUuPC9wPjwvZGl2PjxkaXYgY2xhc3NOYW1lPSdhY3Rpb25zJz57bG9jYXRpb25zLmxlbmd0aD4wJiY8YnV0dG9uIGNsYXNzTmFtZT0nYnRuIGJ0bi1zb2Z0JyBkaXNhYmxlZD17YnVzeSE9PScnfSBvbkNsaWNrPXsoKT0+dm9pZCBzeW5jKCl9PntidXN5PT09J3N5bmMnPydTeW5jaW5n4oCmJzon4oa7IFN5bmMgZnJvbSBHb29nbGUnfTwvYnV0dG9uPn08YnV0dG9uIGNsYXNzTmFtZT0nYnRuIGJ0bi1wcmltYXJ5JyBkaXNhYmxlZD17YnVzeSE9PScnfSBvbkNsaWNrPXsoKT0+dm9pZCBjb25uZWN0KCl9PntidXN5PT09J2Nvbm5lY3QnPydPcGVuaW5nIEdvb2dsZeKApic6bG9jYXRpb25zLmxlbmd0aD8nT3BlbiBDb25uZWN0aW9uIFNldHRpbmdzJzonQ29ubmVjdCBHb29nbGUnfTwvYnV0dG9uPjwvZGl2Pjwvc2VjdGlvbj4KIDxkaXYgY2xhc3NOYW1lPSdzdGF0cyc+PGFydGljbGUgY2xhc3NOYW1lPSdwYW5lbCBzdGF0Jz48c3Bhbj5Db25uZWN0ZWQgTG9jYXRpb25zPC9zcGFuPjxzdHJvbmc+e2xvYWRpbmc/J+KAlCc6bG9jYXRpb25zLmxlbmd0aH08L3N0cm9uZz48L2FydGljbGU+PGFydGljbGUgY2xhc3NOYW1lPSdwYW5lbCBzdGF0Jz48c3Bhbj5JbXBvcnRlZCBSZXZpZXdzPC9zcGFuPjxzdHJvbmc+e2xvYWRpbmc/J+KAlCc6cmV2aWV3cy5sZW5ndGh9PC9zdHJvbmc+PC9hcnRpY2xlPjxhcnRpY2xlIGNsYXNzTmFtZT0ncGFuZWwgc3RhdCc+PHNwYW4+TmVlZHMgUmVwbHk8L3NwYW4+PHN0cm9uZz57bG9hZGluZz8n4oCUJzpyZXZpZXdzLmZpbHRlcih4PT54LnJlcGx5X3N0YXR1cyE9PSdyZXBsaWVkJykubGVuZ3RofTwvc3Ryb25nPjwvYXJ0aWNsZT48L2Rpdj4KIDxzZWN0aW9uIGNsYXNzTmFtZT0ncGFuZWwnPjxkaXYgY2xhc3NOYW1lPSdwYW5lbC1oZWFkJz48ZGl2PjxkaXYgY2xhc3NOYW1lPSdleWVicm93Jz5MT0NBVElPTlM8L2Rpdj48aDI+QnVzaW5lc3MgUHJvZmlsZSBsb2NhdGlvbnM8L2gyPjwvZGl2PjwvZGl2Pntsb2FkaW5nPzxkaXYgY2xhc3NOYW1lPSdlbXB0eSc+TG9hZGluZ+KApjwvZGl2Pjpsb2NhdGlvbnMubGVuZ3RoPT09MD88ZGl2IGNsYXNzTmFtZT0nZW1wdHknPk5vIGxvY2F0aW9ucyBpbXBvcnRlZCB5ZXQuPC9kaXY+OjxkaXYgY2xhc3NOYW1lPSdsb2NhdGlvbnMnPntsb2NhdGlvbnMubWFwKHg9PjxhcnRpY2xlIGNsYXNzTmFtZT0ncGFuZWwgbG9jJyBrZXk9e3guaWR9PjxkaXYgY2xhc3NOYW1lPSdsb2NoZWFkJz48ZGl2PjxoMz57eC5idXNpbmVzc19uYW1lfTwvaDM+PHA+e3guY2F0ZWdvcnl8fCdCdXNpbmVzcyBQcm9maWxlIGxvY2F0aW9uJ308L3A+PC9kaXY+PHNwYW4gY2xhc3NOYW1lPSdiYWRnZSc+e3guc3RhdHVzfTwvc3Bhbj48L2Rpdj48ZGl2IGNsYXNzTmFtZT0nbWV0YSc+PHNwYW4+e3guYWRkcmVzc3x8J0FkZHJlc3MgdW5hdmFpbGFibGUnfTwvc3Bhbj48c3Bhbj57eC5waG9uZXx8J1Bob25lIHVuYXZhaWxhYmxlJ308L3NwYW4+e3gud2Vic2l0ZSYmPHNwYW4+e3gud2Vic2l0ZX08L3NwYW4+fXt4LnJldmlld191cmwmJjxhIGhyZWY9e3gucmV2aWV3X3VybH0gdGFyZ2V0PSdfYmxhbmsnIHJlbD0nbm9yZWZlcnJlcicgc3R5bGU9e3tjb2xvcjonIzA4N2Y3YicsZm9udFdlaWdodDo4MDB9fT5PcGVuIEdvb2dsZSByZXZpZXcgbGluayDihpI8L2E+fTwvZGl2PjwvYXJ0aWNsZT4pfTwvZGl2Pn08L3NlY3Rpb24+CiA8c2VjdGlvbiBjbGFzc05hbWU9J3BhbmVsIHJldmlld3MnPjxkaXYgY2xhc3NOYW1lPSdwYW5lbC1oZWFkJz48ZGl2PjxkaXYgY2xhc3NOYW1lPSdleWVicm93Jz5SRVZJRVcgTUFOQUdFTUVOVDwvZGl2PjxoMj5MYXRlc3QgcmV2aWV3czwvaDI+PHA+UmVwbHkgZGlyZWN0bHkgZnJvbSB0aGUgd29ya3NwYWNlLiBHb29nbGUgaGFuZGxlcyB0aGUgZmluYWwgbW9kZXJhdGlvbi9zdGF0ZS48L3A+PC9kaXY+PC9kaXY+e3Jldmlld3MubGVuZ3RoPT09MD88ZGl2IGNsYXNzTmFtZT0nZW1wdHknPk5vIHJldmlld3MgaW1wb3J0ZWQgeWV0LjwvZGl2Pjpyd XZpZXdzLm1hcChyPT48ZGl2IGNsYXNzTmFtZT0ncmV2aWV3JyBrZXk9e3IuaWR9PjxkaXYgY2xhc3NOYW1lPSdyZXZpZXdncmlkJz48ZGl2IGNsYXNzTmFtZT0ncmV2aWV3ZXInPjxzdHJvbmc+e3IucmV2aWV3ZXJfbmFtZXx8J0dvb2dsZSByZXZpZXdlcid9PC9zdHJvbmc+PHNtYWxsPntkYXRlTGFiZWwoci5yZXZpZXdfdGltZSl9PC9zbWFsbD48L2Rpdj48ZGl2IGNsYXNzTmFtZT0nc3RhcnMnPntyLnJhdGluZz8n4piFJy5yZXBlYXQoci5yYXRpbmcpOifigJQnfTwvZGl2PjxkaXYgY2xhc3NOYW1lPSdjb21tZW50Jz57ci5jb21tZW50fHwnUmF0aW5nLW9ubHkgcmV2aWV3J308L2Rpdj48ZGl2IGNsYXNzTmFtZT17J3JlcGx5LXN0YXR1cyAnKyhyLnJlcGx5X3N0YXR1cz09PSdyZXBsaWVkJz8ncmVwbGllZCc6J3BlbmRpbmcnKX0+e3IucmVwbHlfc3RhdHVzPT09J3JlcGxpZWQnPyfinJMgUmVwbGllZCc6J+KXjyBOZWVkcyByZXBseSd9PC9kaXY+PC9kaXY+PGRpdiBjbGFzc05hbWU9J3Rvb2xzJz48YnV0dG9uIGNsYXNzTmFtZT0ndG9vbCBwcmltYXJ5JyBkaXNhYmxlZD17YnVzeSE9PScnfSBvbkNsaWNrPXsoKT0+dm9pZCBnZW5lcmF0ZShyLmlkKX0+e2J1c3k9PT0nYWk6JytyLmlkPydHZW5lcmF0aW5n4oCmJzon4pymIFN1Z2dlc3QgUmVwbHknfTwvYnV0dG9uPntyLnJlcGx5X3RleHQmJjxidXR0b24gY2xhc3NOYW1lPSd0b29sJyBvbkNsaWNrPXsoKT0+e3NldEVkaXRpbmcoci5pZCk7c2V0UmVwbHkoci5yZXBseV90ZXh0fHwnJyl9fT5FZGl0IFJlcGx5PC9idXR0b24+fXtyLnJlcGx5X3RleHQmJjxidXR0b24gY2xhc3NOYW1lPSd0b29sIGRhbmdlcicgZGlzYWJsZWQ9e2J1c3khPT0nJ30gb25DbGljaz17KCk9PnZvaWQgc2F2ZVJlcGx5KHIuaWQsdHJ1ZSl9PkRlbGV0ZSBSZXBseTwvYnV0dG9uPn17c3VnZ2VzdGlvbltyLmlkXSYmPGJ1dHRvbiBjbGFzc05hbWU9J3Rvb2wnIG9uQ2xpY2s9eygpPT5hcHBseVN1Z2dlc3Rpb24ocil9PlVzZSBTdWdnZXN0aW9uPC9idXR0b24+fTwvZGl2PntzdWdnZXN0aW9uW3IuaWRdJiY8ZGl2IGNsYXNzTmFtZT0nc3VnZ2VzdGlvbic+PHN0cm9uZz5TdWdnZXN0aW9uIMK3IHtzdWdnZXN0aW9uW3IuaWRdPy5tb2RlbHx8J2RyYWZ0J308L3N0cm9uZz48YnIvPntzdWdnZXN0aW9uW3IuaWRdPy5jb250ZW50fTwvZGl2Pn17ZWRpdGluZz09PXIuaWQmJjxkaXYgY2xhc3NOYW1lPSdyZXBseWJveCc+PHRleHRhcmVhIHZhbHVlPXtyZXBseX0gb25DaGFuZ2U9e2U9PnNldFJlcGx5KGUudGFyZ2V0LnZhbHVlKX0gcGxhY2Vob2xkZXI9J1dyaXRlIGEgcHJvZmVzc2lvbmFsIHJlcGx54oCmJy8+PGRpdiBjbGFzc05hbWU9J3Rvb2xzJz48YnV0dG9uIGNsYXNzTmFtZT0ndG9vbCBwcmltYXJ5JyBkaXNhYmxlZD17YnVzeSE9PScnfHwhcmVwbHkudHJpbSgpfSBvbkNsaWNrPXsoKT0+dm9pZCBzYXZlUmVwbHkoci5pZCl9PntidXN5PT09J3JlcGx5Oicrci5pZD8nUHVibGlzaGluZ+KApic6J1B1Ymxpc2ggUmVwbHknfTwvYnV0dG9uPjxidXR0b24gY2xhc3NOYW1lPSd0b29sJyBkaXNhYmxlZD17YnVzeSE9PScnfSBvbkNsaWNrPXsoKT0+e3NldEVkaXRpbmcobnVsbCk7c2V0UmVwbHkoJycpfX0+Q2FuY2VsPC9idXR0b24+PC9kaXY+PC9kaXY+fTwvZGl2Pil9PC9zZWN0aW9uPgogPGRpdiBjbGFzc05hbWU9J21vZHVsZS1ncmlkJz57W1snUmV2aWV3IFJlcXVlc3RzJywnQ3JlYXRlIGN1c3RvbWVyIHJldmlldyBsaW5rcyBhbmQgdHJhY2sgc2VudC9vcGVuZWQvZmVlZGJhY2sgYWN0aXZpdHkuJywnL2Rhc2hib2FyZC9nbWIvcmVxdWVzdHMnXSxbJ0ZlZWRiYWNrIEZvcm1zJywnQ3JlYXRlIHB1YmxpYyBmZWVkYmFjayBmb3JtcyBjb25uZWN0ZWQgdG8gcmV2aWV3IHJlcXVlc3RzLicsJy9kYXNoYm9hcmQvZ21iL2Zvcm1zJ10sWydLZXl3b3JkcyBNYW5hZ2VtZW50JywnTWFuYWdlIHdvcmtzcGFjZSBrZXl3b3JkcyB1c2VkIGluIHJldmlldy1yZXNwb25zZSBzdWdnZXN0aW9ucy4nLCcvZGFzaGJvYXJkL2dtYi9rZXl3b3JkcyddLFsnUmV2aWV3IEltYWdlIEdlbmVyYXRvcicsJ0NyZWF0ZSBzaGFyZWFibGUgcmV2aWV3IHF1b3RlIGNhcmRzIGZyb20gaW1wb3J0ZWQgcmV2aWV3cy4nLCcvZGFzaGJvYXJkL2dtYi9pbWFnZXMnXV0ubWFwKChbdCxkLGhdKT0+PHNlY3Rpb24gY2xhc3NOYW1lPSdwYW5lbCBtb2R1bGUnIGtleT17dH0+PGRpdiBjbGFzc05hbWU9J2V5ZWJyb3cnPk1PRFVMRTwvZGl2PjxoMj57dH08L2gyPjxwPntkfTwvcD48YnV0dG9uIGNsYXNzTmFtZT0nYnRuIGJ0bi1zb2Z0JyBvbkNsaWNrPXsoKT0+bG9jYXRpb24uaHJlZj1ofT5PcGVuIE1vZHVsZSDihpI8L2J1dHRvbj48L3NlY3Rpb24+KX08L2Rpdj4KIDwvZGl2PjwvQXBwU2hlbGw+Cn0=
+'use client';
+
+import { useEffect, useState } from 'react';
+import AppShell from '../components/AppShell';
+import { getSupabase } from '../../../lib/supabase-browser';
+
+type Location = {
+  id: string;
+  business_name: string;
+  location_id: string;
+  address: string | null;
+  phone: string | null;
+  website: string | null;
+  category: string | null;
+  review_url: string | null;
+  status: string;
+};
+
+type Review = {
+  id: string;
+  reviewer_name: string | null;
+  rating: number | null;
+  comment: string | null;
+  review_time: string | null;
+  reply_text: string | null;
+  reply_status: string;
+};
+
+type Suggestion = {
+  id: string;
+  content: string;
+  model: string | null;
+  created_at: string;
+};
+
+const gmbStyles = `
+.gmb{display:grid;gap:16px}
+.connect{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:20px}
+.connect h2{margin:5px 0}
+.connect p{margin:0;max-width:760px}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.stat{padding:16px}
+.stat span{display:block;color:#667085;font-size:10px;font-weight:800}
+.stat strong{display:block;font-size:24px;margin-top:6px}
+.locations{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;padding:0 18px 18px}
+.loc{padding:16px}
+.lochead{display:flex;justify-content:space-between;gap:10px}
+.loc h3{margin:0 0 4px;font-size:14px}
+.loc p,.meta{margin:0;color:#667085;font-size:10px;line-height:1.5}
+.badge{padding:6px 9px;border-radius:999px;background:#edf8f1;color:#14804a;font-size:9px;font-weight:900;height:max-content}
+.meta{display:grid;gap:5px;margin-top:12px;padding-top:10px;border-top:1px solid #edf0f3}
+.reviews{overflow:hidden}
+.review{padding:16px 18px;border-top:1px solid #edf0f3}
+.reviewgrid{display:grid;grid-template-columns:160px 58px minmax(0,1fr) 100px;gap:12px}
+.reviewer strong,.reviewer small{display:block}
+.reviewer strong{font-size:11px}
+.reviewer small{font-size:9px;color:#8a95a3;margin-top:3px}
+.stars{font-size:11px;font-weight:900}
+.comment{font-size:10px;line-height:1.55;color:#475467;white-space:pre-wrap}
+.reply-status{font-size:9px;font-weight:900;text-align:right}
+.replied{color:#14804a}
+.pending{color:#b54708}
+.tools{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}
+.tool{border:1px solid #dce5e8;border-radius:9px;background:#fff;padding:8px 10px;font-size:9px;font-weight:850;cursor:pointer}
+.tool.primary{background:#edf8f7;color:#087f7b;border-color:#cde7e5}
+.tool.danger{color:#b42318}
+.replybox{margin-top:10px;padding:12px;background:#f8fafb;border:1px solid #e5eaee;border-radius:11px}
+.replybox textarea{width:100%;min-height:86px;border:1px solid #dbe4e8;border-radius:9px;padding:10px;resize:vertical}
+.suggestion{margin-top:8px;padding:10px;background:#edf8f7;border-radius:9px;font-size:10px;color:#245f5c;white-space:pre-wrap}
+.module-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.module{padding:18px}
+.module h2{font-size:15px;margin:4px 0}
+.module p{font-size:11px}
+.empty{padding:40px 20px;text-align:center;color:#667085;font-size:11px}
+@media(max-width:900px){
+  .connect{align-items:flex-start;flex-direction:column}
+  .stats,.locations,.module-grid{grid-template-columns:1fr}
+  .reviewgrid{grid-template-columns:1fr 58px}
+  .comment{grid-column:1/-1}
+  .reply-status{text-align:left}
+}
+`;
+
+const dateLabel = (value: string | null) => {
+  if (!value) return 'Date unavailable';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? 'Date unavailable'
+    : date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
+export default function GmbPage() {
+  const [workspaceId, setWorkspaceId] = useState('');
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState('');
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [editing, setEditing] = useState<string | null>(null);
+  const [reply, setReply] = useState('');
+  const [suggestion, setSuggestion] = useState<Record<string, Suggestion | undefined>>({});
+
+  async function token() {
+    const session = (await getSupabase().auth.getSession()).data.session;
+    if (!session) {
+      location.href = '/login';
+      throw new Error('Your session has expired.');
+    }
+    return session.access_token;
+  }
+
+  async function load(id: string) {
+    setLoading(true);
+    setError('');
+    try {
+      const sb = getSupabase();
+      const [locationsResult, reviewsResult] = await Promise.all([
+        sb
+          .from('google_business_profiles')
+          .select('id,business_name,location_id,address,phone,website,category,review_url,status')
+          .eq('workspace_id', id)
+          .order('business_name'),
+        sb
+          .from('google_business_reviews')
+          .select('id,reviewer_name,rating,comment,review_time,reply_text,reply_status')
+          .eq('workspace_id', id)
+          .order('review_time', { ascending: false })
+          .limit(50),
+      ]);
+
+      if (locationsResult.error) throw locationsResult.error;
+      if (reviewsResult.error) throw reviewsResult.error;
+
+      setLocations((locationsResult.data || []) as Location[]);
+      setReviews((reviewsResult.data || []) as Review[]);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Unable to load Google Business data.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    let id = '';
+    try {
+      id = localStorage.getItem('mdsm:selectedWorkspaceId') || '';
+    } catch {}
+
+    setWorkspaceId(id);
+
+    const params = new URLSearchParams(location.search);
+    if (params.get('google') === 'connected') {
+      setMessage('Google connected successfully.');
+    }
+    if (params.get('google_error')) {
+      setError(params.get('google_error') || 'Google connection failed.');
+    }
+
+    if (id) {
+      void load(id);
+    } else {
+      setLoading(false);
+    }
+  }, []);
+
+  function connect() {
+    location.href = '/dashboard/settings#connections';
+  }
+
+  async function sync() {
+    setBusy('sync');
+    setError('');
+    try {
+      const accessToken = await token();
+      const response = await fetch('/api/google/business/sync', {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer ' + accessToken,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ workspaceId }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || 'Sync failed.');
+      setMessage(
+        'Sync complete: ' +
+          (data.locations || 0) +
+          ' locations and ' +
+          (data.reviews || 0) +
+          ' reviews processed.'
+      );
+      await load(workspaceId);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Sync failed');
+    } finally {
+      setBusy('');
+    }
+  }
+
+  async function generate(reviewId: string) {
+    setBusy('ai:' + reviewId);
+    setError('');
+    try {
+      const accessToken = await token();
+      const response = await fetch('/api/google/business/suggestion', {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer ' + accessToken,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ reviewId }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || 'Suggestion generation failed.');
+      setSuggestion((current) => ({ ...current, [reviewId]: data.suggestion }));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Suggestion generation failed');
+    } finally {
+      setBusy('');
+    }
+  }
+
+  async function saveReply(reviewId: string, doDelete = false) {
+    setBusy('reply:' + reviewId);
+    setError('');
+    try {
+      const accessToken = await token();
+      const response = await fetch('/api/google/business/reply', {
+        method: doDelete ? 'DELETE' : 'POST',
+        headers: {
+          Authorization: 'Bearer ' + accessToken,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(doDelete ? { reviewId } : { reviewId, reply }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || 'Reply update failed.');
+      setEditing(null);
+      setReply('');
+      setMessage(doDelete ? 'Reply removed.' : 'Reply published to Google.');
+      await load(workspaceId);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Reply update failed');
+    } finally {
+      setBusy('');
+    }
+  }
+
+  function applySuggestion(review: Review) {
+    const generated = suggestion[review.id];
+    if (generated) {
+      setEditing(review.id);
+      setReply(generated.content);
+    }
+  }
+
+  return (
+    <AppShell title='Google Business & Reviews'>
+      <style jsx>{gmbStyles}</style>
+
+      <div className='gmb'>
+        <div className='page-head'>
+          <div>
+            <div className='eyebrow'>GOOGLE BUSINESS PROFILE</div>
+            <h1>Google Business &amp; Reviews</h1>
+            <p>
+              Live workspace-scoped locations and reviews. Google credentials are the only
+              remaining external setup.
+            </p>
+          </div>
+        </div>
+
+        {error && <div className='alert alert-error'>{error}</div>}
+        {message && <div className='alert alert-success'>{message}</div>}
+
+        <section className='panel connect'>
+          <div>
+            <div className='eyebrow'>CONNECTION</div>
+            <h2>
+              {locations.length
+                ? 'Google is connected'
+                : 'Open Connection Settings Business Profile'}
+            </h2>
+            <p>
+              Connect the Google account that manages this workspace. Tokens remain server-side.
+            </p>
+          </div>
+          <div className='actions'>
+            {locations.length > 0 && (
+              <button
+                className='btn btn-soft'
+                disabled={busy !== ''}
+                onClick={() => void sync()}
+              >
+                {busy === 'sync' ? 'Syncing…' : '↻ Sync from Google'}
+              </button>
+            )}
+            <button
+              className='btn btn-primary'
+              disabled={busy !== ''}
+              onClick={() => void connect()}
+            >
+              {busy === 'connect'
+                ? 'Opening Google…'
+                : locations.length
+                  ? 'Open Connection Settings'
+                  : 'Connect Google'}
+            </button>
+          </div>
+        </section>
+
+        <div className='stats'>
+          <article className='panel stat'>
+            <span>Connected Locations</span>
+            <strong>{loading ? '—' : locations.length}</strong>
+          </article>
+          <article className='panel stat'>
+            <span>Imported Reviews</span>
+            <strong>{loading ? '—' : reviews.length}</strong>
+          </article>
+          <article className='panel stat'>
+            <span>Needs Reply</span>
+            <strong>
+              {loading ? '—' : reviews.filter((item) => item.reply_status !== 'replied').length}
+            </strong>
+          </article>
+        </div>
+
+        <section className='panel'>
+          <div className='panel-head'>
+            <div>
+              <div className='eyebrow'>LOCATIONS</div>
+              <h2>Business Profile locations</h2>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className='empty'>Loading…</div>
+          ) : locations.length === 0 ? (
+            <div className='empty'>No locations imported yet.</div>
+          ) : (
+            <div className='locations'>
+              {locations.map((item) => (
+                <article className='panel loc' key={item.id}>
+                  <div className='lochead'>
+                    <div>
+                      <h3>{item.business_name}</h3>
+                      <p>{item.category || 'Business Profile location'}</p>
+                    </div>
+                    <span className='badge'>{item.status}</span>
+                  </div>
+                  <div className='meta'>
+                    <span>{item.address || 'Address unavailable'}</span>
+                    <span>{item.phone || 'Phone unavailable'}</span>
+                    {item.website && <span>{item.website}</span>}
+                    {item.review_url && (
+                      <a
+                        href={item.review_url}
+                        target='_blank'
+                        rel='noreferrer'
+                        style={{ color: '#087f7b', fontWeight: 800 }}
+                      >
+                        Open Google review link →
+                      </a>
+                    )}
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className='panel reviews'>
+          <div className='panel-head'>
+            <div>
+              <div className='eyebrow'>REVIEW MANAGEMENT</div>
+              <h2>Latest reviews</h2>
+              <p>
+                Reply directly from the workspace. Google handles the final moderation/state.
+              </p>
+            </div>
+          </div>
+
+          {reviews.length === 0 ? (
+            <div className='empty'>No reviews imported yet.</div>
+          ) : (
+            reviews.map((review) => (
+              <div className='review' key={review.id}>
+                <div className='reviewgrid'>
+                  <div className='reviewer'>
+                    <strong>{review.reviewer_name || 'Google reviewer'}</strong>
+                    <small>{dateLabel(review.review_time)}</small>
+                  </div>
+                  <div className='stars'>
+                    {review.rating ? '★'.repeat(review.rating) : '—'}
+                  </div>
+                  <div className='comment'>
+                    {review.comment || 'Rating-only review'}
+                  </div>
+                  <div
+                    className={
+                      'reply-status ' +
+                      (review.reply_status === 'replied' ? 'replied' : 'pending')
+                    }
+                  >
+                    {review.reply_status === 'replied' ? '✓ Replied' : '● Needs reply'}
+                  </div>
+                </div>
+
+                <div className='tools'>
+                  <button
+                    className='tool primary'
+                    disabled={busy !== ''}
+                    onClick={() => void generate(review.id)}
+                  >
+                    {busy === 'ai:' + review.id ? 'Generating…' : '✦ Suggest Reply'}
+                  </button>
+
+                  {review.reply_text && (
+                    <button
+                      className='tool'
+                      onClick={() => {
+                        setEditing(review.id);
+                        setReply(review.reply_text || '');
+                      }}
+                    >
+                      Edit Reply
+                    </button>
+                  )}
+
+                  {review.reply_text && (
+                    <button
+                      className='tool danger'
+                      disabled={busy !== ''}
+                      onClick={() => void saveReply(review.id, true)}
+                    >
+                      Delete Reply
+                    </button>
+                  )}
+
+                  {suggestion[review.id] && (
+                    <button className='tool' onClick={() => applySuggestion(review)}>
+                      Use Suggestion
+                    </button>
+                  )}
+                </div>
+
+                {suggestion[review.id] && (
+                  <div className='suggestion'>
+                    <strong>
+                      Suggestion · {suggestion[review.id]?.model || 'draft'}
+                    </strong>
+                    <br />
+                    {suggestion[review.id]?.content}
+                  </div>
+                )}
+
+                {editing === review.id && (
+                  <div className='replybox'>
+                    <textarea
+                      value={reply}
+                      onChange={(event) => setReply(event.target.value)}
+                      placeholder='Write a professional reply…'
+                    />
+                    <div className='tools'>
+                      <button
+                        className='tool primary'
+                        disabled={busy !== '' || !reply.trim()}
+                        onClick={() => void saveReply(review.id)}
+                      >
+                        {busy === 'reply:' + review.id ? 'Publishing…' : 'Publish Reply'}
+                      </button>
+                      <button
+                        className='tool'
+                        disabled={busy !== ''}
+                        onClick={() => {
+                          setEditing(null);
+                          setReply('');
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </section>
+
+        <div className='module-grid'>
+          {[
+            [
+              'Review Requests',
+              'Create customer review links and track sent/opened/feedback activity.',
+              '/dashboard/gmb/requests',
+            ],
+            [
+              'Feedback Forms',
+              'Create public feedback forms connected to review requests.',
+              '/dashboard/gmb/forms',
+            ],
+            [
+              'Keywords Management',
+              'Manage workspace keywords used in review-response suggestions.',
+              '/dashboard/gmb/keywords',
+            ],
+            [
+              'Review Image Generator',
+              'Create shareable review quote cards from imported reviews.',
+              '/dashboard/gmb/images',
+            ],
+          ].map(([title, description, href]) => (
+            <section className='panel module' key={title}>
+              <div className='eyebrow'>MODULE</div>
+              <h2>{title}</h2>
+              <p>{description}</p>
+              <button className='btn btn-soft' onClick={() => (location.href = href)}>
+                Open Module →
+              </button>
+            </section>
+          ))}
+        </div>
+      </div>
+    </AppShell>
+  );
+}
