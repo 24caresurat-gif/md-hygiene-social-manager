@@ -27,7 +27,8 @@ export async function PATCH(request: Request) {
     const body = await request.json();
     const workspaceId = String(body?.workspaceId || '');
     const conversationId = String(body?.conversationId || '');
-    const { db } = await requireWhatsAppAccess(request, workspaceId, 'can_edit');
+    const action = body?.action === 'read' ? 'can_view' : 'can_edit';
+    const { db } = await requireWhatsAppAccess(request, workspaceId, action);
     if (!conversationId) throw new WhatsAppHttpError('conversationId is required.', 400);
     const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (body?.action === 'read') patch.unread_count = 0;
