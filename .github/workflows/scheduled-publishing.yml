@@ -17,3 +17,6 @@ jobs:
           curl --fail-with-body --silent --show-error \
             -H "Authorization: Bearer $CRON_SECRET" \
             "https://md-hygiene-social-manager.vercel.app/api/cron/publish"
+          curl --fail-with-body --silent --show-error \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "https://md-hygiene-social-manager.vercel.app/api/cron/whatsapp-campaigns"
