@@ -19,7 +19,10 @@ const nav=[
   ['Analytics','analytics','/dashboard/analytics','analytics'],
   ['Media Library','media','/dashboard/media','content'],
   ['Google Business & Reviews','accounts','/dashboard/gmb','social_accounts'],
-  ['WhatsApp Contacts','accounts','/dashboard/whatsapp-contacts','social_accounts'],
+  ['WhatsApp Inbox','accounts','/dashboard/whatsapp','whatsapp'],
+  ['WhatsApp Contacts','accounts','/dashboard/whatsapp-contacts','whatsapp'],
+  ['WhatsApp Templates','accounts','/dashboard/whatsapp/templates','whatsapp'],
+  ['WhatsApp Campaigns','accounts','/dashboard/whatsapp/campaigns','whatsapp'],
   ['Settings','settings','/dashboard/settings','settings'],
 ] as const;
 
