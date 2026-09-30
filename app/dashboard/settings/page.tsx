@@ -21,6 +21,17 @@ export default function SettingsPage() {
   const [teamMsg, setTeamMsg] = useState('');
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({ employee_id: '', full_name: '', password: '', role: 'member' });
+  const [reviewProtectionEnabled, setReviewProtectionEnabled] = useState(true);
+  const [reviewProtectionThreshold, setReviewProtectionThreshold] = useState(2);
+  const [reviewProtectionMessage, setReviewProtectionMessage] = useState('Your feedback will be reviewed privately by our team. You can still choose to share your experience publicly on Google after submitting.');
+  const [aiReviewEnabled, setAiReviewEnabled] = useState(true);
+  const [aiBusinessName, setAiBusinessName] = useState('');
+  const [aiBusinessContext, setAiBusinessContext] = useState('');
+  const [aiServices, setAiServices] = useState('');
+  const [aiTone, setAiTone] = useState('Warm, professional, concise');
+  const [aiSignature, setAiSignature] = useState('');
+  const [reviewAiBusy, setReviewAiBusy] = useState(false);
+  const [reviewAiMsg, setReviewAiMsg] = useState('');
 
   async function sessionToken() {
     const session = (await getSupabase().auth.getSession()).data.session;
@@ -95,7 +106,50 @@ export default function SettingsPage() {
       setConnectionBusy('');
     }
   }
-  async function loadMembers(workspaceId: string) {
+
+  async function loadReviewSettings(workspaceId: string) {
+    try {
+      const token = await sessionToken();
+      const r = await fetch('/api/workspace-review-settings?workspace_id=' + encodeURIComponent(workspaceId), { headers: { Authorization: 'Bearer ' + token }, cache: 'no-store' });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d?.error || 'Unable to load review settings.');
+      const s = d.settings || {};
+      setReviewProtectionEnabled(Boolean(s.negative_protection_enabled));
+      setReviewProtectionThreshold(Number(s.negative_protection_threshold || 2));
+      setReviewProtectionMessage(String(s.negative_protection_message || ''));
+      setAiReviewEnabled(Boolean(s.ai_enabled));
+      setAiBusinessName(String(s.ai_business_name || ''));
+      setAiBusinessContext(String(s.ai_business_context || ''));
+      setAiServices(String(s.ai_services || ''));
+      setAiTone(String(s.ai_tone || 'Warm, professional, concise'));
+      setAiSignature(String(s.ai_signature || ''));
+      setReviewAiMsg('');
+    } catch (e) { setReviewAiMsg(e instanceof Error ? e.message : 'Unable to load review settings.'); }
+  }
+
+  async function saveReviewSettings() {
+    setReviewAiBusy(true); setReviewAiMsg('');
+    try {
+      const token = await sessionToken();
+      const r = await fetch('/api/workspace-review-settings', { method: 'PATCH', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({
+        workspace_id: id,
+        negative_protection_enabled: reviewProtectionEnabled,
+        negative_protection_threshold: reviewProtectionThreshold,
+        negative_protection_message: reviewProtectionMessage,
+        ai_enabled: aiReviewEnabled,
+        ai_business_name: aiBusinessName,
+        ai_business_context: aiBusinessContext,
+        ai_services: aiServices,
+        ai_tone: aiTone,
+        ai_signature: aiSignature,
+      }) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d?.error || 'Unable to save review settings.');
+      setReviewAiMsg('Review protection and AI settings saved.');
+    } catch (e) { setReviewAiMsg(e instanceof Error ? e.message : 'Unable to save review settings.'); }
+    finally { setReviewAiBusy(false); }
+  }
+\n  async function loadMembers(workspaceId: string) {
     try {
       const token = await sessionToken();
       const r = await fetch(`/api/workspace-employees?workspace_id=${encodeURIComponent(workspaceId)}`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
@@ -122,6 +176,7 @@ export default function SettingsPage() {
       }
       await loadConnections(saved);
       await loadMembers(saved);
+      await loadReviewSettings(saved);
     };
     void run();
   }, []);
@@ -193,6 +248,7 @@ export default function SettingsPage() {
       .member-list{display:grid;gap:10px;margin-top:20px;padding-top:18px;border-top:1px solid #edf1f2}.member-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 14px;border:1px solid #e7edf0;border-radius:12px}.member-copy strong{display:block;font-size:12px}.member-copy span{display:block;color:#7d8992;font-size:10px;margin-top:3px}.member-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap;justify-content:flex-end}.role-select{padding:9px 10px;border:1px solid #dce6ea;border-radius:10px;background:#fff;font-weight:800;font-size:10px}
       .notice{margin-top:12px;padding:10px 12px;border:1px solid #d7ebe8;background:#f3fbfa;color:#1e5e59;border-radius:10px;font-size:11px;font-weight:750}
       .account-row{display:flex;align-items:center;justify-content:space-between;gap:14px}.account-email{font-size:12px;font-weight:850}
+      .review-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}.review-grid .wide{grid-column:1/-1}.check-row{display:flex;gap:16px;flex-wrap:wrap;align-items:center}.check-row label{display:flex;gap:7px;align-items:center;font-size:11px;font-weight:850}.hint{padding:12px;border:1px solid #d7ebe8;background:#f3fbfa;color:#1e5e59;border-radius:10px;font-size:10px;line-height:1.55}.review-card-title{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.review-card-title h2{margin:0 0 5px;font-size:18px}.range{width:100%}
       .connection-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:18px}.connection-card{border:1px solid #e3eaed;border-radius:16px;padding:16px;background:#fafcfc;display:grid;gap:13px}.connection-icon{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:#eef5f6;color:#17202b;font-size:19px;font-weight:950}.connection-copy{display:grid;gap:12px}.connection-title{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.connection-title h3{margin:0;font-size:15px}.connection-title p{margin:4px 0 0;color:#77838d;font-size:10px;line-height:1.5}.connection-status{padding:5px 8px;border-radius:999px;background:#eef1f3;color:#6f7b84;font-size:9px;font-weight:900;white-space:nowrap}.connection-status.connected{background:#edf9f1;color:#087443}.connected-account{display:grid;gap:3px;padding:10px 11px;border:1px solid #e5eaed;border-radius:11px;background:#fff}.connected-account strong{font-size:10px;color:#2a3640;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.connected-account span{font-size:9px;color:#7a8790;line-height:1.45}.empty-connection{border-style:dashed}.connection-actions{display:flex;gap:7px;flex-wrap:wrap}.connection-actions .btn{flex:1}
       @media(max-width:980px){.connection-grid{grid-template-columns:1fr}.connection-title{align-items:flex-start}}
       @media(max-width:780px){.workspace-settings-shell{padding:20px 15px 36px}.settings-top{flex-direction:column}.team-grid{grid-template-columns:1fr}.team-grid .full{grid-column:auto}.member-row,.account-row{align-items:flex-start;flex-direction:column}.member-actions{justify-content:flex-start}}
@@ -228,7 +284,24 @@ export default function SettingsPage() {
           {connectionMsg && <div className="notice">{connectionMsg}</div>}
         </section>
 
-        <section className="panel" id="whatsapp">
+
+        <section className="panel" id="review-ai">
+          <div className="review-card-title"><div><span className="eyebrow">REVIEW PROTECTION &amp; AI</span><h2 style={{ marginTop: 6 }}>Negative Review Protection</h2><p className="muted">Low-rating feedback can be routed into the private feedback workflow while customers still retain a clear option to share their experience publicly on Google.</p></div></div>
+          <div className="review-grid">
+            <div className="wide check-row"><label><input type="checkbox" checked={reviewProtectionEnabled} onChange={e => setReviewProtectionEnabled(e.target.checked)} /> Enable low-rating feedback protection</label><label style={{ minWidth: 230 }}>Protect ratings at or below <select className="input" value={reviewProtectionThreshold} onChange={e => setReviewProtectionThreshold(Number(e.target.value))} style={{ display: 'inline-block', width: 82, marginLeft: 7, padding: '8px 9px' }}><option value={1}>1★</option><option value={2}>2★</option><option value={3}>3★</option><option value={4}>4★</option></select></label></div>
+            <label className="field wide">Customer message<input className="input" value={reviewProtectionMessage} onChange={e => setReviewProtectionMessage(e.target.value)} /></label>
+            <div className="hint wide">This setting does not delete, hide, or fabricate reviews. It only changes the private follow-up guidance shown after a qualifying rating, and the public Google option remains available.</div>
+
+            <label className="field"><span>AI business name</span><input className="input" value={aiBusinessName} onChange={e => setAiBusinessName(e.target.value)} placeholder="MD Hygiene" /></label>
+            <label className="field"><span>AI tone</span><input className="input" value={aiTone} onChange={e => setAiTone(e.target.value)} placeholder="Warm, professional, concise" /></label>
+            <label className="field wide"><span>Business context for AI replies</span><textarea className="input" rows={4} value={aiBusinessContext} onChange={e => setAiBusinessContext(e.target.value)} placeholder="Verified facts about your business, audience and response guidelines…" /></label>
+            <label className="field"><span>Services / focus areas</span><textarea className="input" rows={3} value={aiServices} onChange={e => setAiServices(e.target.value)} placeholder="Dental hygiene, clinic support, customer service…" /></label>
+            <label className="field"><span>Preferred sign-off</span><input className="input" value={aiSignature} onChange={e => setAiSignature(e.target.value)} placeholder="— MD Hygiene Team" /></label>
+            <div className="wide check-row"><label><input type="checkbox" checked={aiReviewEnabled} onChange={e => setAiReviewEnabled(e.target.checked)} /> Enable business-specific AI reply drafts</label></div>
+            <div className="actions wide"><button className="btn btn-primary" disabled={reviewAiBusy} onClick={() => void saveReviewSettings()}>{reviewAiBusy ? 'Saving…' : 'Save Review &amp; AI Settings'}</button>{reviewAiMsg && <div className="notice">{reviewAiMsg}</div>}</div>
+          </div>
+        </section>
+\n        <section className="panel" id="whatsapp">
           <span className="eyebrow">WHATSAPP BUSINESS</span>
           <h2 style={{ marginTop: 6 }}>Connect WhatsApp Business</h2>
           <p className="muted">Connect the business number through Meta Embedded Signup. This supports WhatsApp Business app coexistence; after onboarding, the contacts-only sync can populate the WhatsApp Contacts export screen.</p>
