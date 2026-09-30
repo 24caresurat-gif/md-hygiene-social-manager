@@ -21,6 +21,16 @@ async function caller(request: Request) {
 }
 
 async function assertWorkspaceManager(db: ReturnType<typeof adminClient>, workspaceId: string, userId: string) {
+  const { data: profile, error: profileError } = await db
+    .from('profiles')
+    .select('role,active')
+    .eq('id', userId)
+    .maybeSingle();
+  if (profileError) throw profileError;
+  if (profile?.active !== false && ['admin', 'owner'].includes(String(profile?.role || '').toLowerCase())) {
+    return;
+  }
+
   const { data, error } = await db.from('workplace_members')
     .select('role,active')
     .eq('workspace_id', workspaceId)
