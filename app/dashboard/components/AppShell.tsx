@@ -94,7 +94,7 @@ export default function AppShell({children,title='Dashboard'}:{children:ReactNod
 
   async function signOut(){setProfileOpen(false);await getSupabase().auth.signOut();try{localStorage.removeItem('mdsm:selectedWorkspaceId')}catch{}location.href='/login'}
   function backToWorkspaces(){setProfileOpen(false);try{localStorage.removeItem('mdsm:selectedWorkspaceId')}catch{}location.href='/dashboard'}
-  function selectWorkspace(id:string){if(!id)return;setProfileOpen(false);try{localStorage.setItem('mdsm:selectedWorkspaceId',id)}catch{}setSelected(id)}
+  function selectWorkspace(id:string){if(!id)return;setProfileOpen(false);try{localStorage.setItem('mdsm:selectedWorkspaceId',id)}catch{}setSelected(id);window.dispatchEvent(new CustomEvent('mdsm:workspace-changed',{detail:{workspaceId:id}}))}
 
   if(workspaces===null)return <main className="auth-page"><div className="muted">Loading Social Media Manager…</div></main>;
   if(workspaces.length===0)return <main className="auth-page"><section className="auth-card" style={{maxWidth:520,textAlign:'center'}}><div className="brand">SOCIAL MEDIA MANAGER</div><h1>Welcome to Social Media Manager</h1><p className="muted">Create your first workspace to keep accounts, posts, analytics and publishing organized in one place.</p><button className="primary-btn" onClick={()=>location.href='/dashboard/brands'}><Icon name="create" size={16}/> Create Workspace</button><button className="text-btn" style={{display:'block',margin:'14px auto 0'}} onClick={signOut}>Sign out</button></section></main>;
