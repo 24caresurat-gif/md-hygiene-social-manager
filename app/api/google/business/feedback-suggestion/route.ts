@@ -30,17 +30,20 @@ export async function POST(request:Request){
   const kw=await db.from('workspace_keywords').select('keyword').eq('workspace_id',response.data.workspace_id).eq('active',true).limit(30);
   if(kw.error)throw kw.error;
   const keywords=(kw.data||[]).map((x:any)=>String(x.keyword||'').trim()).filter(Boolean);
+  const settings=await db.from('workspace_review_settings').select('ai_enabled,ai_business_name,ai_business_context,ai_services,ai_tone,ai_signature').eq('workspace_id',response.data.workspace_id).maybeSingle();
+  const business=settings.data||{};
+  const businessContext=business.ai_enabled?('Business name: '+String(business.ai_business_name||'')+'. Services/focus: '+String(business.ai_services||'')+'. Verified business context: '+String(business.ai_business_context||'')+'. Tone: '+String(business.ai_tone||'Warm, professional, concise')+'. Preferred sign-off: '+String(business.ai_signature||'')):''; 
   const customer=String(response.data.customer_name||'Customer'),rating=response.data.rating==null?'unknown':String(response.data.rating);
   const answerText=JSON.stringify(response.data.answers||{}).slice(0,5000);
   let content='',model='template-fallback';
   const apiKey=process.env.OPENAI_API_KEY;
   if(apiKey){
    const requested=process.env.OPENAI_REVIEW_MODEL||'gpt-5.6-luna';
-   const prompt='Draft one concise, warm, professional business response to customer feedback. Do not invent facts, offers, remedies, policies, or promises. Do not mention AI. Keep under 450 characters. Customer: '+customer+'. Rating: '+rating+'/5. Answers: '+answerText+'. Preferred business keywords, only when natural: '+(keywords.join(', ')||'none')+'.';
+   const prompt='Draft one concise, warm, professional business response to customer feedback. Do not invent facts, offers, remedies, policies, or promises. Do not mention AI. Keep under 450 characters. Customer: '+customer+'. Rating: '+rating+'/5. Answers: '+answerText+'. '+businessContext+' Preferred business keywords, only when natural: '+(keywords.join(', ')||'none')+'.';
    const r=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:'Bearer '+apiKey,'Content-Type':'application/json'},body:JSON.stringify({model:requested,input:[{role:'developer',content:'You draft customer-facing business responses to feedback.'},{role:'user',content:prompt}],max_output_tokens:180,store:false}),cache:'no-store'});
    const data=await r.json().catch(()=>({}));
    if(!r.ok||data?.error)throw Error(data?.error?.message||'AI suggestion generation failed.');
-   content=String(data?.output_text||'').trim();model=requested;
+   content=String(data?.output_text||'').trim();model=requested;if(business.ai_enabled&&String(business.ai_signature||'').trim()&&!content.includes(String(business.ai_signature).trim()))content=(content+'\n\n'+String(business.ai_signature).trim()).trim();
    if(!content)throw Error('AI returned an empty suggestion.');
   }else{
    const first=customer.split(/\s+/)[0]||'there';
