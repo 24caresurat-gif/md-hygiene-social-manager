@@ -26,6 +26,23 @@ export async function GET(request: Request) {
     const workspaceId = new URL(request.url).searchParams.get('workspace_id') || '';
     if (!workspaceId) return NextResponse.json({ error: 'workspace_id is required.' }, { status: 400 });
     const db = adminClient();
+    const { data: workspace, error: workspaceError } = await db
+      .from('workspaces')
+      .select('id,owner_user_id')
+      .eq('id', workspaceId)
+      .maybeSingle();
+    if (workspaceError) throw workspaceError;
+    if (!workspace) return NextResponse.json({ error: 'Workspace not found.' }, { status: 404 });
+
+    const { data: profile, error: profileError } = await db
+      .from('profiles')
+      .select('role,active')
+      .eq('id', user.id)
+      .maybeSingle();
+    if (profileError) throw profileError;
+
+    const globalAdmin = profile?.active !== false && ['admin', 'owner'].includes(String(profile?.role || '').toLowerCase());
+
     const { data: membership, error: membershipError } = await db
       .from('workplace_members')
       .select('role,active,employee_id')
@@ -33,7 +50,11 @@ export async function GET(request: Request) {
       .eq('user_id', user.id)
       .maybeSingle();
     if (membershipError) throw membershipError;
-    if (!membership || !membership.active) return NextResponse.json({ error: 'You do not have access to this workspace.' }, { status: 403 });
+
+    const hasWorkspaceAccess = globalAdmin || workspace.owner_user_id === user.id || Boolean(membership?.active);
+    if (!hasWorkspaceAccess) return NextResponse.json({ error: 'You do not have access to this workspace.' }, { status: 403 });
+
+    const effectiveRole = globalAdmin && !membership ? 'admin' : String(membership?.role || 'member');
 
     const { data: permissions, error: permissionError } = await db
       .from('workspace_member_permissions')
@@ -44,10 +65,10 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       workspace_id: workspaceId,
-      role: membership.role,
-      employee_id: membership.employee_id,
+      role: effectiveRole,
+      employee_id: membership?.employee_id || null,
       permissions: permissions || [],
-      is_owner_or_admin: membership.role === 'owner' || membership.role === 'admin',
+      is_owner_or_admin: globalAdmin || workspace.owner_user_id === user.id || membership?.role === 'owner' || membership?.role === 'admin',
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Unable to load workspace access.';
