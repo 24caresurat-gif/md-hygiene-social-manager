@@ -161,7 +161,7 @@ export default function SettingsPage() {
   }
 
   useEffect(() => {
-    if (window.location.hash === '#connections') setTimeout(() => document.getElementById('connections')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+    if (window.location.hash === '#connections' || window.location.hash === '#review-ai') setTimeout(() => document.getElementById(window.location.hash === '#review-ai' ? 'review-ai' : 'connections')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
     const run = async () => {
       const saved = localStorage.getItem('mdsm:selectedWorkspaceId') || '';
       if (!saved) { location.href = '/dashboard'; return; }
