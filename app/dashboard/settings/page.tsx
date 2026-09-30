@@ -179,6 +179,9 @@ export default function SettingsPage() {
       await loadReviewSettings(saved);
     };
     void run();
+    const onWorkspace = (event: Event) => { const next = (event as CustomEvent<{ workspaceId?: string }>).detail?.workspaceId || ''; if (next && next !== id) location.reload(); };
+    window.addEventListener('mdsm:workspace-changed', onWorkspace);
+    return () => window.removeEventListener('mdsm:workspace-changed', onWorkspace);
   }, []);
 
   async function save() {
