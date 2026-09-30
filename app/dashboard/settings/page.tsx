@@ -149,7 +149,8 @@ export default function SettingsPage() {
     } catch (e) { setReviewAiMsg(e instanceof Error ? e.message : 'Unable to save review settings.'); }
     finally { setReviewAiBusy(false); }
   }
-\n  async function loadMembers(workspaceId: string) {
+
+  async function loadMembers(workspaceId: string) {
     try {
       const token = await sessionToken();
       const r = await fetch(`/api/workspace-employees?workspace_id=${encodeURIComponent(workspaceId)}`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
