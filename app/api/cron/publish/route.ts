@@ -1,10 +1,226 @@
-import {NextResponse} from 'next/server';import {createClient} from '@supabase/supabase-js';
-const GRAPH='https://graph.facebook.com/v23.0';
-function admin(){return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!,process.env.SUPABASE_SERVICE_ROLE_KEY!,{auth:{autoRefreshToken:false,persistSession:false}})}
-function authorized(req:Request){const secret=process.env.CRON_SECRET;return Boolean(secret)&&(req.headers.get('authorization')===`Bearer ${secret}`||req.headers.get('x-cron-secret')===secret)}
-async function meta(url:string,body:URLSearchParams|FormData){const r=await fetch(url,{method:'POST',body,cache:'no-store'});const d=await r.json().catch(()=>({}));if(!r.ok||d.error)throw new Error(d.error?.message||'Meta publishing failed.');return d}
-const sleep=(ms:number)=>new Promise(resolve=>setTimeout(resolve,ms));
-function mediaType(url:string|null){if(!url)return 'none';return /\.(mp4|mov|m4v|webm|avi)(?:$|\?)/i.test(url)?'video':'image'}
-async function publishFacebook(a:any,caption:string,link:string|null,mediaUrl:string|null){const kind=mediaType(mediaUrl);if(kind==='video'&&mediaUrl){const form=new URLSearchParams({file_url:mediaUrl,description:caption,access_token:a.access_token});const d=await meta(`${GRAPH}/${a.platform_account_id}/videos`,form);return d.id||null}if(kind==='image'&&mediaUrl){const form=new FormData();form.append('url',mediaUrl);form.append('caption',caption);form.append('published','true');form.append('access_token',a.access_token);if(link)form.append('link',link);const d=await meta(`${GRAPH}/${a.platform_account_id}/photos`,form);return d.id||d.post_id||null}const form=new URLSearchParams({message:caption,access_token:a.access_token});if(link)form.set('link',link);const d=await meta(`${GRAPH}/${a.platform_account_id}/feed`,form);return d.id||null}
-async function publishInstagram(a:any,caption:string,mediaUrl:string|null){if(!mediaUrl)throw new Error('Instagram requires media.');const kind=mediaType(mediaUrl);const params:any={caption,access_token:a.access_token};if(kind==='video'){params.media_type='REELS';params.video_url=mediaUrl}else params.image_url=mediaUrl;const create=await meta(`${GRAPH}/${a.platform_account_id}/media`,new URLSearchParams(params));let result:any=null,lastError='';for(let attempt=0;attempt<8;attempt++){if(attempt>0)await sleep(4000);try{result=await meta(`${GRAPH}/${a.platform_account_id}/media_publish`,new URLSearchParams({creation_id:create.id,access_token:a.access_token}));if(result?.id)return result.id}catch(e){lastError=e instanceof Error?e.message:'Instagram publish failed'}}throw new Error(lastError||'Instagram publish failed.')}
-export async function GET(req:Request){if(!authorized(req))return NextResponse.json({error:'Unauthorized'},{status:401});const s=admin();const now=new Date().toISOString();const staleCutoff=new Date(Date.now()-15*60_000).toISOString();await s.from('scheduled_posts').update({status:'failed',last_error:'Recovered stale processing job after worker interruption.'}).eq('status','processing').lt('attempts',3).lt('updated_at',staleCutoff);const{data:jobs,error}=await s.from('scheduled_posts').select('*').in('status',['scheduled','failed']).lte('scheduled_for',now).lt('attempts',3).order('scheduled_for',{ascending:true}).limit(10);if(error)return NextResponse.json({error:error.message},{status:500});let published=0,failed=0;for(const job of jobs||[]){const{data:claim}=await s.from('scheduled_posts').update({status:'processing',attempts:(job.attempts||0)+1,last_error:null}).eq('id',job.id).in('status',['scheduled','failed']).lt('attempts',3).select('*').maybeSingle();if(!claim)continue;try{const{data:accounts}=await s.from('social_accounts').select('id,name,platform,platform_account_id,access_token,status,brand_id').in('id',job.account_ids).in('platform',['facebook','instagram']).eq('user_id',job.user_id).eq('brand_id',job.brand_id);if(!accounts?.length||accounts.length!==job.account_ids.length)throw new Error('One or more scheduled accounts do not belong to the selected workspace or are unsupported.');const errors:string[]=[];for(const a of accounts){const{data:alreadyPublished}=await s.from('social_posts').select('id,platform_post_id').eq('scheduled_post_id',job.id).eq('social_account_id',a.id).eq('status','published').limit(1).maybeSingle();if(alreadyPublished)continue;if(a.status!=='connected'||!a.access_token){errors.push(`${a.name}: connection unavailable`);continue}try{let postId:string|null=null;const kind=mediaType(job.media_url||null);if(a.platform==='facebook')postId=await publishFacebook(a,job.caption||'',job.link||null,job.media_url||null);else if(a.platform==='instagram')postId=await publishInstagram(a,job.caption||'',job.media_url||null);else throw new Error(`Unsupported platform: ${a.platform}`);await s.from('social_posts').insert({scheduled_post_id:job.id,user_id:job.user_id,brand_id:job.brand_id,social_account_id:a.id,platform:a.platform,platform_post_id:postId,message:job.caption||'',link:job.link||null,media_url:job.media_url||null,media_type:kind,status:'published',published_at:new Date().toISOString(),attempted_at:new Date().toISOString()})}catch(e){const message=e instanceof Error?e.message:'publish failed';errors.push(`${a.name}: ${message}`);await s.from('social_posts').insert({scheduled_post_id:job.id,user_id:job.user_id,brand_id:job.brand_id,social_account_id:a.id,platform:a.platform,message:job.caption||'',link:job.link||null,media_url:job.media_url||null,media_type:mediaType(job.media_url||null),status:'failed',attempted_at:new Date().toISOString(),error_message:message});if(/token|oauth|permission|unauthorized|access/i.test(message))await s.from('social_accounts').update({status:'reconnect_required',token_error:message,token_checked_at:new Date().toISOString()}).eq('id',a.id).eq('user_id',job.user_id)}}if(errors.length)throw new Error(errors.join(' | '));await s.from('scheduled_posts').update({status:'published',published_at:new Date().toISOString(),last_error:null}).eq('id',job.id);published++}catch(e){failed++;await s.from('scheduled_posts').update({status:'failed',last_error:e instanceof Error?e.message:'Scheduled publishing failed'}).eq('id',job.id)}}return NextResponse.json({ok:true,processed:(jobs||[]).length,published,failed})}
+import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+
+const GRAPH = 'https://graph.facebook.com/v23.0';
+
+function admin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } },
+  );
+}
+
+function authorized(req: Request) {
+  const secret = process.env.CRON_SECRET;
+  return Boolean(secret) && (
+    req.headers.get('authorization') === `Bearer ${secret}` ||
+    req.headers.get('x-cron-secret') === secret
+  );
+}
+
+async function meta(url: string, body: URLSearchParams | FormData) {
+  const r = await fetch(url, { method: 'POST', body, cache: 'no-store' });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || d.error) throw new Error(d.error?.message || 'Meta publishing failed.');
+  return d;
+}
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+function mediaType(url: string | null) {
+  if (!url) return 'none';
+  return /\.(mp4|mov|m4v|webm|avi)(?:$|\?)/i.test(url) ? 'video' : 'image';
+}
+
+async function publishFacebook(a: any, caption: string, link: string | null, mediaUrl: string | null) {
+  const kind = mediaType(mediaUrl);
+  if (kind === 'video' && mediaUrl) {
+    const form = new URLSearchParams({ file_url: mediaUrl, description: caption, access_token: a.access_token });
+    const d = await meta(`${GRAPH}/${a.platform_account_id}/videos`, form);
+    return d.id || null;
+  }
+  if (kind === 'image' && mediaUrl) {
+    const form = new FormData();
+    form.append('url', mediaUrl);
+    form.append('caption', caption);
+    form.append('published', 'true');
+    form.append('access_token', a.access_token);
+    if (link) form.append('link', link);
+    const d = await meta(`${GRAPH}/${a.platform_account_id}/photos`, form);
+    return d.id || d.post_id || null;
+  }
+  const form = new URLSearchParams({ message: caption, access_token: a.access_token });
+  if (link) form.set('link', link);
+  const d = await meta(`${GRAPH}/${a.platform_account_id}/feed`, form);
+  return d.id || null;
+}
+
+async function publishInstagram(a: any, caption: string, mediaUrl: string | null) {
+  if (!mediaUrl) throw new Error('Instagram requires media.');
+  const kind = mediaType(mediaUrl);
+  const params: any = { caption, access_token: a.access_token };
+  if (kind === 'video') { params.media_type = 'REELS'; params.video_url = mediaUrl; }
+  else params.image_url = mediaUrl;
+
+  const create = await meta(`${GRAPH}/${a.platform_account_id}/media`, new URLSearchParams(params));
+  let result: any = null;
+  let lastError = '';
+  for (let attempt = 0; attempt < 8; attempt++) {
+    if (attempt > 0) await sleep(4000);
+    try {
+      result = await meta(
+        `${GRAPH}/${a.platform_account_id}/media_publish`,
+        new URLSearchParams({ creation_id: create.id, access_token: a.access_token }),
+      );
+      if (result?.id) return result.id;
+    } catch (e) {
+      lastError = e instanceof Error ? e.message : 'Instagram publish failed';
+    }
+  }
+  throw new Error(lastError || 'Instagram publish failed.');
+}
+
+export async function GET(req: Request) {
+  if (!authorized(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const s = admin();
+  const now = new Date().toISOString();
+  const staleCutoff = new Date(Date.now() - 15 * 60_000).toISOString();
+
+  // Recover jobs stuck in "processing" from a previous worker run that was interrupted.
+  await s
+    .from('scheduled_posts')
+    .update({ status: 'failed', last_error: 'Recovered stale processing job after worker interruption.' })
+    .eq('status', 'processing')
+    .lt('attempts', 3)
+    .lt('updated_at', staleCutoff);
+
+  // Only pick up jobs whose approval has actually been approved. Pending
+  // scheduled posts (submitted by non-admin roles) must wait for an admin
+  // to approve them before the worker is allowed to publish them.
+  const { data: jobs, error } = await s
+    .from('scheduled_posts')
+    .select('*')
+    .in('status', ['scheduled', 'failed'])
+    .eq('approval_status', 'approved')
+    .lte('scheduled_for', now)
+    .lt('attempts', 3)
+    .order('scheduled_for', { ascending: true })
+    .limit(10);
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  let published = 0;
+  let failed = 0;
+
+  for (const job of jobs || []) {
+    const { data: claim } = await s
+      .from('scheduled_posts')
+      .update({ status: 'processing', attempts: (job.attempts || 0) + 1, last_error: null })
+      .eq('id', job.id)
+      .in('status', ['scheduled', 'failed'])
+      .eq('approval_status', 'approved')
+      .lt('attempts', 3)
+      .select('*')
+      .maybeSingle();
+
+    if (!claim) continue;
+
+    try {
+      const { data: accounts } = await s
+        .from('social_accounts')
+        .select('id,name,platform,platform_account_id,access_token,status,brand_id')
+        .in('id', job.account_ids)
+        .in('platform', ['facebook', 'instagram'])
+        .eq('user_id', job.user_id)
+        .eq('brand_id', job.brand_id);
+
+      if (!accounts?.length || accounts.length !== job.account_ids.length) {
+        throw new Error('One or more scheduled accounts do not belong to the selected workspace or are unsupported.');
+      }
+
+      const errors: string[] = [];
+      for (const a of accounts) {
+        const { data: alreadyPublished } = await s
+          .from('social_posts')
+          .select('id,platform_post_id')
+          .eq('scheduled_post_id', job.id)
+          .eq('social_account_id', a.id)
+          .eq('status', 'published')
+          .limit(1)
+          .maybeSingle();
+        if (alreadyPublished) continue;
+
+        if (a.status !== 'connected' || !a.access_token) {
+          errors.push(`${a.name}: connection unavailable`);
+          continue;
+        }
+
+        try {
+          let postId: string | null = null;
+          const kind = mediaType(job.media_url || null);
+          if (a.platform === 'facebook') postId = await publishFacebook(a, job.caption || '', job.link || null, job.media_url || null);
+          else if (a.platform === 'instagram') postId = await publishInstagram(a, job.caption || '', job.media_url || null);
+          else throw new Error(`Unsupported platform: ${a.platform}`);
+
+          await s.from('social_posts').insert({
+            scheduled_post_id: job.id,
+            user_id: job.user_id,
+            brand_id: job.brand_id,
+            social_account_id: a.id,
+            platform: a.platform,
+            platform_post_id: postId,
+            message: job.caption || '',
+            link: job.link || null,
+            media_url: job.media_url || null,
+            media_type: kind,
+            status: 'published',
+            published_at: new Date().toISOString(),
+            attempted_at: new Date().toISOString(),
+          });
+        } catch (e) {
+          const message = e instanceof Error ? e.message : 'publish failed';
+          errors.push(`${a.name}: ${message}`);
+          await s.from('social_posts').insert({
+            scheduled_post_id: job.id,
+            user_id: job.user_id,
+            brand_id: job.brand_id,
+            social_account_id: a.id,
+            platform: a.platform,
+            message: job.caption || '',
+            link: job.link || null,
+            media_url: job.media_url || null,
+            media_type: mediaType(job.media_url || null),
+            status: 'failed',
+            attempted_at: new Date().toISOString(),
+            error_message: message,
+          });
+          if (/token|oauth|permission|unauthorized|access/i.test(message)) {
+            await s
+              .from('social_accounts')
+              .update({ status: 'reconnect_required', token_error: message, token_checked_at: new Date().toISOString() })
+              .eq('id', a.id)
+              .eq('user_id', job.user_id);
+          }
+        }
+      }
+
+      if (errors.length) throw new Error(errors.join(' | '));
+
+      await s
+        .from('scheduled_posts')
+        .update({ status: 'published', published_at: new Date().toISOString(), last_error: null })
+        .eq('id', job.id);
+      published++;
+    } catch (e) {
+      failed++;
+      await s
+        .from('scheduled_posts')
+        .update({ status: 'failed', last_error: e instanceof Error ? e.message : 'Scheduled publishing failed' })
+        .eq('id', job.id);
+    }
+  }
+
+  return NextResponse.json({ ok: true, processed: (jobs || []).length, published, failed });
+}
