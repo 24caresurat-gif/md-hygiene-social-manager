@@ -43,7 +43,7 @@ export async function POST(request:Request){
    content=String(data?.output_text||'').trim();model=requested;
    if(!content)throw Error('AI returned an empty suggestion.');
   }else{
-   const first=customer.split(/\\s+/)[0]||'there';
+   const first=customer.split(/\s+/)[0]||'there';
    content=Number(response.data.rating||0)>=4?'Hi '+first+', thank you for sharing your feedback. We really appreciate your kind words and look forward to serving you again.':'Hi '+first+', thank you for sharing your feedback. We appreciate the details and will use them to improve the customer experience.';
   }
   const saved=await db.from('ai_review_suggestions').insert({workspace_id:response.data.workspace_id,response_id:response.data.id,suggestion_type:'review',content,model,approved:false}).select('id,content,model,created_at').single();
