@@ -28,7 +28,14 @@ async function membership(a: Awaited<ReturnType<typeof caller>>, workspaceId: st
   return data || null;
 }
 
+async function isGlobalAdmin(a: Awaited<ReturnType<typeof caller>>) {
+  if (!a) return false;
+  const { data } = await a.sb.from('profiles').select('role,active').eq('id', a.user.id).maybeSingle();
+  return data?.active !== false && ['admin','owner'].includes(String(data?.role || '').toLowerCase());
+}
+
 async function canManage(a: Awaited<ReturnType<typeof caller>>, workspaceId: string) {
+  if (await isGlobalAdmin(a)) return true;
   const data = await membership(a, workspaceId);
   return !!data && data.active && (data.role === 'owner' || data.role === 'admin');
 }
