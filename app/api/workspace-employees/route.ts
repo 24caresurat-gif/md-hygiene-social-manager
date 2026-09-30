@@ -21,6 +21,16 @@ async function getCaller(request: Request) {
 }
 
 async function assertWorkspaceManager(admin: ReturnType<typeof adminClient>, workspaceId: string, userId: string) {
+  const { data: profile, error: profileError } = await admin
+    .from('profiles')
+    .select('role,active')
+    .eq('id', userId)
+    .maybeSingle();
+  if (profileError) throw profileError;
+  if (profile?.active !== false && ['admin', 'owner'].includes(String(profile?.role || '').toLowerCase())) {
+    return { workspace_id: workspaceId, role: 'admin', active: true };
+  }
+
   const { data, error } = await admin.from('workplace_members').select('workspace_id,role,active').eq('workspace_id', workspaceId).eq('user_id', userId).eq('active', true).maybeSingle();
   if (error) throw error;
   if (!data || !['owner', 'admin'].includes(data.role)) throw new Error('Only the workspace owner or admin can manage employee logins.');
