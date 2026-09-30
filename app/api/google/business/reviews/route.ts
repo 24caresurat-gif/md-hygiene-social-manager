@@ -36,7 +36,7 @@ export async function GET(request: Request) {
     const [{ data: reviews, error: reviewsError }, { data: profiles, error: profilesError }, { data: suggestions, error: suggestionsError }] =
       await Promise.all([
         reviewQuery,
-        db.from('google_business_profiles').select('id,business_name,location_id').eq('workspace_id', workspaceId).order('business_name'),
+        db.from('google_business_profiles').select('id,business_name,location_id,address,phone,website,category,review_url,status').eq('workspace_id', workspaceId).order('business_name'),
         db.from('ai_review_suggestions').select('id,review_id,content,model,created_at').eq('workspace_id', workspaceId).not('review_id', 'is', null).order('created_at', { ascending: false }).limit(500),
       ]);
 
