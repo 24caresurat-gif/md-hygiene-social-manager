@@ -9,7 +9,7 @@ type Permission={id?:string;user_id:string;workspace_id?:string;module:string;ca
 type Access={role:string;is_owner_or_admin:boolean};
 
 const modules=[
- ['dashboard','Dashboard'],['content','Content / Create Post'],['creative','Creative Intelligence'],['drafts','Drafts'],['calendar','Calendar'],['approval','Approvals'],['publishing','Publishing History'],['analytics','Analytics'],['social_accounts','Social Accounts'],['whatsapp','WhatsApp'],['team','Team Management']
+ ['dashboard','Dashboard'],['content','Content / Create Post'],['creative','Creative Intelligence'],['drafts','Drafts'],['calendar','Calendar'],['approval','Approvals'],['publishing','Publishing History'],['analytics','Analytics'],['social_accounts','Social Accounts'],['gmb','Google Business & Reviews'],['whatsapp','WhatsApp'],['team','Team Management']
 ] as const;
 const actions=['can_view','can_create','can_edit','can_submit','can_approve','can_publish','can_manage'] as const;
 const actionLabels:Record<string,string>={can_view:'View',can_create:'Create',can_edit:'Edit',can_submit:'Submit',can_approve:'Approve',can_publish:'Publish',can_manage:'Manage'};
