@@ -305,7 +305,8 @@ export default function SettingsPage() {
             <div className="actions wide"><button className="btn btn-primary" disabled={reviewAiBusy} onClick={() => void saveReviewSettings()}>{reviewAiBusy ? 'Saving…' : 'Save Review &amp; AI Settings'}</button>{reviewAiMsg && <div className="notice">{reviewAiMsg}</div>}</div>
           </div>
         </section>
-\n        <section className="panel" id="whatsapp">
+
+        <section className="panel" id="whatsapp">
           <span className="eyebrow">WHATSAPP BUSINESS</span>
           <h2 style={{ marginTop: 6 }}>Connect WhatsApp Business</h2>
           <p className="muted">Connect the business number through Meta Embedded Signup. This supports WhatsApp Business app coexistence; after onboarding, the contacts-only sync can populate the WhatsApp Contacts export screen.</p>
