@@ -8,6 +8,12 @@ function fallback(review:any,keywords:string[]){
   return 'Hi '+name+', thank you for taking the time to share this feedback. We are sorry your experience did not meet expectations. Your comments are important to us, and we would appreciate the opportunity to understand what happened and make it better.';
 }
 
+function adminDb(){
+  const url=process.env.NEXT_PUBLIC_SUPABASE_URL,key=process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if(!url||!key)throw new Error('Server database configuration is missing.');
+  return createClient(url,key,{auth:{autoRefreshToken:false,persistSession:false}});
+}
+
 export async function POST(request:Request){
   try{
     const token=request.headers.get('authorization')?.replace(/^Bearer\s+/i,'');
@@ -25,8 +31,9 @@ export async function POST(request:Request){
     if(member.error)throw member.error;if(!member.data)return NextResponse.json({error:'You do not have access to this workspace.'},{status:403});
     const kw=await supabase.from('workspace_keywords').select('keyword').eq('workspace_id',review.data.workspace_id).eq('active',true).limit(30);
     if(kw.error)throw kw.error;
+    if(settings.error)throw settings.error;
     const keywords=(kw.data||[]).map((x:any)=>String(x.keyword||'').trim()).filter(Boolean);
-    const settings=await supabase.from('workspace_review_settings').select('ai_enabled,ai_business_name,ai_business_context,ai_services,ai_tone,ai_signature').eq('workspace_id',review.data.workspace_id).maybeSingle();
+    const settings=await adminDb().from('workspace_review_settings').select('ai_enabled,ai_business_name,ai_business_context,ai_services,ai_tone,ai_signature').eq('workspace_id',review.data.workspace_id).maybeSingle();
     const business=settings.data||{};
     const businessContext=business.ai_enabled?('Business name: '+String(business.ai_business_name||'')+'. Services/focus: '+String(business.ai_services||'')+'. Verified business context: '+String(business.ai_business_context||'')+'. Tone: '+String(business.ai_tone||'Warm, professional, concise')+'. Preferred sign-off: '+String(business.ai_signature||'')):''; 
     const apiKey=process.env.OPENAI_API_KEY;let content='',model='template-fallback';
