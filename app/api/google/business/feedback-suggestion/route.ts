@@ -12,6 +12,8 @@ function adminDb(){
  return createClient(u,k,{auth:{autoRefreshToken:false,persistSession:false}});
 }
 
+function settingsDb(){const u=process.env.NEXT_PUBLIC_SUPABASE_URL,k=process.env.SUPABASE_SERVICE_ROLE_KEY;if(!u||!k)throw Error('Server database configuration is missing.');return createClient(u,k,{auth:{autoRefreshToken:false,persistSession:false}})}
+
 export async function POST(request:Request){
  try{
   const token=request.headers.get('authorization')?.replace(/^Bearer\\s+/i,'');
@@ -29,8 +31,9 @@ export async function POST(request:Request){
   if(!member.data||!['owner','admin','manager'].includes(String(member.data.role||'').toLowerCase()))return NextResponse.json({error:'Only workspace managers can generate response suggestions.'},{status:403});
   const kw=await db.from('workspace_keywords').select('keyword').eq('workspace_id',response.data.workspace_id).eq('active',true).limit(30);
   if(kw.error)throw kw.error;
+  if(settings.error)throw settings.error;
   const keywords=(kw.data||[]).map((x:any)=>String(x.keyword||'').trim()).filter(Boolean);
-  const settings=await db.from('workspace_review_settings').select('ai_enabled,ai_business_name,ai_business_context,ai_services,ai_tone,ai_signature').eq('workspace_id',response.data.workspace_id).maybeSingle();
+  const settings=await settingsDb().from('workspace_review_settings').select('ai_enabled,ai_business_name,ai_business_context,ai_services,ai_tone,ai_signature').eq('workspace_id',response.data.workspace_id).maybeSingle();
   const business=settings.data||{};
   const businessContext=business.ai_enabled?('Business name: '+String(business.ai_business_name||'')+'. Services/focus: '+String(business.ai_services||'')+'. Verified business context: '+String(business.ai_business_context||'')+'. Tone: '+String(business.ai_tone||'Warm, professional, concise')+'. Preferred sign-off: '+String(business.ai_signature||'')):''; 
   const customer=String(response.data.customer_name||'Customer'),rating=response.data.rating==null?'unknown':String(response.data.rating);
