@@ -61,6 +61,25 @@ export async function GET(request: Request) {
   try {
     const { token, user } = await authenticate(request);
     const supabase = publicClient(token);
+    const db = adminClient();
+    const { data: profile, error: profileError } = await db
+      .from('profiles')
+      .select('role,active')
+      .eq('id', user.id)
+      .maybeSingle();
+    if (profileError) throw profileError;
+
+    const globalAdmin = profile?.active !== false && ['admin', 'owner'].includes(String(profile?.role || '').toLowerCase());
+
+    if (globalAdmin) {
+      const { data, error } = await db
+        .from('workspaces')
+        .select('id,name,slug,logo_url,owner_user_id,created_at')
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      const workspaces = (data || []).map((w: any) => ({ ...w, membership_role: 'admin' }));
+      return NextResponse.json({ workspaces, brands: workspaces });
+    }
 
     const { data, error } = await supabase
       .from('workplace_members')
