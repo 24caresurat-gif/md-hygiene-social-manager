@@ -18,7 +18,7 @@ const nav=[
   ['Publishing History','history','/dashboard/history','publishing'],
   ['Analytics','analytics','/dashboard/analytics','analytics'],
   ['Media Library','media','/dashboard/media','content'],
-  ['Google Business & Reviews','accounts','/dashboard/gmb','social_accounts'],
+  ['Google Business & Reviews','accounts','/dashboard/gmb','gmb'],
   ['WhatsApp Inbox','accounts','/dashboard/whatsapp','whatsapp'],
   ['WhatsApp Contacts','accounts','/dashboard/whatsapp-contacts','whatsapp'],
   ['WhatsApp Templates','accounts','/dashboard/whatsapp/templates','whatsapp'],
