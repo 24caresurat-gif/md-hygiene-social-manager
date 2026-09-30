@@ -5,7 +5,7 @@ function publicClient(token: string) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) throw new Error('Supabase configuration is missing.');
-  return createClient(url, key, { global: { headers: { Authorization: \`Bearer \${token}\` } } });
+  return createClient(url, key, { global: { headers: { Authorization: `Bearer ${token}` } } });
 }
 
 function adminClient() {
@@ -54,7 +54,7 @@ async function canManageWorkspace(db: ReturnType<typeof adminClient>, workspaceI
 
 function makeSlug(name: string) {
   return name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 120)
-    || \`workspace-\${Date.now()}\`;
+    || `workspace-${Date.now()}`;
 }
 
 export async function GET(request: Request) {
