@@ -72,11 +72,12 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'user_id, workspace_id and valid module are required.' }, { status: 400 });
     }
     const actor = await membership(a, workspace_id);
-    if (!actor?.active || !['owner', 'admin'].includes(actor.role)) {
+    const globalAdmin = await isGlobalAdmin(a);
+    if (!globalAdmin && (!actor?.active || !['owner', 'admin'].includes(actor.role))) {
       return NextResponse.json({ error: 'Workspace admin access required.' }, { status: 403 });
     }
 
-    if (module === 'workspace_settings' && !['owner', 'admin'].includes(actor.role)) {
+    if (module === 'workspace_settings' && !globalAdmin && !['owner', 'admin'].includes(actor?.role || '')) {
       return NextResponse.json({ error: 'Workspace Settings are restricted to Owner and Admin.' }, { status: 403 });
     }
 
