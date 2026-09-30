@@ -26,14 +26,17 @@ export async function POST(request:Request){
     const kw=await supabase.from('workspace_keywords').select('keyword').eq('workspace_id',review.data.workspace_id).eq('active',true).limit(30);
     if(kw.error)throw kw.error;
     const keywords=(kw.data||[]).map((x:any)=>String(x.keyword||'').trim()).filter(Boolean);
+    const settings=await supabase.from('workspace_review_settings').select('ai_enabled,ai_business_name,ai_business_context,ai_services,ai_tone,ai_signature').eq('workspace_id',review.data.workspace_id).maybeSingle();
+    const business=settings.data||{};
+    const businessContext=business.ai_enabled?('Business name: '+String(business.ai_business_name||'')+'. Services/focus: '+String(business.ai_services||'')+'. Verified business context: '+String(business.ai_business_context||'')+'. Tone: '+String(business.ai_tone||'Warm, professional, concise')+'. Preferred sign-off: '+String(business.ai_signature||'')):''; 
     const apiKey=process.env.OPENAI_API_KEY;let content='',model='template-fallback';
     if(apiKey){
       const requested=process.env.OPENAI_REVIEW_MODEL||'gpt-5.6-luna';
-      const prompt='Write one concise, warm, professional Google Business Profile reply. Never invent facts, discounts, remedies, policies, or promises. Do not mention AI. Keep it under 450 characters. Reviewer: '+String(review.data.reviewer_name||'Customer')+'. Rating: '+String(review.data.rating||'unknown')+'/5. Review: '+String(review.data.comment||'Rating only')+'. Preferred business keywords, only when natural: '+(keywords.join(', ')||'none')+'.';
+      const prompt='Write one concise, warm, professional Google Business Profile reply. Never invent facts, discounts, remedies, policies, or promises. Do not mention AI. Keep it under 450 characters. Reviewer: '+String(review.data.reviewer_name||'Customer')+'. Rating: '+String(review.data.rating||'unknown')+'/5. Review: '+String(review.data.comment||'Rating only')+'. '+businessContext+' Preferred business keywords, only when natural: '+(keywords.join(', ')||'none')+'.';
       const response=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:'Bearer '+apiKey,'Content-Type':'application/json'},body:JSON.stringify({model:requested,input:[{role:'developer',content:'You draft customer-facing review replies for a business.'},{role:'user',content:prompt}],max_output_tokens:180,store:false}),cache:'no-store'});
       const data=await response.json().catch(()=>({}));
       if(!response.ok||data?.error)throw new Error(data?.error?.message||'AI suggestion generation failed.');
-      content=String(data?.output_text||'').trim();model=requested;if(!content)throw new Error('AI returned an empty suggestion.');
+      content=String(data?.output_text||'').trim();model=requested;if(business.ai_enabled&&String(business.ai_signature||'').trim()&&!content.includes(String(business.ai_signature).trim())) content=(content+'\n\n'+String(business.ai_signature).trim()).trim();if(!content)throw new Error('AI returned an empty suggestion.');
     }else content=fallback(review.data,keywords);
     const saved=await supabase.from('ai_review_suggestions').insert({workspace_id:review.data.workspace_id,review_id:review.data.id,suggestion_type:'reply',content,model,approved:false}).select('id,content,model,created_at').single();
     if(saved.error)throw saved.error;
