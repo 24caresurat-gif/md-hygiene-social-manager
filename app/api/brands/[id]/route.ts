@@ -14,7 +14,7 @@ async function authenticate(request: Request) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) throw new Error('Supabase configuration is missing.');
-  const supabase = createClient(url, key, { global: { headers: { Authorization: \`Bearer \${token}\` } } });
+  const supabase = createClient(url, key, { global: { headers: { Authorization: `Bearer ${token}` } } });
   const { data, error } = await supabase.auth.getUser(token);
   if (error || !data.user) throw new Error('Invalid session.');
   return data.user;
@@ -42,7 +42,7 @@ async function assertWorkspaceAdmin(db: ReturnType<typeof adminClient>, workspac
 }
 
 function makeSlug(name: string) {
-  return name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 120) || \`workspace-\${Date.now()}\`;
+  return name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 120) || `workspace-${Date.now()}`;
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
