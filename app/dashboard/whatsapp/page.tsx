@@ -74,6 +74,18 @@ export default function WhatsAppInboxPage(){
   }
 
   useEffect(()=>{void refresh()},[]);
+  useEffect(()=>{
+    const onWorkspace=(event:Event)=>{
+      const next=(event as CustomEvent<{workspaceId?:string}>).detail?.workspaceId||'';
+      if(!next||next===workspaceId)return;
+      setWorkspaceId(next);setSelectedId('');setMessages([]);setNotice('');setLoading(true);
+      void Promise.all([loadConversations(next),loadTemplates(next)])
+        .catch(e=>setNotice(e instanceof Error?e.message:'Unable to switch WhatsApp workspace.'))
+        .finally(()=>setLoading(false));
+    };
+    window.addEventListener('mdsm:workspace-changed',onWorkspace);
+    return()=>window.removeEventListener('mdsm:workspace-changed',onWorkspace);
+  },[workspaceId]);
   useEffect(()=>{if(!workspaceId)return;const timer=window.setInterval(()=>{void loadConversations(workspaceId).catch(()=>{})},10000);return()=>window.clearInterval(timer)},[workspaceId,query]);
 
   const selected=useMemo(()=>conversations.find(c=>c.id===selectedId)||null,[conversations,selectedId]);
