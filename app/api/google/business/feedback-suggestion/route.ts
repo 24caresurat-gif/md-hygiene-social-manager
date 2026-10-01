@@ -34,7 +34,7 @@ export async function POST(request:Request){
   const keywords=(kw.data||[]).map((x:any)=>String(x.keyword||'').trim()).filter(Boolean);
   const settings=await settingsDb().from('workspace_review_settings').select('ai_enabled,ai_business_name,ai_business_context,ai_services,ai_tone,ai_signature').eq('workspace_id',response.data.workspace_id).maybeSingle();
   if(settings.error)throw settings.error;
-const business=settings.data||{};
+const business:any=settings.data||{};
   const businessContext=business.ai_enabled?('Business name: '+String(business.ai_business_name||'')+'. Services/focus: '+String(business.ai_services||'')+'. Verified business context: '+String(business.ai_business_context||'')+'. Tone: '+String(business.ai_tone||'Warm, professional, concise')+'. Preferred sign-off: '+String(business.ai_signature||'')):''; 
   const customer=String(response.data.customer_name||'Customer'),rating=response.data.rating==null?'unknown':String(response.data.rating);
   const answerText=JSON.stringify(response.data.answers||{}).slice(0,5000);
