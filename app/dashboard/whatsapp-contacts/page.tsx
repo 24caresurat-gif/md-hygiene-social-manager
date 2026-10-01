@@ -15,11 +15,20 @@ export default function WhatsAppContactsPage() {
   const [message, setMessage] = useState('');
 
   useEffect(() => { void load(); }, []);
+  useEffect(()=>{
+    const onWorkspace=(event:Event)=>{
+      const next=(event as CustomEvent<{workspaceId?:string}>).detail?.workspaceId||'';
+      if(!next||next===workspaceId)return;
+      setSelected([]);setContacts([]);setWorkspaceId(next);setLoading(true);setMessage('');
+      void loadWorkspace(next).finally(()=>setLoading(false));
+    };
+    window.addEventListener('mdsm:workspace-changed',onWorkspace);
+    return()=>window.removeEventListener('mdsm:workspace-changed',onWorkspace);
+  },[workspaceId]);
 
-  async function load() {
+  async function loadWorkspace(id:string) {
     setLoading(true); setMessage('');
     try {
-      const id = localStorage.getItem('mdsm:selectedWorkspaceId') || '';
       if (!id) { location.href = '/dashboard'; return; }
       setWorkspaceId(id);
       const session = (await getSupabase().auth.getSession()).data.session;
