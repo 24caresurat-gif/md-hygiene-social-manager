@@ -14,7 +14,7 @@ export default function WhatsAppContactsPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void loadFromStorage(); }, []);
   useEffect(()=>{
     const onWorkspace=(event:Event)=>{
       const next=(event as CustomEvent<{workspaceId?:string}>).detail?.workspaceId||'';
@@ -25,6 +25,11 @@ export default function WhatsAppContactsPage() {
     window.addEventListener('mdsm:workspace-changed',onWorkspace);
     return()=>window.removeEventListener('mdsm:workspace-changed',onWorkspace);
   },[workspaceId]);
+
+  async function loadFromStorage() {
+    const id = localStorage.getItem('mdsm:selectedWorkspaceId') || '';
+    await loadWorkspace(id);
+  }
 
   async function loadWorkspace(id:string) {
     setLoading(true); setMessage('');
@@ -92,7 +97,7 @@ export default function WhatsAppContactsPage() {
     `}</style>
     <div className="wrap">
       <div className="head"><div><div className="eyebrow">WHATSAPP • CONTACT EXPORT</div><h1>WhatsApp Contacts</h1><p className="sub">Only contact name and phone number are shown here. Chats, messages and media are not loaded.</p></div>
-        <div className="actions"><button className="btn" onClick={() => void load()}>↻ Refresh</button><button className="btn btn-primary" disabled={!selected.length} onClick={exportCsv}>Export CSV{selected.length ? ` (${selected.length})` : ''}</button></div>
+        <div className="actions"><button className="btn" onClick={() => void loadFromStorage()}>↻ Refresh</button><button className="btn btn-primary" disabled={!selected.length} onClick={exportCsv}>Export CSV{selected.length ? ` (${selected.length})` : ''}</button></div>
       </div>
       {message && <div className="notice">{message}</div>}
       <section className="panel"><div className="toolbar"><input className="search" value={query} onChange={e => setQuery(e.target.value)} placeholder="Search name or phone number…" /><div className="count">{selected.length} selected · {filtered.length} shown · {contacts.length} total</div></div>
