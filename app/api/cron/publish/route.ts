@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { runWhatsAppCampaignBatch } from '../../../../lib/whatsapp-campaign-worker';
 
 const GRAPH = 'https://graph.facebook.com/v23.0';
 
@@ -222,5 +223,67 @@ export async function GET(req: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true, processed: (jobs || []).length, published, failed });
+  // Run due WhatsApp campaigns in controlled 50-recipient batches. These jobs are
+  // workspace-scoped and only leave the database when an official WhatsApp
+  // connection is present; otherwise the campaign remains actionable in the UI.
+  let whatsappProcessed = 0;
+  let whatsappCompleted = 0;
+  let whatsappFailed = 0;
+  let whatsappSent = 0;
+
+  const staleRunningCutoff = new Date(Date.now() - 5 * 60_000).toISOString();
+  const { data: whatsappScheduled, error: whatsappScheduledError } = await s
+    .from('whatsapp_campaigns')
+    .select('id,workspace_id,created_by,scheduled_at,status')
+    .eq('status', 'scheduled')
+    .not('scheduled_at', 'is', null)
+    .lte('scheduled_at', now)
+    .order('scheduled_at', { ascending: true })
+    .limit(10);
+  if (whatsappScheduledError) return NextResponse.json({ error: whatsappScheduledError.message }, { status: 500 });
+
+  const { data: whatsappRunning, error: whatsappRunningError } = await s
+    .from('whatsapp_campaigns')
+    .select('id,workspace_id,created_by,scheduled_at,status,updated_at')
+    .eq('status', 'running')
+    .lt('updated_at', staleRunningCutoff)
+    .order('updated_at', { ascending: true })
+    .limit(10);
+  if (whatsappRunningError) return NextResponse.json({ error: whatsappRunningError.message }, { status: 500 });
+
+  for (const candidate of [...(whatsappScheduled || []), ...(whatsappRunning || [])]) {
+    const claimed = await s.from('whatsapp_campaigns')
+      .update({ status: 'running', updated_at: new Date().toISOString() })
+      .eq('id', candidate.id)
+      .eq('workspace_id', candidate.workspace_id)
+      .eq('status', candidate.status)
+      .select('id,workspace_id,created_by')
+      .maybeSingle();
+    if (!claimed.data) continue;
+
+    whatsappProcessed++;
+    try {
+      const result = await runWhatsAppCampaignBatch(
+        s,
+        String(candidate.workspace_id),
+        String(candidate.id),
+        String(claimed.data.created_by || candidate.created_by || '00000000-0000-0000-0000-000000000000'),
+      );
+      whatsappSent += result.sent;
+      if (result.status === 'completed') whatsappCompleted++;
+    } catch (e) {
+      whatsappFailed++;
+      await s.from('whatsapp_campaigns').update({
+        status: 'running',
+        updated_at: new Date().toISOString(),
+      }).eq('id', candidate.id).eq('workspace_id', candidate.workspace_id);
+    }
+  }
+
+  return NextResponse.json({ ok: true, processed: (jobs || []).length, published, failed, whatsapp: {
+    processed: whatsappProcessed,
+    completed: whatsappCompleted,
+    failed: whatsappFailed,
+    sent: whatsappSent,
+  }});
 }
