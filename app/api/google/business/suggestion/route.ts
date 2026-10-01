@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     if (settingsError) throw settingsError;
 
     const keywords = (keywordRows || []).map((row) => String(row.keyword || '').trim()).filter(Boolean);
-    const business = settings || {};
+    const business: any = settings || {};
     const businessContext = business.ai_enabled
       ? 'Business name: ' + String(business.ai_business_name || '') + '. Services/focus: ' + String(business.ai_services || '') + '. Verified business context: ' + String(business.ai_business_context || '') + '. Tone: ' + String(business.ai_tone || 'Warm, professional, concise') + '. Preferred sign-off: ' + String(business.ai_signature || '')
       : '';
