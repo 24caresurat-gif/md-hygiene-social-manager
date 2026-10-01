@@ -13,7 +13,7 @@ export async function runWhatsAppCampaignBatch(
   db: SupabaseClient,
   workspaceId: string,
   campaignId: string,
-  userId: string,
+  userId: string | null,
 ): Promise<CampaignRunResult> {
   const connection = await getActiveConnection(db, workspaceId);
   if (!connection) {
@@ -21,7 +21,7 @@ export async function runWhatsAppCampaignBatch(
   }
 
   const { data: campaign, error: campaignError } = await db.from('whatsapp_campaigns')
-    .select('id,name,status,template_id,audience_filter,created_by')
+    .select('id,name,status,template_id,audience_filter,created_by,started_at')
     .eq('workspace_id', workspaceId)
     .eq('id', campaignId)
     .maybeSingle();
@@ -44,7 +44,7 @@ export async function runWhatsAppCampaignBatch(
   const now = new Date().toISOString();
   await db.from('whatsapp_campaigns').update({
     status: 'running',
-    started_at: campaign.status === 'draft' || campaign.status === 'scheduled' ? now : undefined,
+    started_at: campaign.started_at || campaign.status === 'draft' || campaign.status === 'scheduled' ? now : undefined,
     connection_id: connection.id,
     updated_at: now,
   }).eq('id', campaignId).eq('workspace_id', workspaceId);
@@ -90,7 +90,7 @@ export async function runWhatsAppCampaignBatch(
         template_name: template.name,
         template_language: template.language,
         template_parameters: parameters,
-        sent_by_user_id: userId,
+        sent_by_user_id: userId || null,
         metadata: { source: 'campaign', campaign_id: campaignId },
       }).select('id').single();
       if (messageError || !queuedMessage) {
