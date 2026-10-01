@@ -13,7 +13,7 @@ const defaultProtection={
   negative_protection_message:'Your feedback will be reviewed privately by our team. You can still choose to share your experience publicly on Google after submitting.'
 };
 
-export async function GET(_r,{params}:{params:Promise<{token:string}>}){
+export async function GET(_r: Request,{params}:{params:Promise<{token:string}>}){
   try{
     const {token}=await params;
     const publicToken=decodeURIComponent(String(token||'')).trim();
