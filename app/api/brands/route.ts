@@ -136,6 +136,34 @@ export async function POST(request: Request) {
       .insert({ workplace_id: workspaceId, workspace_id: workspaceId, user_id: user.id, role: 'owner', active: true });
     if (membershipError) throw membershipError;
 
+    const { error: reviewSettingsError } = await db
+      .from('workspace_review_settings')
+      .insert({
+        workspace_id: workspaceId,
+        negative_protection_enabled: true,
+        negative_protection_threshold: 2,
+        negative_protection_message: 'Your feedback will be reviewed privately by our team. You can still choose to share your experience publicly on Google after submitting.',
+        ai_enabled: true,
+        ai_tone: 'Warm, professional, concise',
+      });
+    if (reviewSettingsError) throw reviewSettingsError;
+
+    const { error: gmbPermissionError } = await db
+      .from('workspace_member_permissions')
+      .upsert({
+        workspace_id: workspaceId,
+        user_id: user.id,
+        module: 'gmb',
+        can_view: true,
+        can_create: true,
+        can_edit: true,
+        can_submit: true,
+        can_approve: true,
+        can_publish: true,
+        can_manage: true,
+      }, { onConflict: 'workspace_id,user_id,module' });
+    if (gmbPermissionError) throw gmbPermissionError;
+
     return NextResponse.json({ workspace, brand }, { status: 201 });
   } catch (e) {
     if (workspaceId) {
