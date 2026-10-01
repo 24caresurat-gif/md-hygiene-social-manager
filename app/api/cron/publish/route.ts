@@ -267,7 +267,7 @@ export async function GET(req: Request) {
         s,
         String(candidate.workspace_id),
         String(candidate.id),
-        String(claimed.data.created_by || candidate.created_by || '00000000-0000-0000-0000-000000000000'),
+        claimed.data.created_by ? String(claimed.data.created_by) : null,
       );
       whatsappSent += result.sent;
       if (result.status === 'completed') whatsappCompleted++;
