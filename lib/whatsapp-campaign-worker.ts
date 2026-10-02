@@ -42,12 +42,14 @@ export async function runWhatsAppCampaignBatch(
   }
 
   const now = new Date().toISOString();
-  await db.from('whatsapp_campaigns').update({
+  const startedAt = campaign.started_at || now;
+  const { error: startError } = await db.from('whatsapp_campaigns').update({
     status: 'running',
-    started_at: campaign.started_at || campaign.status === 'draft' || campaign.status === 'scheduled' ? now : undefined,
+    started_at: startedAt,
     connection_id: connection.id,
     updated_at: now,
   }).eq('id', campaignId).eq('workspace_id', workspaceId);
+  if (startError) throw startError;
 
   const filter = (campaign.audience_filter || {}) as { template_parameters?: string[] };
   const parameters = Array.isArray(filter.template_parameters) ? filter.template_parameters : [];
@@ -171,7 +173,7 @@ export async function runWhatsAppCampaignBatch(
   const status: 'completed' | 'running' = queuedCount === 0 ? 'completed' : 'running';
   const completedAt = status === 'completed' ? new Date().toISOString() : null;
 
-  await db.from('whatsapp_campaigns').update({
+  const { error: finishError } = await db.from('whatsapp_campaigns').update({
     status,
     total_recipients: total,
     sent_count: sentCount,
@@ -181,6 +183,7 @@ export async function runWhatsAppCampaignBatch(
     completed_at: completedAt,
     updated_at: new Date().toISOString(),
   }).eq('id', campaignId).eq('workspace_id', workspaceId);
+  if (finishError) throw finishError;
 
   return { campaignId, status, sent, failed, remaining: queuedCount };
 }
