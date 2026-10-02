@@ -88,11 +88,28 @@ export async function POST(request: Request) {
     if (!['all','selected'].includes(audience)) throw new WhatsAppHttpError('Invalid campaign audience.', 400);
     if (audience === 'selected' && !contactIds.length) throw new WhatsAppHttpError('Select at least one contact for a selected audience.', 400);
 
-    const { data: template, error: templateError } = await db.from('whatsapp_templates').select('id,name,language,status')
+    const { data: template, error: templateError } = await db.from('whatsapp_templates').select('id,name,language,status,components')
       .eq('workspace_id', workspaceId).eq('id', templateId).maybeSingle();
     if (templateError) throw templateError;
     if (!template) throw new WhatsAppHttpError('Template not found.', 404);
     if (template.status !== 'APPROVED') throw new WhatsAppHttpError('Only an APPROVED WhatsApp template can be used for a campaign.', 400);
+
+    const bodyComponent = Array.isArray(template.components)
+      ? template.components.find((component: any) => String(component?.type || '').toUpperCase() === 'BODY')
+      : null;
+    const bodyText = String(bodyComponent?.text || '');
+    const placeholderNumbers = Array.from(bodyText.matchAll(/\{\{\s*(\d+)\s*\}\}/g))
+      .map(match => Number(match[1]))
+      .filter(Number.isInteger);
+    const requiredParameterCount = placeholderNumbers.length ? Math.max(...placeholderNumbers) : 0;
+    if (templateParameters.length !== requiredParameterCount) {
+      throw new WhatsAppHttpError(
+        requiredParameterCount
+          ? `This template requires exactly ${requiredParameterCount} body parameter${requiredParameterCount === 1 ? '' : 's'}.`
+          : 'This template does not define body parameters, so template parameters must be empty.',
+        400,
+      );
+    }
 
     let contactQuery = db.from('whatsapp_contacts').select('id,name,phone').eq('workspace_id', workspaceId).eq('active', true).order('name', { ascending: true, nullsFirst: false });
     if (audience === 'selected') contactQuery = contactQuery.in('id', contactIds);
