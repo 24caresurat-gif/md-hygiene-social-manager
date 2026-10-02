@@ -273,8 +273,10 @@ export async function GET(req: Request) {
       if (result.status === 'completed') whatsappCompleted++;
     } catch (e) {
       whatsappFailed++;
+      // Keep the campaign scheduled when the workspace is not connected yet.
+      // It can be picked up automatically after the connection is added in Settings.
       await s.from('whatsapp_campaigns').update({
-        status: 'running',
+        status: 'scheduled',
         updated_at: new Date().toISOString(),
       }).eq('id', candidate.id).eq('workspace_id', candidate.workspace_id);
     }
