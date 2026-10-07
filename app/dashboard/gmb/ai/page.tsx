@@ -6,6 +6,8 @@ import { getSupabase } from '../../../../lib/supabase-browser';
 type Review={id:string;reviewer_name:string|null;rating:number|null;comment:string|null;reply_status:string};
 type Suggestion={content:string;model:string|null};
 
+const css = ".page{display:grid;gap:15px}.panel{padding:18px}.hero h1{margin:5px 0}.note{font-size:10px;color:#667085;line-height:1.6}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:11px}.metric strong{display:block;font-size:25px;margin-top:5px}.actions{display:flex;gap:7px;flex-wrap:wrap}.btn{border:1px solid #dbe4e8;background:#fff;border-radius:9px;padding:9px 11px;font-size:9px;font-weight:900;cursor:pointer}.primary{background:#087f7b;color:#fff;border-color:#087f7b}.box{margin-top:10px;padding:11px;background:#edf8f7;border-radius:10px;font-size:10px;line-height:1.55;white-space:pre-wrap}.review{border-top:1px solid #edf0f3;padding:12px 0}.review:first-child{border-top:0}.top{display:flex;justify-content:space-between;gap:8px}.pill{padding:5px 8px;border-radius:999px;background:#f1f5f7;font-size:8px;font-weight:900}@media(max-width:900px){.grid{grid-template-columns:1fr}}";
+
 export default function ReputationAIPage(){
   const [workspaceId,setWorkspaceId]=useState('');
   const [reviews,setReviews]=useState<Review[]>([]);
@@ -78,7 +80,7 @@ export default function ReputationAIPage(){
   const values=reviews.map(r=>Number(r.rating||0)).filter(r=>r>=1&&r<=5);
   const avg=values.length?values.reduce((a,b)=>a+b,0)/values.length:null;
 
-  return <AppShell title='Reputation AI'><style jsx>{".page{display:grid;gap:15px}.panel{padding:18px}.hero h1{margin:5px 0}.note{font-size:10px;color:#667085;line-height:1.6}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:11px}.metric strong{display:block;font-size:25px;margin-top:5px}.actions{display:flex;gap:7px;flex-wrap:wrap}.btn{border:1px solid #dbe4e8;background:#fff;border-radius:9px;padding:9px 11px;font-size:9px;font-weight:900;cursor:pointer}.primary{background:#087f7b;color:#fff;border-color:#087f7b}.box{margin-top:10px;padding:11px;background:#edf8f7;border-radius:10px;font-size:10px;line-height:1.55;white-space:pre-wrap}.review{border-top:1px solid #edf0f3;padding:12px 0}.review:first-child{border-top:0}.top{display:flex;justify-content:space-between;gap:8px}.pill{padding:5px 8px;border-radius:999px;background:#f1f5f7;font-size:8px;font-weight:900}@media(max-width:900px){.grid{grid-template-columns:1fr}}"}></style><div className='page'>
+  return <AppShell title='Reputation AI'><style>{css}</style><div className='page'>
     <section className='panel hero'><div className='eyebrow'>AI CONTROL CENTER</div><h1>Reputation AI</h1><p className='note'>Auto-draft review replies, surface business insights and generate rating-improvement actions. External publishing remains connection-gated.</p></section>
     {error&&<div className='alert alert-error'>{error}</div>}
     <section className='grid'>
