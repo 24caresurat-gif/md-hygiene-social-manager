@@ -20,7 +20,7 @@ const ctas=[['','No CTA'],['BOOK','Book'],['ORDER','Order'],['SHOP','Shop'],['LE
 const fmt=(v:string)=>{const d=new Date(v);return Number.isNaN(d.getTime())?'—':d.toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'})};
 
 export default function GooglePostsPage(){
- const[workspaceId,setWorkspaceId]=useState(''),[profiles,setProfiles]=useState<Profile[]>([]),[posts,setPosts]=useState<Post[]>([]),[selectedProfile,setSelectedProfile]=useState(''),[message,setMessage]=useState(''),[link,setLink]=useState(''),[mediaUrl,setMediaUrl]=useState(''),[topic,setTopic]=useState('UPDATE'),[cta,setCta]=useState(''),[ctaUrl,setCtaUrl]=useState(''),[approved,setApproved]=useState(false),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState('');
+ const[workspaceId,setWorkspaceId]=useState(''),[profiles,setProfiles]=useState<Profile[]>([]),[posts,setPosts]=useState<Post[]>([]),[selectedProfile,setSelectedProfile]=useState(''),[message,setMessage]=useState(''),[link,setLink]=useState(''),[mediaUrl,setMediaUrl]=useState(''),[topic,setTopic]=useState('UPDATE'),[cta,setCta]=useState(''),[ctaUrl,setCtaUrl]=useState(''),[approved,setApproved]=useState(false),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[aiBusy,setAiBusy]=useState(false),[aiSeed,setAiSeed]=useState(''),[error,setError]=useState('');
  async function token(){const s=(await getSupabase().auth.getSession()).data.session;if(!s){location.href='/login';throw new Error('Your session has expired.')}return s.access_token}
  async function load(id:string){
   setLoading(true);setError('');
@@ -28,7 +28,18 @@ export default function GooglePostsPage(){
   catch(e){setError(e instanceof Error?e.message:'Unable to load Google Business posts.')}finally{setLoading(false)}
  }
  useEffect(()=>{let current='';try{current=localStorage.getItem('mdsm:selectedWorkspaceId')||''}catch{}setWorkspaceId(current);const onWorkspace=(event:Event)=>{const next=(event as CustomEvent<{workspaceId?:string}>).detail?.workspaceId||'';if(next&&next!==current){current=next;setWorkspaceId(next);setSelectedProfile('');void load(next)}};window.addEventListener('mdsm:workspace-changed',onWorkspace);if(current)void load(current);else setLoading(false);return()=>window.removeEventListener('mdsm:workspace-changed',onWorkspace)},[]);
- async function create(){
+ async function generateAI(){
+  if(!workspaceId)return;
+  if(!aiSeed.trim())return setError('Add a short direction for the AI writer.');
+  setAiBusy(true);setError('');
+  try{
+   const t=await token();
+   const r=await fetch('/api/google/business/post-ai',{method:'POST',headers:{Authorization:'Bearer '+t,'Content-Type':'application/json'},body:JSON.stringify({workspaceId,profileId:selectedProfile,topic,seed:aiSeed})});
+   const d=await r.json();if(!r.ok)throw Error(d?.error||'Unable to generate Google post.');
+   setMessage(String(d.content||'').slice(0,1500));
+  }catch(e){setError(e instanceof Error?e.message:'Unable to generate Google post.')}finally{setAiBusy(false)}
+ }
+  async function create(){
   setBusy(true);setError('');
   try{if(!workspaceId||!selectedProfile)throw new Error('Select a Business Profile location.');if(!message.trim())throw new Error('Write the Google post text.');const t=await token();const r=await fetch('/api/google/business/posts',{method:'POST',headers:{Authorization:'Bearer '+t,'Content-Type':'application/json'},body:JSON.stringify({workspaceId,profileId:selectedProfile,message,link,mediaUrl,topic,ctaType:cta,ctaUrl,approvalStatus:approved?'approved':'pending'})});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d?.error||'Unable to create Google post.');setMessage('');setLink('');setMediaUrl('');setCta('');setCtaUrl('');setApproved(false);await load(workspaceId)}
   catch(e){setError(e instanceof Error?e.message:'Unable to create Google post.')}finally{setBusy(false)}
@@ -47,6 +58,7 @@ export default function GooglePostsPage(){
     <div className='field'><label>Business Profile</label><select className='select' value={selectedProfile} onChange={e=>setSelectedProfile(e.target.value)}><option value=''>Select location…</option>{profiles.map(x=><option value={x.id} key={x.id}>{x.business_name}</option>)}</select></div>
     <div className='field'><label>Topic</label><select className='select' value={topic} onChange={e=>setTopic(e.target.value)}>{topics.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></div>
     <div className='field full'><label>Post text</label><textarea className='textarea' value={message} onChange={e=>setMessage(e.target.value.slice(0,1500))} placeholder='Share an update, announcement, service news or offer…'/><div className='count'>{message.length}/1500</div></div>
+    <div className='field full'><label>AI Google Post Assistant</label><input className='input' value={aiSeed} onChange={e=>setAiSeed(e.target.value)} placeholder='Direction, service topic or announcement for AI'/><div className='actions'><button type='button' className='btn btn-soft' onClick={()=>void generateAI()} disabled={aiBusy||busy||loading}>{aiBusy?'Generating…':'✦ Generate with AI'}</button><span className='note'>AI drafts are editable. Saving still uses the normal workspace approval flow.</span></div></div>
     <div className='field'><label>Link</label><input className='input' value={link} onChange={e=>setLink(e.target.value)} placeholder='https://example.com/page'/></div>
     <div className='field'><label>Image URL</label><input className='input' value={mediaUrl} onChange={e=>setMediaUrl(e.target.value)} placeholder='https://…/image.jpg'/></div>
     <div className='field'><label>Call to action</label><select className='select' value={cta} onChange={e=>setCta(e.target.value)}>{ctas.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></div>
