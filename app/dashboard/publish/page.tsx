@@ -22,6 +22,8 @@ export default function PublishPage() {
   const [scheduleDate, setScheduleDate] = useState('');
   const [scheduleTime, setScheduleTime] = useState('10:00');
   const [isAdmin, setIsAdmin] = useState(false);
+  const [aiTopic, setAiTopic] = useState('');
+  const [aiBusy, setAiBusy] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -54,6 +56,43 @@ export default function PublishPage() {
     if (kind === 'video' && f.size > 100 * 1024 * 1024) { setError('Video must be 100MB or smaller.'); return; }
     if (preview) URL.revokeObjectURL(preview);
     setFile(f); setMediaKind(kind); setPreview(URL.createObjectURL(f));
+  }
+
+  async function generateAICaption() {
+    if (!targets.length) return setError('Select a Facebook or Instagram account first.');
+    if (!message.trim() && !aiTopic.trim()) return setError('Add a topic or current caption for AI.');
+    setAiBusy(true); setError(''); setSuccess('');
+    try {
+      const c = getSupabase();
+      const { data: { session } } = await c.auth.getSession();
+      if (!session?.access_token) throw new Error('Your session has expired.');
+      const platform = targets.map(a => a.platform).join(', ');
+      const r = await fetch('/api/ai/caption', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + session.access_token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          brandId,
+          accountIds: targets.map(a => a.id),
+          action: message.trim() ? 'rewrite' : 'generate',
+          topic: aiTopic,
+          current: message,
+          platform,
+          tone: 'Professional, trustworthy, concise',
+          language: 'English',
+        }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d?.error || 'AI caption generation failed.');
+      setMessage(String(d.caption || '').trim());
+      if (Array.isArray(d.hashtags) && d.hashtags.length) {
+        setMessage(v => (v + '\n\n' + d.hashtags.map((x: string) => x.startsWith('#') ? x : '#' + x).join(' ')).trim());
+      }
+      setSuccess('AI draft ready — review and edit before submitting.');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'AI caption generation failed.');
+    } finally {
+      setAiBusy(false);
+    }
   }
 
   async function uploadMedia(token: string) {
@@ -188,7 +227,14 @@ export default function PublishPage() {
               </label>
             </div>
             <label>Caption
-              <textarea rows={8} value={message} onChange={e => setMessage(e.target.value)} placeholder="Write your professional caption…" disabled={busy} />
+              <textarea rows={8} value={message} onChange={e => setMessage(e.target.value)} placeholder="Write your professional caption…" disabled={busy || aiBusy} />
+            </label>
+            <label>AI Post Assistant
+              <input value={aiTopic} onChange={e => setAiTopic(e.target.value)} placeholder="Topic or campaign direction for AI" disabled={busy || aiBusy} />
+              <span className="note">AI can generate or rewrite the caption for the selected Facebook/Instagram targets. Final submission still follows the existing approval flow.</span>
+              <button type="button" className="btn soft" onClick={generateAICaption} disabled={busy || aiBusy || !targets.length}>
+                {aiBusy ? 'Generating…' : message.trim() ? '✦ Improve with AI' : '✦ Generate with AI'}
+              </button>
             </label>
             <label>Media
               <div className="media">
