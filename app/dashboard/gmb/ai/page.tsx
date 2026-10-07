@@ -65,6 +65,22 @@ export default function ReputationAIPage(){
       setInsight(d.insight||'');
     }catch(e){setError(e instanceof Error?e.message:'Unable to generate insights.')}finally{setBusy('')}
   }
+  async function autoDraftReplies(){
+    const queue=needs.slice(0,10);
+    if(!queue.length)return;
+    setBusy('auto-reply');setError('');
+    try{
+      const t=await token();
+      for(const review of queue){
+        const r=await fetch('/api/google/business/suggestion',{method:'POST',headers:{Authorization:'Bearer '+t,'Content-Type':'application/json'},body:JSON.stringify({reviewId:review.id})});
+        const d=await r.json().catch(()=>({}));
+        if(!r.ok)throw Error(d?.error||'Unable to generate a reply.');
+        setSuggestions(v=>({...v,[review.id]:d.suggestion}));
+      }
+    }catch(e){setError(e instanceof Error?e.message:'Unable to generate reply drafts.');}
+    finally{setBusy('');}
+  }
+
   async function runImprovements(){
     setBusy('improve');
     try{
@@ -85,7 +101,7 @@ export default function ReputationAIPage(){
     {error&&<div className='alert alert-error'>{error}</div>}
     <section className='grid'>
       <article className='panel metric'><div className='eyebrow'>REVIEWS</div><strong>{reviews.length}</strong><div className='note'>Imported reviews</div><div className='eyebrow' style={{marginTop:10}}>AVERAGE</div><strong>{avg==null?'—':avg.toFixed(2)+'/5'}</strong></article>
-      <article className='panel metric'><div className='eyebrow'>AUTO REPLY</div><strong>{needs.length}</strong><div className='note'>Reviews needing reply</div><button className='btn primary' disabled={!needs.length||busy!==''} onClick={()=>needs.slice(0,10).forEach(r=>void generateReply(r.id))} style={{marginTop:10}}>{busy?'Working…':'Auto-draft up to 10'}</button></article>
+      <article className='panel metric'><div className='eyebrow'>AUTO REPLY</div><strong>{needs.length}</strong><div className='note'>Reviews needing reply</div><button className='btn primary' disabled={!needs.length||busy!==''} onClick={()=>void autoDraftReplies()} style={{marginTop:10}}>{busy==='auto-reply'?'Drafting…':needs.length?'Auto-draft up to 10':'No replies needed'}</button></article>
       <article className='panel'><div className='actions'><button className='btn primary' disabled={!workspaceId||busy!==''} onClick={()=>void runInsights()}>{busy==='insights'?'Generating…':'AI Business Insights'}</button><button className='btn' disabled={!workspaceId||busy!==''} onClick={()=>void runImprovements()}>{busy==='improve'?'Generating…':'Rating Suggestions'}</button></div></article>
     </section>
     <section className='panel'><div className='eyebrow'>BUSINESS INSIGHTS</div><h2 style={{margin:'5px 0'}}>AI Business Insights</h2>{insight?<div className='box'>{insight}</div>:<p className='note'>Run the insight engine to analyze imported reviews and feedback.</p>}</section>
