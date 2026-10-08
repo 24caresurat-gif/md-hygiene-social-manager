@@ -23,6 +23,7 @@ const nav=[
   ['Digital Card','accounts','/dashboard/digital-card','digital_card'],
   ['Digital Card Leads','accounts','/dashboard/digital-card/leads','digital_card'],
   ['CRM','accounts','/dashboard/crm','crm'],
+  ['CRM Reports','analytics','/dashboard/crm/reports','crm'],
   ['CRM Automation','accounts','/dashboard/crm/automation','crm'],
   ['Google Business & Reviews','accounts','/dashboard/gmb','gmb'],
   ['WhatsApp Inbox','accounts','/dashboard/whatsapp','whatsapp'],
