@@ -20,6 +20,7 @@ const nav=[
   ['Media Library','media','/dashboard/media','content'],
   ['Product Catalogue','accounts','/dashboard/catalog','catalog'],
   ['Digital Card','accounts','/dashboard/digital-card','digital_card'],
+  ['CRM','accounts','/dashboard/crm','crm'],
   ['Google Business & Reviews','accounts','/dashboard/gmb','gmb'],
   ['WhatsApp Inbox','accounts','/dashboard/whatsapp','whatsapp'],
   ['WhatsApp Contacts','accounts','/dashboard/whatsapp-contacts','whatsapp'],
