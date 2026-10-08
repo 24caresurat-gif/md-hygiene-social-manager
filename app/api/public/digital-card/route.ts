@@ -31,9 +31,13 @@ export async function POST(request:Request){
   if(!name||(!email&&!phone))return NextResponse.json({error:'Name and email or phone are required.'},{status:400});
   if(type==='lead'&&!card.lead_capture_enabled)return NextResponse.json({error:'Lead capture is disabled.'},{status:403});
   if(type==='contact'&&!card.contact_form_enabled)return NextResponse.json({error:'Contact form is disabled.'},{status:403});
-  const table=type==='lead'?'digital_card_leads':'digital_card_messages';
-  const payload=type==='lead'?{digital_card_id:card.id,name,email,phone,message,source:'digital_card'}:{digital_card_id:card.id,name,email,phone,subject:String(body.subject||'').trim()||null,message};
-  const {error:insertError}=await db.from(table).insert(payload);if(insertError)throw insertError;
+  if(type==='lead'){
+   const {error:insertError}=await db.from('digital_card_leads').insert({digital_card_id:card.id,name,email,phone,message,source:'digital_card'});
+   if(insertError)throw insertError;
+  }else{
+   const {error:insertError}=await db.from('digital_card_messages').insert({digital_card_id:card.id,name,email,phone,subject:String(body.subject||'').trim()||null,message});
+   if(insertError)throw insertError;
+  }
   return NextResponse.json({success:true});
  }catch(e){return NextResponse.json({error:e instanceof Error?e.message:'Unable to submit form.'},{status:500});}
 }
