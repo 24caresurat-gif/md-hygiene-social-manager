@@ -21,7 +21,13 @@ function cleanFlow(body:any,workspaceId:string,userId?:string){
     workspace_id:workspaceId,name,description:body?.description?String(body.description):null,
     default_locale:defaultLocale,supported_locales:[...new Set(locales)],
     trigger_type:triggerType,
-    trigger_config:body?.trigger_config&&typeof body.trigger_config==='object'?body.trigger_config:{},
+    trigger_config:body?.trigger_config&&typeof body.trigger_config==='object'?{
+      ...body.trigger_config,
+      after_hours_template_name:String(body.trigger_config.after_hours_template_name||'').trim()||null,
+      after_hours_parameters:Array.isArray(body.trigger_config.after_hours_parameters)
+        ?body.trigger_config.after_hours_parameters.map((x:any)=>String(x??''))
+        :[],
+    }:{},
     steps,fallback_message:body?.fallback_message&&typeof body.fallback_message==='object'?body.fallback_message:{},
     active:body?.active!==false,priority:Number(body?.priority||100),created_by:userId||null,updated_at:new Date().toISOString()
   };
