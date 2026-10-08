@@ -1,8 +1,8 @@
 'use client';
 
 import {useEffect,useState} from 'react';
-import AppShell from '../components/AppShell';
-import {getSupabase} from '../../../lib/supabase-browser';
+import AppShell from '../../components/AppShell';
+import {getSupabase} from '../../../../lib/supabase-browser';
 
 type Rule={id:string;name:string;keywords:string[];score_delta:number;target_stage:string|null;active:boolean;priority:number};
 type Workflow={id:string;name:string;trigger_type:string;trigger_config:any;actions:any[];active:boolean};
