@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { adminDb, authenticatedUser, workspaceAccess } from '../../../../../lib/workspace-auth';
+import { adminDb, authenticatedUser, workspaceAccess } from '../../../../lib/workspace-auth';
 
 async function accessFor(request:Request,workspaceId:string){
  const user=await authenticatedUser(request);const db=adminDb();const access=await workspaceAccess(db,user.id,workspaceId);return {db,access};
