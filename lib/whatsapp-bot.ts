@@ -100,6 +100,47 @@ async function sendPayload(db:SupabaseClient,connection:any,conversation:any,con
   }
 }
 
+async function sendTemplateFallback(db:SupabaseClient,connection:any,conversation:any,contactId:string|null,flow:BotFlow,locale:string,variables:any){
+  const config=flow.trigger_config&&typeof flow.trigger_config==='object'?flow.trigger_config:{};
+  const templateName=String(config.after_hours_template_name||'').trim();
+  if(!templateName)return null;
+
+  const {data:template,error:templateError}=await db.from('whatsapp_templates')
+    .select('id,name,language,status,components,connection_id')
+    .eq('workspace_id',conversation.workspace_id)
+    .eq('name',templateName)
+    .eq('status','APPROVED')
+    .limit(1)
+    .maybeSingle();
+  if(templateError)throw templateError;
+  if(!template)throw new WhatsAppHttpError('Approved after-hours template not found.',400);
+
+  if(template.connection_id && template.connection_id!==connection.id){
+    throw new WhatsAppHttpError('After-hours template is linked to a different WhatsApp connection.',409);
+  }
+
+  const configured=Array.isArray(config.after_hours_parameters)?config.after_hours_parameters:[];
+  const params=configured.map((value:any)=>({type:'text',text:interpolate(String(value??''),variables)}));
+  const language=String(template.language||locale||flow.default_locale||'en');
+  const payload:any={
+    messaging_product:'whatsapp',
+    to:conversation.phone,
+    type:'template',
+    template:{
+      name:template.name,
+      language:{code:language}
+    }
+  };
+  if(params.length)payload.template.components=[{type:'body',parameters:params}];
+
+  const providerMessageId=await sendPayload(
+    db,connection,conversation,contactId,payload,
+    '[Automated after-hours reply]',
+    'template'
+  );
+  return providerMessageId;
+}
+
 async function sendStep(db:SupabaseClient,connection:any,conversation:any,contactId:string|null,flow:BotFlow,step:any,locale:string,variables:any){
   const type=String(step?.type||'message');
   if(type==='handoff'){
@@ -190,9 +231,36 @@ export async function processBotIncoming(args:{
 
   const windowOpen=conversation.customer_window_expires_at&&new Date(conversation.customer_window_expires_at).getTime()>Date.now();
   if(!windowOpen){
+    try{
+      const providerMessageId=await sendTemplateFallback(db,connection,conversation,contactId,currentFlow,'en',currentSession?.variables||{});
+      if(providerMessageId){
+        await db.from('whatsapp_bot_events').insert({
+          workspace_id:conversation.workspace_id,
+          conversation_id:conversation.id,
+          flow_id:currentFlow.id,
+          session_id:currentSession?.id||null,
+          event_type:'after_hours_template_sent',
+          payload:{providerMessageId}
+        });
+        return {handled:true,status:'after_hours_template_sent',flow:currentFlow};
+      }
+    }catch(error){
+      await db.from('whatsapp_bot_events').insert({
+        workspace_id:conversation.workspace_id,
+        conversation_id:conversation.id,
+        flow_id:currentFlow.id,
+        session_id:currentSession?.id||null,
+        event_type:'after_hours_template_error',
+        payload:{message:error instanceof Error?error.message:'After-hours template failed.'}
+      });
+    }
     await db.from('whatsapp_bot_events').insert({
-      workspace_id:conversation.workspace_id,conversation_id:conversation.id,flow_id:currentFlow.id,session_id:currentSession?.id||null,
-      event_type:'template_required',payload:{reason:'24-hour customer service window is closed'}
+      workspace_id:conversation.workspace_id,
+      conversation_id:conversation.id,
+      flow_id:currentFlow.id,
+      session_id:currentSession?.id||null,
+      event_type:'template_required',
+      payload:{reason:'24-hour customer service window is closed'}
     });
     return {handled:true,status:'template_required',flow:currentFlow};
   }
