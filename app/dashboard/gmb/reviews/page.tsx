@@ -70,8 +70,9 @@ const css = `
 .fill{height:100%;background:#087f7b}
 .empty{padding:42px 20px;text-align:center;color:#667085;font-size:11px}
 .note{font-size:10px;color:#667085}
-@media(max-width:1050px){.toolbar{grid-template-columns:1fr 1fr}.metrics{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:680px){.toolbar,.metrics,.split{grid-template-columns:1fr}.top{flex-direction:column}.status{align-self:flex-start}}
+@media(max-width:1050px){.toolbar{grid-template-columns:1fr 1fr}.metrics,.summary4{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:680px){.toolbar,.metrics,.split,.summary4{grid-template-columns:1fr}.top{flex-direction:column}.status{align-self:flex-start}}
+
 `;
 
 const fmt = (value: string | null) => {
@@ -238,6 +239,29 @@ export default function ReviewManagementPage() {
 
         {error && <div className='alert alert-error'>{error}</div>}
         {message && <div className='alert alert-success'>{message}</div>}
+
+        <div className='tabbar'>
+          <button className='tab' onClick={() => location.href='/dashboard/gmb'}>Overview</button>
+          <button className='tab active'>Reviews</button>
+          <button className='tab' onClick={() => location.href='/dashboard/gmb/posts'}>Posts</button>
+          <button className='tab' onClick={() => location.href='/dashboard/gmb/management'}>GMB Settings</button>
+          <button className='tab' onClick={() => location.href='/dashboard/gmb/analytics'}>Insights</button>
+          <button className='tab' onClick={() => location.href='/dashboard/gmb/keywords'}>Keywords</button>
+        </div>
+
+        <section className='panel ai-panel'>
+          <div className='ai-head'><div><div className='eyebrow'>AI REVIEW SUGGESTIONS</div><h2>AI Review Suggestions</h2><p>AI drafts stay workspace-scoped and are only published after a permitted user confirms them.</p></div><button className='ai-switch' aria-label='AI enabled'><i/></button></div>
+          <div className='ai-item'><div className='ai-copy'><div className='ai-icon'>✦</div><div><strong>AI Auto Reply</strong><small>{metrics?.needsReply ? metrics.needsReply + ' review(s) need response' : 'No pending replies'}</small></div></div><button className='btn btn-soft' onClick={() => location.href='/dashboard/gmb/ai'}>Open AI</button></div>
+          <div className='ai-item'><div className='ai-copy'><div className='ai-icon'>▣</div><div><strong>AI Form</strong><small>Customer feedback workflow is available.</small></div></div><button className='btn' onClick={() => location.href='/dashboard/gmb/forms'}>Open Form</button></div>
+          <div className='ai-item'><div className='ai-copy'><div className='ai-icon'>≡</div><div><strong>Predefined / Keyword Guidance</strong><small>Use approved workspace keywords when they fit naturally.</small></div></div><button className='btn' onClick={() => location.href='/dashboard/gmb/keywords'}>Keywords</button></div>
+        </section>
+
+        <div className='summary4'>
+          <article className='panel metric'><span>TOTAL REVIEWS</span><strong>{loading ? '—' : total}</strong><small>All imported reviews</small></article>
+          <article className='panel metric'><span>AVERAGE RATING</span><strong>{loading ? '—' : metrics?.averageRating ?? '—'}</strong><small>Overall imported rating</small></article>
+          <article className='panel metric'><span>RECENT REVIEWS</span><strong>{loading ? '—' : Math.min(total,10)}</strong><small>Latest review set</small></article>
+          <article className='panel metric'><span>PENDING REPLIES</span><strong>{loading ? '—' : metrics?.needsReply ?? 0}</strong><small>Need response</small></article>
+        </div>
 
         <section className='panel'>
           <div className='panel-head'>
