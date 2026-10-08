@@ -60,7 +60,16 @@ export default function CRMPage(){
   async function saveLead(){
     if(!leadForm.title.trim()){setError('Lead title is required.');return}
     setSaving(true);setError('');setNotice('');
-    try{const user=(await getSupabase().auth.getUser()).data.user;const {error}=await getSupabase().from('crm_leads').insert({...leadForm,workspace_id:workspaceId,value:Number(leadForm.value||0),score:Number(leadForm.score||0),created_by:user?.id||null,contact_id:leadForm.contact_id||null});if(error)throw error;setLeadForm({title:'',contact_id:'',source:'manual',stage:'new',score:'50',value:'',notes:''});setNotice('Lead added.');await load()}catch(e){setError(e instanceof Error?e.message:'Unable to create lead.')}finally{setSaving(false)}
+    try{const user=(await getSupabase().auth.getUser()).data.user;const {data:newLead,error}=await getSupabase().from('crm_leads').insert({...leadForm,workspace_id:workspaceId,value:Number(leadForm.value||0),score:Number(leadForm.score||0),created_by:user?.id||null,contact_id:leadForm.contact_id||null}).select('id').single();if(error)throw error;
+      if(newLead&&user){
+        try{
+          const session=(await getSupabase().auth.getSession()).data.session;
+          if(session){
+            await fetch('/api/crm/workflows/trigger',{method:'POST',headers:{Authorization:'Bearer '+session.access_token,'Content-Type':'application/json'},body:JSON.stringify({workspaceId,triggerType:'lead_created',leadId:newLead.id,context:{source:'crm_manual'}})});
+          }
+        }catch{}
+      }
+      setLeadForm({title:'',contact_id:'',source:'manual',stage:'new',score:'50',value:'',notes:''});setNotice('Lead added.');await load()}catch(e){setError(e instanceof Error?e.message:'Unable to create lead.')}finally{setSaving(false)}
   }
   async function saveTask(){
     if(!taskForm.title.trim()){setError('Task title is required.');return}
