@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { adminClient } from '../../../../../lib/whatsapp-server';
-import { executeCrmWorkflow } from '../../../../../lib/crm-workflows';
+import { adminClient } from '../../../../lib/whatsapp-server';
+import { executeCrmWorkflow } from '../../../../lib/crm-workflows';
 
 export const dynamic = 'force-dynamic';
 
