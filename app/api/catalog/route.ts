@@ -53,9 +53,25 @@ export async function PATCH(request:Request){
     const table=type==='category'?'catalog_categories':type==='product'?'catalog_products':type==='coupon'?'catalog_coupons':'';
     if(!table)return NextResponse.json({error:'Unknown catalogue type.'},{status:400});
     const update:any={updated_at:new Date().toISOString()};
-    if(type==='category')Object.assign(update,{name:String(body.name||'').trim(),description:body.description?String(body.description):null,active:body.active!==false});
-    if(type==='product')Object.assign(update,{name:String(body.name||'').trim(),description:body.description?String(body.description):null,price:Number(body.price||0),compare_at_price:body.compare_at_price==null||body.compare_at_price===''?null:Number(body.compare_at_price),active:body.active!==false,featured:Boolean(body.featured),stock_quantity:Number(body.stock_quantity||0),category_id:body.category_id||null});
-    if(type==='coupon')Object.assign(update,{active:Boolean(body.active),discount_value:Number(body.discount_value||0),min_order_value:Number(body.min_order_value||0),max_uses:body.max_uses?Number(body.max_uses):null});
+    if(Object.prototype.hasOwnProperty.call(body,'active'))update.active=Boolean(body.active);
+    if(type==='category'){
+      if(Object.prototype.hasOwnProperty.call(body,'name'))update.name=String(body.name||'').trim();
+      if(Object.prototype.hasOwnProperty.call(body,'description'))update.description=body.description?String(body.description):null;
+    }
+    if(type==='product'){
+      if(Object.prototype.hasOwnProperty.call(body,'name'))update.name=String(body.name||'').trim();
+      if(Object.prototype.hasOwnProperty.call(body,'description'))update.description=body.description?String(body.description):null;
+      if(Object.prototype.hasOwnProperty.call(body,'price'))update.price=Number(body.price||0);
+      if(Object.prototype.hasOwnProperty.call(body,'compare_at_price'))update.compare_at_price=body.compare_at_price==null||body.compare_at_price===''?null:Number(body.compare_at_price);
+      if(Object.prototype.hasOwnProperty.call(body,'featured'))update.featured=Boolean(body.featured);
+      if(Object.prototype.hasOwnProperty.call(body,'stock_quantity'))update.stock_quantity=Number(body.stock_quantity||0);
+      if(Object.prototype.hasOwnProperty.call(body,'category_id'))update.category_id=body.category_id||null;
+    }
+    if(type==='coupon'){
+      if(Object.prototype.hasOwnProperty.call(body,'discount_value'))update.discount_value=Number(body.discount_value||0);
+      if(Object.prototype.hasOwnProperty.call(body,'min_order_value'))update.min_order_value=Number(body.min_order_value||0);
+      if(Object.prototype.hasOwnProperty.call(body,'max_uses'))update.max_uses=body.max_uses?Number(body.max_uses):null;
+    }
     const {data,error}=await db.from(table).update(update).eq('id',id).eq('workspace_id',workspaceId).select().single();if(error)throw error;return NextResponse.json({item:data});
   }catch(e){const m=e instanceof Error?e.message:'Unable to update catalogue item.';return NextResponse.json({error:m},{status:/Authentication|session/i.test(m)?401:500});}
 }
