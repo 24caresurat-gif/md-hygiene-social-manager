@@ -180,7 +180,7 @@ export async function processBotIncoming(args:{
     currentFlow=(flows||[]).find((flow:any)=>{
       const keywords=Array.isArray(flow?.trigger_config?.keywords)?flow.trigger_config.keywords.map((v:any)=>normalize(String(v))):[];
       if(flow.trigger_type==='any_message')return true;
-      if(flow.trigger_type==='new_conversation')return !session;
+      if(flow.trigger_type==='new_conversation')return !session || ['completed','handoff'].includes(String(session?.status||''));
       if(flow.trigger_type==='button_reply')return !!buttonReplyId && (Array.isArray(flow?.trigger_config?.button_ids)?flow.trigger_config.button_ids.map((v:any)=>String(v)).includes(String(buttonReplyId)):false);
       return keywords.some((keyword:string)=>keyword && normalized.includes(keyword));
     }) || null;
