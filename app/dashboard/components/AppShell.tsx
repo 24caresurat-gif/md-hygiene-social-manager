@@ -28,6 +28,7 @@ const nav=[
   ['Google Business & Reviews','accounts','/dashboard/gmb','gmb'],
   ['WhatsApp Inbox','accounts','/dashboard/whatsapp','whatsapp'],
   ['WhatsApp Bot Automation','accounts','/dashboard/whatsapp/bot','whatsapp'],
+  ['WhatsApp Bot Logs','analytics','/dashboard/whatsapp/bot-logs','whatsapp'],
   ['WhatsApp Buttons','accounts','/dashboard/whatsapp/buttons','whatsapp'],
   ['Product Suggestions','accounts','/dashboard/whatsapp/product-suggestions','whatsapp'],
   ['WhatsApp Contacts','accounts','/dashboard/whatsapp-contacts','whatsapp'],
