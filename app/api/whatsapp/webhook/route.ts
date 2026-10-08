@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { adminClient } from '../../../../lib/whatsapp-server';
 import { processBotIncoming } from '../../../../lib/whatsapp-bot';
-import { executeCrmWorkflow } from '../../../../lib/crm-workflows';
+import { executeCrmWorkflow, triggerCrmWorkflows } from '../../../../lib/crm-workflows';
 
 function verifySignature(raw: string, signature: string, secret: string) {
   if (!secret || !signature.startsWith('sha256=')) return false;
@@ -126,12 +126,14 @@ async function syncCrmAndWorkflows(db:any,workspaceId:string,conversation:any,co
 
   let {data:lead}=await db.from('crm_leads').select('*').eq('workspace_id',workspaceId).eq('contact_id',crmContact.id)
     .in('stage',['new','qualified','proposal','negotiation']).order('created_at',{ascending:false}).limit(1).maybeSingle();
+  let leadCreated=false;
   if(!lead){
     const {data:createdLead,error}=await db.from('crm_leads').insert({
       workspace_id:workspaceId,contact_id:crmContact.id,title:'WhatsApp enquiry',source:'whatsapp',stage:'new',score:0,value:0
     }).select('*').single();
     if(error)throw error;
     lead=createdLead;
+    leadCreated=true;
   }
 
   const {data:rules}=await db.from('crm_lead_rules').select('*').eq('workspace_id',workspaceId).eq('active',true).order('priority',{ascending:true});
@@ -158,16 +160,23 @@ async function syncCrmAndWorkflows(db:any,workspaceId:string,conversation:any,co
   if(updateError)throw updateError;
   lead=updated;
 
+  const workflowRuns=[];
+  if(leadCreated){
+    workflowRuns.push(...await triggerCrmWorkflows(db,workspaceId,'lead_created',lead,{source:'whatsapp'}));
+  }
+
   const {data:flows}=await db.from('crm_workflows').select('*').eq('workspace_id',workspaceId).eq('active',true).eq('trigger_type','whatsapp_message');
   for(const flow of flows||[]){
     const result=await executeCrmWorkflow(db,flow,workspaceId,lead);
-    await db.from('crm_workflow_runs').insert({
+    const {data:run,error:runError}=await db.from('crm_workflow_runs').insert({
       workflow_id:flow.id,workspace_id:workspaceId,entity_type:'crm_lead',entity_id:lead.id,
-      status:result.status,result:{matchedRules:matched,scoreDelta:delta,actions:result.results},
+      status:result.status,result:{trigger:'whatsapp_message',matchedRules:matched,scoreDelta:delta,actions:result.results},
       completed_at:new Date().toISOString()
-    });
+    }).select('id,status,result').single();
+    if(runError)throw runError;
+    workflowRuns.push(run);
   }
-  return {crmContact,lead,matched,delta};
+  return {crmContact,lead,matched,delta,leadCreated,workflowRuns};
 }
 
 async function deliveryStatus(db: any, connection: any, item: any) {
