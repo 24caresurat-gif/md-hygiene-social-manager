@@ -85,3 +85,40 @@ export async function executeCrmWorkflow(db:any, workflow:any, workspaceId:strin
   }
   return {status:failed?'failed':'completed',results};
 }
+
+export async function triggerCrmWorkflows(
+  db:any,
+  workspaceId:string,
+  triggerType:string,
+  lead:any,
+  context:any={},
+){
+  if(!lead?.id)return [];
+  const {data:workflows,error}=await db.from('crm_workflows')
+    .select('*')
+    .eq('workspace_id',workspaceId)
+    .eq('active',true)
+    .eq('trigger_type',triggerType);
+  if(error)throw error;
+
+  const runs:any[]=[];
+  for(const workflow of workflows||[]){
+    const result=await executeCrmWorkflow(db,workflow,workspaceId,lead);
+    const {data:run,error:runError}=await db.from('crm_workflow_runs').insert({
+      workflow_id:workflow.id,
+      workspace_id:workspaceId,
+      entity_type:'crm_lead',
+      entity_id:lead.id,
+      status:result.status,
+      result:{
+        trigger:triggerType,
+        ...context,
+        actions:result.results,
+      },
+      completed_at:new Date().toISOString(),
+    }).select('id,status,result').single();
+    if(runError)throw runError;
+    runs.push(run);
+  }
+  return runs;
+}
