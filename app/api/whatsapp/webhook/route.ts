@@ -283,14 +283,11 @@ export async function POST(request: Request) {
           }catch(crmError){
             await db.from('whatsapp_bot_events').insert({workspace_id:connection.workspace_id,conversation_id:inboundResult.conversation.id,event_type:'crm_sync_error',payload:{message:crmError instanceof Error?crmError.message:'CRM sync failed.'}});
           }
-          const windowOpen=inboundResult.conversation.customer_window_expires_at&&new Date(inboundResult.conversation.customer_window_expires_at).getTime()>Date.now();
-          if(windowOpen){
-            try{
-              const interactiveId=String(item?.interactive?.button_reply?.id||item?.interactive?.list_reply?.id||'').trim()||null;
-              await processBotIncoming({db,connection,conversation:inboundResult.conversation,contactId:inboundResult.contact.id,text:messageText,buttonReplyId:interactiveId,contactName:inboundResult.contact.name||null});
-            }catch(botError){
-              await db.from('whatsapp_bot_events').insert({workspace_id:connection.workspace_id,conversation_id:inboundResult.conversation.id,event_type:'error',payload:{message:botError instanceof Error?botError.message:'Bot processing failed.'}});
-            }
+          try{
+            const interactiveId=String(item?.interactive?.button_reply?.id||item?.interactive?.list_reply?.id||'').trim()||null;
+            await processBotIncoming({db,connection,conversation:inboundResult.conversation,contactId:inboundResult.contact.id,text:messageText,buttonReplyId:interactiveId,contactName:inboundResult.contact.name||null});
+          }catch(botError){
+            await db.from('whatsapp_bot_events').insert({workspace_id:connection.workspace_id,conversation_id:inboundResult.conversation.id,event_type:'error',payload:{message:botError instanceof Error?botError.message:'Bot processing failed.'}});
           }
         }
         for (const item of Array.isArray(value?.statuses) ? value.statuses : []) await deliveryStatus(db, connection, item);
