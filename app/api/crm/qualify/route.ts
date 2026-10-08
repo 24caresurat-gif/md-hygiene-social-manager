@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { adminDb, authenticatedUser, workspaceAccess } from '../../../../lib/workspace-auth';
+import { executeCrmWorkflow } from '../../../../lib/crm-workflows';
 
 function normalize(value:string){return value.toLowerCase().replace(/\s+/g,' ').trim();}
 function clamp(value:number){return Math.max(0,Math.min(100,value));}
@@ -128,7 +129,15 @@ export async function POST(request:Request){
       await db.from('crm_contacts').update({last_contacted_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',contact.id).eq('workspace_id',workspaceId);
     }
 
-    return NextResponse.json({success:true,lead:updated,contact,scoreDelta,matchedRules:matched});
+    const {data:workflows}=await db.from('crm_workflows').select('*').eq('workspace_id',workspaceId).eq('active',true).eq('trigger_type','lead_score_changed');
+    const workflowRuns:any[]=[];
+    for(const workflow of workflows||[]){
+      const result=await executeCrmWorkflow(db,workflow,workspaceId,updated);
+      const {data:run}=await db.from('crm_workflow_runs').insert({workflow_id:workflow.id,workspace_id:workspaceId,entity_type:'crm_lead',entity_id:updated.id,status:result.status,result:result.results,completed_at:new Date().toISOString()}).select('id,status,result').single();
+      workflowRuns.push(run||{workflow_id:workflow.id,status:result.status,result:result.results});
+    }
+
+    return NextResponse.json({success:true,lead:updated,contact,scoreDelta,matchedRules:matched,workflowRuns});
   }catch(e){
     const m=e instanceof Error?e.message:'Unable to qualify lead.';
     return NextResponse.json({error:m},{status:/Authentication|session/i.test(m)?401:500});
