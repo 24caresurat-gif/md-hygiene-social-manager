@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { adminDb } from '../../../../lib/workspace-auth';
+import { adminDb } from '../../../../../lib/workspace-auth';
 
 function orderNumber(){ return 'ORD-' + Date.now().toString(36).toUpperCase() + '-' + crypto.randomUUID().slice(0,6).toUpperCase(); }
 
