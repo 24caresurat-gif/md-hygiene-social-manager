@@ -18,6 +18,8 @@ const nav=[
   ['Publishing History','history','/dashboard/history','publishing'],
   ['Analytics','analytics','/dashboard/analytics','analytics'],
   ['Media Library','media','/dashboard/media','content'],
+  ['Product Catalogue','accounts','/dashboard/catalog','catalog'],
+  ['Digital Card','accounts','/dashboard/digital-card','digital_card'],
   ['Google Business & Reviews','accounts','/dashboard/gmb','gmb'],
   ['WhatsApp Inbox','accounts','/dashboard/whatsapp','whatsapp'],
   ['WhatsApp Contacts','accounts','/dashboard/whatsapp-contacts','whatsapp'],
