@@ -1,34 +1,202 @@
 'use client';
-import {useEffect,useState} from 'react';
+
+import { useEffect, useMemo, useState } from 'react';
 import AppShell from '../components/AppShell';
-import {getSupabase} from '../../../lib/supabase-browser';
+import { getSupabase } from '../../../lib/supabase-browser';
 
-type Location={id:string;business_name:string;location_id:string;address:string|null;phone:string|null;website:string|null;category:string|null;review_url:string|null;status:string};
-type Review={id:string;reviewer_name:string|null;rating:number|null;comment:string|null;review_time:string|null;reply_text:string|null;reply_status:string;business_name:string|null};
-type Suggestion={id:string;content:string;model:string|null;created_at:string};
+type Location = {
+  id: string;
+  business_name: string;
+  location_id: string;
+  address: string | null;
+  phone: string | null;
+  website: string | null;
+  category: string | null;
+  review_url: string | null;
+  status: string;
+};
 
-const dateLabel=(v:string|null)=>{if(!v)return 'Date unavailable';const d=new Date(v);return Number.isNaN(d.getTime())?'Date unavailable':d.toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'})};
+type Review = {
+  id: string;
+  reviewer_name: string | null;
+  rating: number | null;
+  comment: string | null;
+  review_time: string | null;
+  reply_text: string | null;
+  reply_status: string;
+  business_name: string | null;
+};
 
-const gmbStyles=`.gmb{display:grid;gap:16px}.connect{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:20px}.connect h2{margin:5px 0}.connect p{margin:0;max-width:760px}.actions{display:flex;gap:8px;flex-wrap:wrap}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.stat{padding:16px}.stat span{display:block;color:#667085;font-size:10px;font-weight:800}.stat strong{display:block;font-size:24px;margin-top:6px}.locations{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;padding:0 18px 18px}.loc{padding:16px}.lochead{display:flex;justify-content:space-between;gap:10px}.loc h3{margin:0 0 4px;font-size:14px}.loc p,.meta{margin:0;color:#667085;font-size:10px;line-height:1.5}.badge{padding:6px 9px;border-radius:999px;background:#edf8f1;color:#14804a;font-size:9px;font-weight:900;height:max-content}.meta{display:grid;gap:5px;margin-top:12px;padding-top:10px;border-top:1px solid #edf0f3}.reviews{overflow:hidden}.review{padding:16px 18px;border-top:1px solid #edf0f3}.reviewgrid{display:grid;grid-template-columns:160px 58px minmax(0,1fr) 100px;gap:12px}.reviewer strong,.reviewer small{display:block}.reviewer strong{font-size:11px}.reviewer small{font-size:9px;color:#8a95a3;margin-top:3px}.stars{font-size:11px;font-weight:900}.comment{font-size:10px;line-height:1.55;color:#475467;white-space:pre-wrap}.reply-status{font-size:9px;font-weight:900;text-align:right}.replied{color:#14804a}.pending{color:#b54708}.tools{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}.tool{border:1px solid #dce5e8;border-radius:9px;background:#fff;padding:8px 10px;font-size:9px;font-weight:850;cursor:pointer}.tool.primary{background:#edf8f7;color:#087f7b;border-color:#cde7e5}.tool.danger{color:#b42318}.replybox{margin-top:10px;padding:12px;background:#f8fafb;border:1px solid #e5eaee;border-radius:11px}.replybox textarea{width:100%;min-height:86px;border:1px solid #dbe4e8;border-radius:9px;padding:10px;resize:vertical}.suggestion{margin-top:8px;padding:10px;background:#edf8f7;border-radius:9px;font-size:10px;color:#245f5c;white-space:pre-wrap}.module-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}.module{padding:18px}.module h2{font-size:15px;margin:4px 0}.module p{font-size:11px}.empty{padding:40px 20px;text-align:center;color:#667085;font-size:11px}@media(max-width:900px){.connect{align-items:flex-start;flex-direction:column}.stats,.locations,.module-grid{grid-template-columns:1fr}.reviewgrid{grid-template-columns:1fr 58px}.comment{grid-column:1/-1}.reply-status{text-align:left}}`;
+type ReviewSettings = {
+  ai_enabled: boolean;
+  negative_protection_enabled: boolean;
+  negative_protection_threshold: number;
+};
+
+const css = `
+.gmb-shell{display:grid;gap:14px}
+.gmb-topbar{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:12px;align-items:end}
+.title-wrap h1{margin:4px 0 5px;font-size:29px;letter-spacing:-.035em}.title-wrap p{margin:0;color:#718096;font-size:11px}
+.selector{display:grid;gap:5px;min-width:210px}.selector span{font-size:8px;letter-spacing:.1em;text-transform:uppercase;font-weight:950;color:#7b8794}
+.selector select{height:45px;border:1px solid #dce5ea;border-radius:10px;padding:0 12px;background:#fff;font-size:11px;font-weight:800;color:#24313b}
+.notice{padding:13px 15px;border:1px solid #e3d4ff;background:#fbf7ff;border-radius:12px;color:#43345e;font-size:10px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.notice strong{font-size:12px}.notice span{display:block;color:#6f6580;margin-top:3px;line-height:1.45}
+.tabs{display:flex;gap:4px;overflow:auto;background:#fff;border:1px solid #e1e8ec;border-radius:12px;padding:4px}
+.tab{white-space:nowrap;padding:10px 13px;border-radius:9px;background:transparent;color:#667085;font-size:10px;font-weight:900;cursor:pointer}.tab.active{background:#eef5ff;color:#2166d1}
+.profile-card{display:grid;grid-template-columns:minmax(0,1fr) 150px;gap:16px;padding:18px}
+.profile-main{display:grid;grid-template-columns:56px minmax(0,1fr);gap:13px;align-items:start}
+.google-mark{width:56px;height:56px;border-radius:16px;background:#fff;border:1px solid #e1e8ec;display:grid;place-items:center;font-size:30px;font-weight:950;color:#4285f4}
+.profile-title{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.profile-title h2{margin:0;font-size:17px}.connected{padding:5px 8px;border-radius:999px;background:#edf9f1;color:#087443;font-size:8px;font-weight:950}
+.profile-sub{margin:4px 0 0;color:#7b8792;font-size:10px}.detail-list{display:grid;gap:5px;margin-top:14px;padding-top:12px;border-top:1px solid #edf0f3}.detail{display:flex;gap:9px;color:#667085;font-size:10px}.detail b{width:18px;color:#087f7b}.detail span{color:#3a4650;overflow-wrap:anywhere}
+.qr-box{display:grid;place-items:center;align-content:center;gap:8px;border-left:1px solid #edf0f3;padding-left:16px}.qr{width:100px;height:100px;border:1px solid #e3e8ec;border-radius:11px;display:grid;place-items:center;background:repeating-linear-gradient(45deg,#111 0 2px,#fff 2px 5px);color:#fff;font-weight:950;text-shadow:0 0 2px #000}.qr-label{font-size:8px;text-align:center;color:#7b8792}
+.action-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}.btn{border:1px solid #dce5e9;border-radius:10px;padding:9px 11px;background:#fff;color:#34424b;font-size:9px;font-weight:900;cursor:pointer}.btn-primary{background:#2168c9;color:#fff;border-color:#2168c9}.btn-soft{background:#eef5ff;color:#2166d1}.btn-green{background:#edf9f4;color:#087f5c;border-color:#d0efe1}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:11px}.metric{padding:15px}.metric span{display:block;font-size:9px;letter-spacing:.08em;text-transform:uppercase;font-weight:950;color:#667085}.metric strong{display:block;font-size:25px;margin-top:7px}.metric small{display:block;font-size:9px;color:#88939c;margin-top:3px}.metric.blue{background:#f6f9ff;border-color:#d9e5fb}.metric.green{background:#f5fcf7;border-color:#d7efdc}.metric.purple{background:#fbf7ff;border-color:#eadcff}.metric.orange{background:#fff9f1;border-color:#f3dfc0}
+.section{overflow:hidden}.section-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:17px 18px}.section-head h2{margin:4px 0 0;font-size:16px}.section-head p{margin:4px 0 0;color:#7d8992;font-size:10px}
+.ai-list{border-top:1px solid #edf0f3}.ai-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 17px;border-top:1px solid #edf0f3}.ai-row:first-child{border-top:0}.ai-copy{display:flex;gap:11px;align-items:center;min-width:0}.ai-icon{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:#eef5ff;color:#2869cf;font-weight:950}.ai-copy strong{display:block;font-size:11px}.ai-copy small{display:block;color:#84909a;font-size:9px;margin-top:3px}.toggle{width:40px;height:24px;border:0;border-radius:999px;background:#d6dce2;padding:3px;cursor:pointer}.toggle.on{background:#10b981}.toggle i{display:block;width:18px;height:18px;background:#fff;border-radius:50%;transition:transform .15s}.toggle.on i{transform:translateX(16px)}
+.grid2{display:grid;grid-template-columns:1.25fr .75fr;gap:14px}.recent-list{padding:0 17px 12px}.recent{display:grid;grid-template-columns:100px 54px minmax(0,1fr) auto;gap:10px;padding:12px 0;border-top:1px solid #edf0f3;align-items:center}.recent:first-child{border-top:0}.recent strong{font-size:10px}.recent small{display:block;color:#88939c;font-size:9px;margin-top:3px}.stars{font-size:10px;font-weight:950}.review-status{font-size:8px;font-weight:950;padding:5px 8px;border-radius:999px}.review-status.replied{color:#087443;background:#edf9f1}.review-status.pending{color:#a15f05;background:#fff8e9}.empty{padding:36px 20px;text-align:center;color:#687681;font-size:10px}.empty strong{display:block;color:#35424c;font-size:12px;margin-bottom:4px}
+.module-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:11px}.module{padding:15px}.module h3{margin:5px 0;font-size:13px}.module p{margin:0;color:#7b8792;font-size:9px;line-height:1.5}.module .btn{margin-top:11px}
+.error{padding:12px 14px;border-radius:11px;background:#fff1f2;border:1px solid #f5c8cf;color:#9f1239;font-size:10px;font-weight:800}
+@media(max-width:1050px){.gmb-topbar{grid-template-columns:1fr 1fr}.title-wrap{grid-column:1/-1}.profile-card{grid-template-columns:1fr}.qr-box{border-left:0;border-top:1px solid #edf0f3;padding:14px 0 0}.metrics{grid-template-columns:repeat(2,1fr)}.grid2,.module-grid{grid-template-columns:1fr}}
+@media(max-width:650px){.gmb-topbar{grid-template-columns:1fr}.selector{min-width:0}.metrics{grid-template-columns:1fr 1fr}.profile-main{grid-template-columns:46px minmax(0,1fr)}.google-mark{width:46px;height:46px}.recent{grid-template-columns:1fr 48px}.recent .stars{display:none}}
+`;
+
+const tabs = [
+  ['Overview','/dashboard/gmb'],
+  ['Reviews','/dashboard/gmb/reviews'],
+  ['Posts','/dashboard/gmb/posts'],
+  ['GMB Settings','/dashboard/gmb/management'],
+  ['Insights','/dashboard/gmb/analytics'],
+  ['Keywords','/dashboard/gmb/keywords'],
+  ['Roadmap','/dashboard/gmb/features'],
+] as const;
 
 export default function GmbPage(){
- const[workspaceId,setWorkspaceId]=useState(''),[locations,setLocations]=useState<Location[]>([]),[reviews,setReviews]=useState<Review[]>([]),[loading,setLoading]=useState(true),[busy,setBusy]=useState(''),[message,setMessage]=useState(''),[error,setError]=useState(''),[editing,setEditing]=useState<string|null>(null),[reply,setReply]=useState(''),[suggestion,setSuggestion]=useState<Record<string,Suggestion|undefined>>({});
- async function token(){const s=(await getSupabase().auth.getSession()).data.session;if(!s){location.href='/login';throw new Error('Your session has expired.')}return s.access_token}
- async function load(id:string){setLoading(true);setError('');try{const t=await token();const q=new URLSearchParams({workspaceId:id,replyStatus:'all',rating:'0',profileId:'all'});const response=await fetch('/api/google/business/reviews?'+q.toString(),{headers:{Authorization:'Bearer '+t},cache:'no-store'});const d=await response.json().catch(()=>({}));if(!response.ok)throw new Error(d?.error||'Unable to load Google Business data.');setLocations((d.profiles||[]) as Location[]);setReviews((d.reviews||[]) as Review[])}catch(e){setError(e instanceof Error?e.message:'Unable to load Google Business data.')}finally{setLoading(false)}}
- useEffect(()=>{let id='';try{id=localStorage.getItem('mdsm:selectedWorkspaceId')||''}catch{}setWorkspaceId(id);const onWorkspace=(event:Event)=>{const next=(event as CustomEvent<{workspaceId?:string}>).detail?.workspaceId||'';if(next&&next!==id){id=next;setWorkspaceId(next);void load(next);}};window.addEventListener('mdsm:workspace-changed',onWorkspace);const p=new URLSearchParams(location.search);if(p.get('google')==='connected')setMessage('Google connected successfully.');if(p.get('google_error'))setError(p.get('google_error')||'Google connection failed.');if(id)void load(id);else setLoading(false);return()=>window.removeEventListener('mdsm:workspace-changed',onWorkspace);},[]);;
- function connect(){location.href='/dashboard/settings#connections'}
- async function sync(){setBusy('sync');setError('');try{const t=await token();const r=await fetch('/api/google/business/sync',{method:'POST',headers:{Authorization:'Bearer '+t,'Content-Type':'application/json'},body:JSON.stringify({workspaceId})});const d=await r.json();if(!r.ok)throw Error(d?.error||'Sync failed.');setMessage('Sync complete: '+(d.locations||0)+' locations and '+(d.reviews||0)+' reviews processed.');await load(workspaceId)}catch(e){setError(e instanceof Error?e.message:'Sync failed')}finally{setBusy('')}}
- async function generate(reviewId:string){setBusy('ai:'+reviewId);setError('');try{const t=await token();const r=await fetch('/api/google/business/suggestion',{method:'POST',headers:{Authorization:'Bearer '+t,'Content-Type':'application/json'},body:JSON.stringify({reviewId})});const d=await r.json();if(!r.ok)throw Error(d?.error||'Suggestion generation failed.');setSuggestion(v=>({...v,[reviewId]:d.suggestion}))}catch(e){setError(e instanceof Error?e.message:'Suggestion generation failed')}finally{setBusy('')}}
- async function saveReply(reviewId:string,doDelete=false){setBusy('reply:'+reviewId);setError('');try{const t=await token();const r=await fetch('/api/google/business/reply',{method:doDelete?'DELETE':'POST',headers:{Authorization:'Bearer '+t,'Content-Type':'application/json'},body:JSON.stringify(doDelete?{reviewId}:{reviewId,reply})});const d=await r.json();if(!r.ok)throw Error(d?.error||'Reply update failed.');setEditing(null);setReply('');setMessage(doDelete?'Reply removed.':'Reply published to Google.');await load(workspaceId)}catch(e){setError(e instanceof Error?e.message:'Reply update failed')}finally{setBusy('')}}
- function applySuggestion(r:Review){const s=suggestion[r.id];if(s){setEditing(r.id);setReply(s.content)}}
+  const [workspaceId,setWorkspaceId]=useState('');
+  const [locations,setLocations]=useState<Location[]>([]);
+  const [reviews,setReviews]=useState<Review[]>([]);
+  const [settings,setSettings]=useState<ReviewSettings|null>(null);
+  const [selectedLocation,setSelectedLocation]=useState('all');
+  const [loading,setLoading]=useState(true);
+  const [error,setError]=useState('');
+  const [message,setMessage]=useState('');
 
- return <AppShell title='Google Business & Reviews'><style>{gmbStyles}</style>
- <div className='gmb'><div className='page-head'><div><div className='eyebrow'>GOOGLE BUSINESS PROFILE</div><h1>Google Business &amp; Reviews</h1><p>Live workspace-scoped locations and reviews. Google credentials are the only remaining external setup.</p></div></div>
- {error&&<div className='alert alert-error'>{error}</div>}{message&&<div className='alert alert-success'>{message}</div>}
- <section className='panel connect'><div><div className='eyebrow'>CONNECTION</div><h2>{locations.length?'Google is connected':'Open Connection Settings Business Profile'}</h2><p>Connect the Google account that manages this workspace. Tokens remain server-side.</p></div><div className='actions'>{locations.length>0&&<button className='btn btn-soft' disabled={busy!==''} onClick={()=>void sync()}>{busy==='sync'?'Syncing…':'↻ Sync from Google'}</button>}<button className='btn btn-primary' disabled={busy!==''} onClick={()=>void connect()}>{busy==='connect'?'Opening Google…':locations.length?'Open Connection Settings':'Connect Google'}</button></div></section>
- <div className='stats'><article className='panel stat'><span>Connected Locations</span><strong>{loading?'—':locations.length}</strong></article><article className='panel stat'><span>Imported Reviews</span><strong>{loading?'—':reviews.length}</strong></article><article className='panel stat'><span>Needs Reply</span><strong>{loading?'—':reviews.filter(x=>x.reply_status!=='replied').length}</strong></article></div>
- <section className='panel'><div className='panel-head'><div><div className='eyebrow'>LOCATIONS</div><h2>Business Profile locations</h2></div></div>{loading?<div className='empty'>Loading…</div>:locations.length===0?<div className='empty'>No locations imported yet.</div>:<div className='locations'>{locations.map(x=><article className='panel loc' key={x.id}><div className='lochead'><div><h3>{x.business_name}</h3><p>{x.category||'Business Profile location'}</p></div><span className='badge'>{x.status}</span></div><div className='meta'><span>{x.address||'Address unavailable'}</span><span>{x.phone||'Phone unavailable'}</span>{x.website&&<span>{x.website}</span>}{x.review_url&&<a href={x.review_url} target='_blank' rel='noreferrer' style={{color:'#087f7b',fontWeight:800}}>Open Google review link →</a>}</div></article>)}</div>}</section>
- <section className='panel reviews'><div className='panel-head'><div><div className='eyebrow'>REVIEW MANAGEMENT</div><h2>Latest reviews</h2><p>Reply directly from the workspace. Google handles the final moderation/state.</p></div></div>{reviews.length===0?<div className='empty'>No reviews imported yet.</div>:reviews.map(r=><div className='review' key={r.id}><div className='reviewgrid'><div className='reviewer'><strong>{r.reviewer_name||'Google reviewer'}</strong><small>{dateLabel(r.review_time)}</small></div><div className='stars'>{r.rating?'★'.repeat(r.rating):'—'}</div><div className='comment'>{r.comment||'Rating-only review'}</div><div className={'reply-status '+(r.reply_status==='replied'?'replied':'pending')}>{r.reply_status==='replied'?'✓ Replied':'● Needs reply'}</div></div><div className='tools'><button className='tool primary' disabled={busy!==''} onClick={()=>void generate(r.id)}>{busy==='ai:'+r.id?'Generating…':'✦ Suggest Reply'}</button>{r.reply_text&&<button className='tool' onClick={()=>{setEditing(r.id);setReply(r.reply_text||'')}}>Edit Reply</button>}{r.reply_text&&<button className='tool danger' disabled={busy!==''} onClick={()=>void saveReply(r.id,true)}>Delete Reply</button>}{suggestion[r.id]&&<button className='tool' onClick={()=>applySuggestion(r)}>Use Suggestion</button>}</div>{suggestion[r.id]&&<div className='suggestion'><strong>Suggestion · {suggestion[r.id]?.model||'draft'}</strong><br/>{suggestion[r.id]?.content}</div>}{editing===r.id&&<div className='replybox'><textarea value={reply} onChange={e=>setReply(e.target.value)} placeholder='Write a professional reply…'/><div className='tools'><button className='tool primary' disabled={busy!==''||!reply.trim()} onClick={()=>void saveReply(r.id)}>{busy==='reply:'+r.id?'Publishing…':'Publish Reply'}</button><button className='tool' disabled={busy!==''} onClick={()=>{setEditing(null);setReply('')}}>Cancel</button></div></div>}</div>)}</section>
- <div className='module-grid'>{[['All Requested Features','Open the complete Reputation + AI feature center.','/dashboard/gmb/features'],['Review Management','Central review inbox with filters, rating trends, AI drafts and reply actions.','/dashboard/gmb/reviews'],['Business Profile Management','Workspace-scoped location details, review links and connection state.','/dashboard/gmb/management'],['Review Analytics','Rating mix, review volume, response rate, location performance and connection health.','/dashboard/gmb/analytics'],['Request Performance','Review-request funnel, source channels, completion and Google-click activity.','/dashboard/gmb/request-analytics'],['Google Business Posts','Create and manage workspace-scoped Google Business updates before external publishing is connected.','/dashboard/gmb/posts'],['Post Approval Queue','Review and approve workspace Google Business posts before external publishing is enabled.','/dashboard/gmb/post-approvals'],['Review Requests','Create customer review links and track sent/opened/feedback activity.','/dashboard/gmb/requests'],['Feedback Forms','Create public feedback forms connected to review requests.','/dashboard/gmb/forms'],['Feedback Responses','Review customer feedback, sentiment and response drafts.','/dashboard/gmb/responses'],['Keywords Management','Manage workspace keywords used in review-response suggestions.','/dashboard/gmb/keywords'],['AI Review Image','Create shareable review quote cards from imported reviews.','/dashboard/gmb/images'],['Review Protection & AI','Configure low-rating follow-up and business-specific AI reply context.','/dashboard/settings#review-ai']].map(([t,d,h])=><section className='panel module' key={t}><div className='eyebrow'>MODULE</div><h2>{t}</h2><p>{d}</p><button className='btn btn-soft' onClick={()=>location.href=h}>Open Module →</button></section>)}</div>
- </div></AppShell>
+  async function token(){
+    const session=(await getSupabase().auth.getSession()).data.session;
+    if(!session){location.href='/login';throw new Error('Your session has expired.')}
+    return session.access_token;
+  }
+
+  async function load(id:string){
+    setLoading(true);setError('');
+    try{
+      const t=await token();
+      const response=await fetch('/api/google/business/reviews?'+new URLSearchParams({workspaceId:id,replyStatus:'all',rating:'0',profileId:'all'}).toString(),{headers:{Authorization:'Bearer '+t},cache:'no-store'});
+      const data=await response.json().catch(()=>({}));
+      if(!response.ok)throw new Error(data?.error||'Unable to load Google Business data.');
+      setLocations((data.profiles||[]) as Location[]);
+      setReviews((data.reviews||[]) as Review[]);
+      try{
+        const s=await fetch('/api/workspace-review-settings?workspace_id='+encodeURIComponent(id),{headers:{Authorization:'Bearer '+t},cache:'no-store'});
+        const d=await s.json().catch(()=>({}));
+        if(s.ok&&d.settings)setSettings(d.settings as ReviewSettings);
+      }catch{}
+    }catch(e){setError(e instanceof Error?e.message:'Unable to load Google Business data.')}
+    finally{setLoading(false)}
+  }
+
+  useEffect(()=>{
+    let id='';
+    try{id=localStorage.getItem('mdsm:selectedWorkspaceId')||''}catch{}
+    setWorkspaceId(id);
+    const onWorkspace=(event:Event)=>{
+      const next=(event as CustomEvent<{workspaceId?:string}>).detail?.workspaceId||'';
+      if(next&&next!==id){id=next;setWorkspaceId(next);setSelectedLocation('all');void load(next);}
+    };
+    window.addEventListener('mdsm:workspace-changed',onWorkspace);
+    const params=new URLSearchParams(location.search);
+    if(params.get('google')==='connected')setMessage('Google Business connected successfully.');
+    if(params.get('google_error'))setError(params.get('google_error')||'Google connection failed.');
+    if(id)void load(id);else setLoading(false);
+    return()=>window.removeEventListener('mdsm:workspace-changed',onWorkspace);
+  },[]);
+
+  const currentLocation=useMemo(()=>selectedLocation==='all'?locations[0]||null:locations.find(x=>x.id===selectedLocation)||locations[0]||null,[locations,selectedLocation]);
+  const filteredReviews=useMemo(()=>selectedLocation==='all'?reviews:reviews.filter(x=>(x as any).profile_id===selectedLocation),[reviews,selectedLocation]);
+  const ratings=filteredReviews.map(x=>Number(x.rating||0)).filter(x=>x>=1&&x<=5);
+  const avg=ratings.length?ratings.reduce((a,b)=>a+b,0)/ratings.length:null;
+  const recent=filteredReviews.slice().sort((a,b)=>new Date(b.review_time||0).getTime()-new Date(a.review_time||0).getTime()).slice(0,6);
+  const pending=filteredReviews.filter(x=>x.reply_status!=='replied').length;
+  const aiEnabled=settings?.ai_enabled!==false;
+  const connected=locations.length>0;
+
+  function open(path:string){location.href=path}
+
+  return <AppShell title='Google Business & Reviews'>
+    <style>{css}</style>
+    <div className='gmb-shell'>
+      <div className='gmb-topbar'>
+        <div className='title-wrap'>
+          <div className='eyebrow'>GOOGLE MY BUSINESS MANAGEMENT</div>
+          <h1>Google Business Profile</h1>
+          <p>Manage workspace-scoped business locations, reviews, posts and reputation tools from one place.</p>
+        </div>
+        <label className='selector'><span>Business Account</span><select value={currentLocation?.id||''} onChange={e=>setSelectedLocation(e.target.value)} disabled={!locations.length}><option value=''>{locations.length?'Select business':'Not connected'}</option>{locations.map(x=><option key={x.id} value={x.id}>{x.business_name}</option>)}</select></label>
+        <label className='selector'><span>Business Location</span><select value={selectedLocation} onChange={e=>setSelectedLocation(e.target.value)} disabled={!locations.length}><option value='all'>All locations</option>{locations.map(x=><option key={x.id} value={x.id}>{x.business_name}</option>)}</select></label>
+      </div>
+
+      {error&&<div className='error'>{error}</div>}
+      {message&&<div className='notice'><div><strong>Google connection status</strong><span>{message}</span></div><button className='btn btn-soft' onClick={()=>setMessage('')}>Dismiss</button></div>}
+
+      <div className='tabs'>{tabs.map(([label,href])=><button key={label} className={'tab '+(label==='Overview'?'active':'')} onClick={()=>open(href)}>{label}</button>)}</div>
+
+      <section className='panel profile-card'>
+        {currentLocation?<><div><div className='profile-main'><div className='google-mark'>G</div><div><div className='profile-title'><h2>{currentLocation.business_name}</h2><span className='connected'>✓ {currentLocation.status||'Connected'}</span></div><p className='profile-sub'>{currentLocation.category||'Google Business Profile location'}</p><div className='detail-list'><div className='detail'><b>⌖</b><span>{currentLocation.address||'Address unavailable'}</span></div><div className='detail'><b>☎</b><span>{currentLocation.phone||'Phone unavailable'}</span></div>{currentLocation.website&&<div className='detail'><b>◎</b><span>{currentLocation.website}</span></div>}</div><div className='action-row'><button className='btn' onClick={()=>open('/dashboard/gmb/management')}>Edit Business Profile</button>{currentLocation.review_url&&<a className='btn btn-soft' href={currentLocation.review_url} target='_blank' rel='noreferrer'>Share Review Link</a>}<button className='btn btn-green' onClick={()=>open('/dashboard/gmb/requests')}>Create Review Request</button></div></div></div></div><div className='qr-box'>{currentLocation.review_url?<><div className='qr' aria-hidden='true'>QR</div><div className='qr-label'>Public review link ready</div></>:<div className='qr-label'>Review QR appears after Google location sync.</div>}</div></>:<><div className='empty' style={{gridColumn:'1/-1'}}><strong>Google Business Profile is not connected yet.</strong>Connect Google from Settings when you are ready. No placeholder locations or reviews are shown.</div></>}
+      </section>
+
+      <div className='metrics'>
+        <article className='panel metric blue'><span>Total Reviews</span><strong>{loading?'—':filteredReviews.length}</strong><small>Imported into this workspace</small></article>
+        <article className='panel metric green'><span>Average Rating</span><strong>{loading?'—':avg==null?'—':avg.toFixed(2)+'/5'}</strong><small>Across imported ratings</small></article>
+        <article className='panel metric purple'><span>Recent Reviews</span><strong>{loading?'—':recent.length}</strong><small>Latest available review set</small></article>
+        <article className='panel metric orange'><span>Pending Replies</span><strong>{loading?'—':pending}</strong><small>Need a response</small></article>
+      </div>
+
+      <section className='panel section'>
+        <div className='section-head'><div><div className='eyebrow'>AI REVIEW SUGGESTIONS</div><h2>Reputation AI</h2><p>Business-specific reply drafts use your workspace AI settings. Publishing stays permission and connection gated.</p></div><button className={'toggle '+(aiEnabled?'on':'')} aria-label='AI enabled state' onClick={()=>open('/dashboard/settings#review-ai')}><i/></button></div>
+        <div className='ai-list'>
+          <div className='ai-row'><div className='ai-copy'><div className='ai-icon'>✦</div><div><strong>AI Auto Review Replies</strong><small>{pending?pending+' review(s) need a reply':'No pending replies right now'}</small></div></div><button className='btn btn-soft' onClick={()=>open('/dashboard/gmb/ai')}>Open AI</button></div>
+          <div className='ai-row'><div className='ai-copy'><div className='ai-icon'>▣</div><div><strong>AI Feedback Form</strong><small>Collect customer feedback before public review follow-up.</small></div></div><button className='btn' onClick={()=>open('/dashboard/gmb/forms')}>Open Form</button></div>
+          <div className='ai-row'><div className='ai-copy'><div className='ai-icon'>≡</div><div><strong>Keywords &amp; Response Guidance</strong><small>Workspace keywords are injected when they fit naturally.</small></div></div><button className='btn' onClick={()=>open('/dashboard/gmb/keywords')}>Manage Keywords</button></div>
+        </div>
+      </section>
+
+      <div className='grid2'>
+        <section className='panel section'>
+          <div className='section-head'><div><div className='eyebrow'>LATEST REVIEWS</div><h2>Review Inbox</h2><p>Workspace-scoped imported reviews and reply status.</p></div><button className='btn btn-soft' onClick={()=>open('/dashboard/gmb/reviews')}>View All</button></div>
+          <div className='recent-list'>
+            {loading?<div className='empty'>Loading reviews…</div>:recent.length===0?<div className='empty'><strong>No reviews imported yet</strong>Google connection and location sync will populate this section.</div>:recent.map(item=><div className='recent' key={item.id}><div><strong>{item.reviewer_name||'Google reviewer'}</strong><small>{item.comment||'Rating-only review'}</small></div><div className='stars'>{item.rating?'★'.repeat(item.rating)+'☆'.repeat(Math.max(0,5-item.rating)):'—'}</div><small>{item.business_name||'Business Profile'}</small><span className={'review-status '+(item.reply_status==='replied'?'replied':'pending')}>{item.reply_status==='replied'?'Replied':'Pending'}</span></div>)}
+          </div>
+        </section>
+        <section className='panel section'>
+          <div className='section-head'><div><div className='eyebrow'>PROFILE TOOLS</div><h2>Google Business Tools</h2><p>Keep connection and operational tools in one workspace.</p></div></div>
+          <div className='recent-list'>
+            <div className='recent' style={{gridTemplateColumns:'1fr auto'}}><div><strong>Business Profile Management</strong><small>Location details, connection and token state.</small></div><button className='btn' onClick={()=>open('/dashboard/gmb/management')}>Open</button></div>
+            <div className='recent' style={{gridTemplateColumns:'1fr auto'}}><div><strong>Google Business Posts</strong><small>Draft, approve and prepare workspace posts.</small></div><button className='btn' onClick={()=>open('/dashboard/gmb/posts')}>Open</button></div>
+            <div className='recent' style={{gridTemplateColumns:'1fr auto'}}><div><strong>Review Requests</strong><small>Create links and track customer activity.</small></div><button className='btn' onClick={()=>open('/dashboard/gmb/requests')}>Open</button></div>
+            <div className='recent' style={{gridTemplateColumns:'1fr auto'}}><div><strong>Review Analytics</strong><small>Volume, rating and response trends.</small></div><button className='btn' onClick={()=>open('/dashboard/gmb/analytics')}>Open</button></div>
+          </div>
+        </section>
+      </div>
+
+      <section className='module-grid'>
+        {[
+          ['Negative Review Protection','Low-rating follow-up with a clear public Google review option.','/dashboard/gmb/negative-feedback'],
+          ['Rating Improvement','Turn review patterns into operational suggestions without fake reviews or suppression.','/dashboard/gmb/rating-improvement'],
+          ['Market Comparison','Compare performance against an editable benchmark without claiming live competitor data.','/dashboard/gmb/market'],
+          ['AI Business Insights','Analyze imported review and feedback signals.','/dashboard/gmb/ai'],
+          ['AI Review Image','Create shareable review quote cards from imported reviews.','/dashboard/gmb/images'],
+          ['All Requested Features','Open the complete Reputation + AI feature center.','/dashboard/gmb/features'],
+        ].map(([title,description,href])=><article className='panel module' key={title}><div className='eyebrow'>MODULE</div><h3>{title}</h3><p>{description}</p><button className='btn btn-soft' onClick={()=>open(href)}>Open Module →</button></article>)}
+      </section>
+    </div>
+  </AppShell>;
 }
