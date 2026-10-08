@@ -188,11 +188,21 @@ export async function processBotIncoming(args:{
 
   if(!currentFlow)return {handled:false,status:'ignored'};
 
+  const windowOpen=conversation.customer_window_expires_at&&new Date(conversation.customer_window_expires_at).getTime()>Date.now();
+  if(!windowOpen){
+    await db.from('whatsapp_bot_events').insert({
+      workspace_id:conversation.workspace_id,conversation_id:conversation.id,flow_id:currentFlow.id,session_id:currentSession?.id||null,
+      event_type:'template_required',payload:{reason:'24-hour customer service window is closed'}
+    });
+    return {handled:true,status:'template_required',flow:currentFlow};
+  }
+
   const supported=Array.isArray(currentFlow.supported_locales)&&currentFlow.supported_locales.length?currentFlow.supported_locales:['en'];
   const locale=currentSession?.locale || detectLocale(incomingText,supported,currentFlow.default_locale||supported[0]||'en');
   const variables={...(currentSession?.variables||{})};
 
-  if(!currentSession){
+  const isNewSession=!currentSession;
+  if(isNewSession){
     const first=firstStep(currentFlow);
     if(!first)return {handled:false,status:'empty_flow'};
     const {data:newSession,error:createError}=await db.from('whatsapp_bot_sessions').insert({
@@ -219,6 +229,8 @@ export async function processBotIncoming(args:{
     const variable=String(step.variable_name||'answer').trim();
     if(variable)variables[variable]=incomingText;
     targetStep=findStep(currentFlow,step.next_step_id)||findStep(currentFlow,nextStepAfter(currentFlow,step))||null;
+  }else if(step && !isNewSession){
+    targetStep=findStep(currentFlow,nextStepAfter(currentFlow,step));
   }
 
   if(!targetStep){
