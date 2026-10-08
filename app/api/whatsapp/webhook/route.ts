@@ -208,7 +208,7 @@ async function deliveryStatus(db: any, connection: any, item: any) {
 
 export async function GET(request: Request) {
   const u = new URL(request.url);
-  const verify = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || '';
+  const verify = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || process.env.META_WEBHOOK_VERIFY_TOKEN || '';
   if (u.searchParams.get('hub.mode') === 'subscribe' && u.searchParams.get('hub.verify_token') === verify) return new Response(u.searchParams.get('hub.challenge') || '', { status: 200 });
   return new Response('Forbidden', { status: 403 });
 }
@@ -216,7 +216,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const raw = await request.text();
   const signature = request.headers.get('x-hub-signature-256') || '';
-  if (!verifySignature(raw, signature, process.env.META_APP_SECRET || '')) return NextResponse.json({ error: 'Invalid webhook signature.' }, { status: 401 });
+  if (!verifySignature(raw, signature, process.env.WHATSAPP_APP_SECRET || process.env.META_APP_SECRET || '')) return NextResponse.json({ error: 'Invalid webhook signature.' }, { status: 401 });
 
   let body: any;
   try { body = JSON.parse(raw); } catch { return NextResponse.json({ error: 'Invalid JSON.' }, { status: 400 }); }
