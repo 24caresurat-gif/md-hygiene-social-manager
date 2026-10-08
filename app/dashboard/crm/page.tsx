@@ -23,7 +23,7 @@ export default function CRMPage(){
   const [tasks,setTasks]=useState<Task[]>([]);
   const [loading,setLoading]=useState(true),[saving,setSaving]=useState(false),[notice,setNotice]=useState(''),[error,setError]=useState(''),[query,setQuery]=useState('');
   const [contactForm,setContactForm]=useState({name:'',phone:'',email:'',company:'',source:'manual',lifecycle_stage:'lead',whatsapp_opt_in:false});
-  const [leadForm,setLeadForm]=useState({title:'',contact_id:'',source:'manual',stage:'new',score:50,value:'',notes:''});
+  const [leadForm,setLeadForm]=useState({title:'',contact_id:'',source:'manual',stage:'new',score:'50',value:'',notes:''});
   const [taskForm,setTaskForm]=useState({title:'',contact_id:'',lead_id:'',task_type:'follow_up',priority:'normal',due_at:''});
 
   async function load(id=workspaceId){
@@ -60,7 +60,7 @@ export default function CRMPage(){
   async function saveLead(){
     if(!leadForm.title.trim()){setError('Lead title is required.');return}
     setSaving(true);setError('');setNotice('');
-    try{const user=(await getSupabase().auth.getUser()).data.user;const {error}=await getSupabase().from('crm_leads').insert({...leadForm,workspace_id:workspaceId,value:Number(leadForm.value||0),score:Number(leadForm.score||0),created_by:user?.id||null,contact_id:leadForm.contact_id||null});if(error)throw error;setLeadForm({title:'',contact_id:'',source:'manual',stage:'new',score:50,value:'',notes:''});setNotice('Lead added.');await load()}catch(e){setError(e instanceof Error?e.message:'Unable to create lead.')}finally{setSaving(false)}
+    try{const user=(await getSupabase().auth.getUser()).data.user;const {error}=await getSupabase().from('crm_leads').insert({...leadForm,workspace_id:workspaceId,value:Number(leadForm.value||0),score:Number(leadForm.score||0),created_by:user?.id||null,contact_id:leadForm.contact_id||null});if(error)throw error;setLeadForm({title:'',contact_id:'',source:'manual',stage:'new',score:'50',value:'',notes:''});setNotice('Lead added.');await load()}catch(e){setError(e instanceof Error?e.message:'Unable to create lead.')}finally{setSaving(false)}
   }
   async function saveTask(){
     if(!taskForm.title.trim()){setError('Task title is required.');return}
