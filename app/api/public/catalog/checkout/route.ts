@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { adminDb } from '../../../../lib/workspace-auth';
+import { adminDb } from '../../../../../lib/workspace-auth';
 
 function orderNumber(){ return 'ORD-' + Date.now().toString(36).toUpperCase() + '-' + crypto.randomUUID().slice(0,6).toUpperCase(); }
 
@@ -34,14 +34,15 @@ export async function POST(request: Request){
     let subtotal = 0;
     const orderItems:any[] = [];
     for(const item of items as any[]){
-      const product = item.catalog_products;
+      const product = Array.isArray(item.catalog_products) ? item.catalog_products[0] : item.catalog_products;
       if(!product || !product.active) return NextResponse.json({error:'One of the products is no longer available.'},{status:409});
       const quantity = Math.max(1,Number(item.quantity||1));
       if(Number(product.stock_quantity||0) < quantity) return NextResponse.json({error:product.name+' does not have enough stock.'},{status:409});
       const unit = Number(product.price||0);
+      const stockQuantity = Number(product.stock_quantity||0);
       const line = Number((unit*quantity).toFixed(2));
       subtotal += line;
-      orderItems.push({product_id:product.id,product_name:product.name,sku:product.sku||null,quantity,unit_price:unit,line_total:line});
+      orderItems.push({product_id:product.id,product_name:product.name,sku:product.sku||null,quantity,unit_price:unit,line_total:line,stock_quantity:stockQuantity});
     }
     subtotal = Number(subtotal.toFixed(2));
 
@@ -74,7 +75,7 @@ export async function POST(request: Request){
     if(itemsError) throw itemsError;
 
     for(const item of orderItems){
-      const remaining = Math.max(0,Number((items.find((x:any)=>x.product_id===item.product_id)?.catalog_products?.stock_quantity||0))-item.quantity);
+      const remaining = Math.max(0,Number(item.stock_quantity||0)-Number(item.quantity||0));
       const {error:stockError}=await db.from('catalog_products').update({stock_quantity:remaining,updated_at:new Date().toISOString()}).eq('id',item.product_id).eq('workspace_id',ws.id);
       if(stockError) throw stockError;
     }
