@@ -27,7 +27,7 @@ This checklist is the operational source of truth for making the application tid
 - [ ] Verify changing the selected workspace reloads all workspace-owned lists and forms.
 - [ ] Attempt direct API reads/writes using Workspace A token against Workspace B IDs; requests must be denied or return no rows.
 - [ ] Verify staff cannot reach owner/admin-only Settings or management endpoints.
-- [~] Migration reconciliation report added: production history has 63 applied records vs 17 tracked SQL files; 11 exact-name matches (4 with exact versions), 7 name matches with timestamp mismatch, 6 tracked files without exact remote names, and 52 remote records without exact filename-stem matches. This is a source/history mismatch, not proof of missing schema. Follow [the reconciliation report](SUPABASE_MIGRATION_RECONCILIATION.md); preserve production history and do not replay or repair migrations blindly.
+- [~] Migration reconciliation report added: production history has 63 applied records vs 18 tracked SQL files; 12 exact-name matches (5 with exact versions), 7 name matches with timestamp mismatch, 6 tracked files without exact remote names, and 51 remote records without exact filename-stem matches. Restored the already-applied QR standee migration source from the `feat/qr-standee` branch after checking live columns, constraints, index, and RLS policies. This remains a source/history mismatch, not proof of missing schema. Follow [the reconciliation report](SUPABASE_MIGRATION_RECONCILIATION.md); preserve production history and do not replay or repair migrations blindly.
 
 ### B2. Social content flow
 - [ ] Create draft, edit draft, upload media, and confirm persistence.
