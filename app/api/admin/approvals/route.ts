@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
     if (draftsError) throw draftsError;
 
     const { data: brand } = await auth.db.from('brands').select('id,name').eq('id', workspaceId).maybeSingle();
-    const draftById = new Map((drafts || []).map((draft: any) => [draft.id, draft]));
+    const draftById = new Map<string, any>((drafts || []).map((draft: any) => [draft.id, draft] as [string, any]));
     const result = (approvals || [])
       .map((approval: any) => ({ ...approval, draft: draftById.get(approval.draft_id) || null, workspace_name: brand?.name || 'Workspace' }))
       .filter((approval: any) => approval.draft !== null && (approval.status === 'pending' || approval.publish_status !== 'published'));
