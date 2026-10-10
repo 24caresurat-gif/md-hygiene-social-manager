@@ -11,12 +11,12 @@ This checklist is the operational source of truth for making the application tid
 
 ## A. Current baseline
 
-- [x] Production deployment is READY at https://md-hygiene-social-manager.vercel.app (deployment `dpl_8Zbww7V2YFPzTKHmkgsa497DvGwf`, commit `95350a1bbdc5972fbadb2801ecdd230783cf216b`; 136/136 static pages generated). Vercel's available fetch tool could not pass deployment protection for unauthenticated HTTP smoke tests.
+- [x] Production deployment is READY at https://md-hygiene-social-manager.vercel.app (latest code deployment `dpl_J1Nh8FVbYg3g7a9vFiXQh22jgFjh`, commit `05f668fce69197f5355ce3906132a559865a6516`; Vercel build completed and deployment aliases are assigned). Vercel's available fetch tool still could not pass deployment protection for unauthenticated HTTP smoke tests.
 - [x] Compact, independently scrollable sidebar is deployed and the latest production build is READY.
 - [x] CRM execution history UI is present in main
 - [x] WhatsApp bot logs page and navigation are present in main
 - [x] CRM task-due API route exists and is authenticated with `CRON_SECRET`
-- [x] Vercel project runtime-error scan returned no runtime errors in the last 24 hours at audit time
+- [x] Vercel runtime-error scan returned no runtime errors in the hour after deployment `dpl_J1Nh8FVbYg3g7a9vFiXQh22jgFjh` at audit time
 - [ ] Run a real browser pass through key pages on desktop and mobile
 - [ ] Capture final test date, tester, workspace used and observed result
 
@@ -27,7 +27,7 @@ This checklist is the operational source of truth for making the application tid
 - [ ] Verify changing the selected workspace reloads all workspace-owned lists and forms.
 - [~] Read-only SQL-session RLS probe as an active staff user with no workspace membership returned zero rows for another workspace across `brands`, `catalog_products`, `catalog_orders`, `qr_standees`, and `social_posts`. A `catalog_products` insert was rejected by RLS and no row persisted. Full two-browser-session PostgREST/API tests against Workspace A/B IDs remain pending.
 - [ ] Verify staff cannot reach owner/admin-only Settings or management endpoints.
-- [~] Migration reconciliation report added: production history has 67 applied records vs 22 tracked SQL files; 16 exact-name matches (9 with exact versions), 7 name matches with timestamp mismatch, 6 tracked files without exact remote names, and 51 remote records without exact filename-stem matches. Restored the applied QR standee source and tracked applied checkout-transaction, atomic cart-increment, draft-state, and publish-retry claim migrations. This remains a source/history mismatch, not proof of missing schema. Follow [the reconciliation report](SUPABASE_MIGRATION_RECONCILIATION.md); preserve production history and do not replay or repair migrations blindly.
+- [~] Migration reconciliation report updated: production history has 68 applied records vs 23 tracked SQL files; 17 exact-name matches (10 with exact versions), 7 name matches with timestamp mismatch, 5 tracked files without exact remote names, and 50 remote records without exact filename-stem matches. Restored the applied QR standee source and tracked applied checkout-transaction, atomic cart-increment, draft-state, and publish-retry claim migrations. This remains a source/history mismatch, not proof of missing schema. Follow [the reconciliation report](SUPABASE_MIGRATION_RECONCILIATION.md); preserve production history and do not replay or repair migrations blindly.
 
 ### B2. Social content flow
 - [~] Fixed schema mismatch preventing `scheduled_posts.approval_status='draft'`: database CHECK now accepts `draft`, and Creative Studio's save-draft route sets it explicitly. Rollback-only DB insert passed and cron eligibility probe confirmed drafts are not publishable. Full browser create/edit/submit and approval cycle still pending.
@@ -64,7 +64,8 @@ This checklist is the operational source of truth for making the application tid
 - [ ] Create, edit, pause and activate each workflow type.
 - [ ] Run manual workflow; confirm action result and execution-history record.
 - [ ] Test each action: create task, set stage, approved WhatsApp template, product suggestions.
-- [ ] Validate the daily task-due behavior with due open tasks and ensure the same workflow/task pair does not execute twice.
+- [~] Added a database-enforced atomic reservation for `task_due` CRM workflows: the cron inserts the `queued` execution row before running actions, and a unique partial index prevents a second claim for the same workflow/task pair. The index exists in production and no pre-existing duplicate task-run groups were found. Positive execution/concurrency tests remain pending because production currently has zero CRM workflow definitions; Vercel deployment protection also blocked direct route smoke tests.
+- [ ] Seed a controlled test workflow/task in a non-production workspace or test environment, call the task-due endpoint concurrently, and verify only one action runs; remove all probe data afterward.
 - [ ] Decide whether tasks without `lead_id` should be ignored or supported; current cron skips them.
 - [ ] Confirm recent workflow history shows failures and result details accurately.
 
