@@ -9,6 +9,7 @@ A multi-workspace social media and business engagement platform built with Next.
 - [Google Business Profile OAuth Setup](GOOGLE_BUSINESS_OAUTH_SETUP.md) — Google Cloud/OAuth prerequisites.
 - [WhatsApp Business Setup](WHATSAPP_SETUP.md) — Meta Embedded Signup, webhook and contacts sync prerequisites.
 - [Final Production Audit](FINAL_PRODUCTION_AUDIT.md) — deployment and operational baseline.
+- [Cron Automation Setup](docs/CRON_AUTOMATION_SETUP.md) — five-minute GitHub Actions scheduler and required repository secret.
 - [Code Complete / E2E Pending](docs/CODE_COMPLETE_PENDING_E2E.md) — live-account tests not yet verified.
 
 ## Major features
