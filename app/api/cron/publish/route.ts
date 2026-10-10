@@ -129,13 +129,14 @@ export async function GET(req: Request) {
     if (!claim) continue;
 
     try {
-      const { data: accounts } = await s
+      const workspaceId = job.workspace_id || job.brand_id;
+      const { data: accounts, error: accountsError } = await s
         .from('social_accounts')
-        .select('id,name,platform,platform_account_id,access_token,status,brand_id')
+        .select('id,name,platform,platform_account_id,access_token,status,brand_id,workspace_id')
         .in('id', job.account_ids)
         .in('platform', ['facebook', 'instagram'])
-        .eq('user_id', job.user_id)
-        .eq('brand_id', job.brand_id);
+        .or(`brand_id.eq.${job.brand_id},workspace_id.eq.${workspaceId}`);
+      if (accountsError) throw accountsError;
 
       if (!accounts?.length || accounts.length !== job.account_ids.length) {
         throw new Error('One or more scheduled accounts do not belong to the selected workspace or are unsupported.');
@@ -202,7 +203,7 @@ export async function GET(req: Request) {
               .from('social_accounts')
               .update({ status: 'reconnect_required', token_error: message, token_checked_at: new Date().toISOString() })
               .eq('id', a.id)
-              .eq('user_id', job.user_id);
+              .or(`brand_id.eq.${job.brand_id},workspace_id.eq.${workspaceId}`);
           }
         }
       }
