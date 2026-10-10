@@ -9,7 +9,7 @@
 
 - Current production deployment: READY
 - Production commit: `af0c3d3f9edd03e0f98bab2011a3e88e36d81f75` (`fix(ui): compact sidebar and enable navigation scrolling`)
-- Route inventory at this snapshot: 51 dashboard pages, 86 API route handlers, 14 Supabase migrations.
+- Earlier route/migration inventory snapshot: 51 dashboard pages, 86 API route handlers, and 14 tracked SQL migration files at that time. The current database-vs-repository migration reconciliation is documented in [SUPABASE_MIGRATION_RECONCILIATION.md](SUPABASE_MIGRATION_RECONCILIATION.md); do not treat that older count as current.
 - Vercel runtime error scan over the previous 24 hours: no runtime errors reported.
 - This is not the same as end-to-end certification. Real-account OAuth/publishing, workspace-isolation tests, cron invocation, and full user flows remain in the finalization checklist.
 
