@@ -37,6 +37,9 @@ export default function PublishPage() {
       setBrandId(id);
       setScheduleDate(p.get('scheduledDate') || '');
       if (!id) { setError('Select a workspace first.'); setLoading(false); return; }
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
+        setError('Select a valid workspace.'); setLoading(false); return;
+      }
 
       const accessResponse = await fetch(`/api/workspace-access?workspace_id=${encodeURIComponent(id)}`, {
         headers: { Authorization: `Bearer ${session.access_token}` },
@@ -51,7 +54,8 @@ export default function PublishPage() {
       setIsAdmin(accessData.is_owner_or_admin === true);
 
       const r = await c.from('social_accounts').select('id,name,handle,platform,status')
-        .eq('user_id', user.id).eq('brand_id', id).eq('status', 'connected')
+        .or(`brand_id.eq.${id},workspace_id.eq.${id}`)
+        .eq('status', 'connected')
         .in('platform', ['facebook', 'instagram']).order('platform');
       if (r.error) setError(r.error.message);
       else setAccounts((r.data || []) as Account[]);
