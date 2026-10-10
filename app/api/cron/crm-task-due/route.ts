@@ -51,35 +51,72 @@ export async function GET(request: Request) {
     if (workflowError) { failed += 1; continue; }
 
     for (const workflow of workflows || []) {
-      const { data: existing } = await db.from('crm_workflow_runs')
-        .select('id')
-        .eq('workflow_id', workflow.id)
-        .eq('entity_type', 'crm_task')
-        .eq('entity_id', task.id)
-        .limit(1)
-        .maybeSingle();
+      // Insert the execution record before performing any actions. The partial
+      // unique index on (workflow_id, entity_id) for crm_task rows makes this an
+      // atomic claim, so parallel cron invocations cannot both send messages or
+      // create duplicate follow-up tasks for the same task/workflow pair.
+      const { data: claim, error: claimError } = await db.from('crm_workflow_runs').insert({
+        workflow_id: workflow.id,
+        workspace_id: task.workspace_id,
+        entity_type: 'crm_task',
+        entity_id: task.id,
+        status: 'queued',
+        result: {
+          trigger: 'task_due',
+          task_id: task.id,
+          due_at: task.due_at,
+          claim_status: 'claimed',
+        },
+      }).select('id').single();
 
-      if (existing) { skipped += 1; continue; }
+      if (claimError || !claim) {
+        if (claimError?.code === '23505') {
+          // Another invocation already reserved or completed this pair.
+          skipped += 1;
+        } else {
+          failed += 1;
+        }
+        continue;
+      }
 
+      const runStartedAt = new Date().toISOString();
       try {
         const result = await executeCrmWorkflow(db, workflow, task.workspace_id, lead);
-        const { error: runError } = await db.from('crm_workflow_runs').insert({
-          workflow_id: workflow.id,
-          workspace_id: task.workspace_id,
-          entity_type: 'crm_task',
-          entity_id: task.id,
+        const { error: runError } = await db.from('crm_workflow_runs').update({
           status: result.status,
           result: {
             trigger: 'task_due',
             task_id: task.id,
             due_at: task.due_at,
+            claim_status: 'completed',
+            started_at: runStartedAt,
             actions: result.results,
           },
           completed_at: new Date().toISOString(),
-        });
-        if (runError) { failed += 1; continue; }
-        triggered += 1;
-      } catch {
+        }).eq('id', claim.id).eq('workspace_id', task.workspace_id);
+
+        if (runError) {
+          // Keep the claim row in place even if finalization fails; do not replay
+          // external actions merely because the history update could not be saved.
+          failed += 1;
+          continue;
+        }
+        if (result.status === 'failed') failed += 1;
+        else triggered += 1;
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'CRM task-due workflow failed.';
+        await db.from('crm_workflow_runs').update({
+          status: 'failed',
+          result: {
+            trigger: 'task_due',
+            task_id: task.id,
+            due_at: task.due_at,
+            claim_status: 'failed',
+            started_at: runStartedAt,
+            error: message,
+          },
+          completed_at: new Date().toISOString(),
+        }).eq('id', claim.id).eq('workspace_id', task.workspace_id);
         failed += 1;
       }
     }
