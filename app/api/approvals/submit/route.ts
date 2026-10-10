@@ -75,9 +75,9 @@ export async function POST(req: NextRequest) {
 
   const { data: accounts, error: accountsError } = await sb
     .from('social_accounts')
-    .select('id,platform,brand_id,status')
+    .select('id,platform,brand_id,workspace_id,status')
     .in('id', accountIds)
-    .eq('brand_id', workspaceId)
+    .or(`brand_id.eq.${workspaceId},workspace_id.eq.${workspaceId}`)
     .eq('status', 'connected');
 
   if (accountsError) return NextResponse.json({ error: accountsError.message }, { status: 500 });
