@@ -123,7 +123,7 @@ Do not begin these connections until the rest of the core product audit is compl
 ## G. Documentation and final release
 - [x] Create the master product/architecture guide in `docs/PROJECT_MASTER_GUIDE.md`.
 - [x] Add this checklist so unfinished work is visible and prioritized.
-- [ ] Add a compact root README linking to guide, setup guides, migrations, local run/build and support/runbook information.
+- [x] Add a compact root README linking to the master guide, setup guides, and local run/build information.
 - [ ] Reconcile older guides that may describe GMB replies as future work even though reply APIs now exist.
 - [ ] Complete the core acceptance tests and then the external connection tests.
 - [ ] Run a clean production build and review its logs.
