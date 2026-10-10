@@ -8,10 +8,10 @@
 
 | Measure | Count |
 |---|---:|
-| SQL files currently tracked in `supabase/migrations/` on `main` | 19 |
-| Applied migration records reported by Supabase | 64 |
-| Same migration name in both lists | 13 |
-| Same name **and** exact version/timestamp | 6 |
+| SQL files currently tracked in `supabase/migrations/` on `main` | 20 |
+| Applied migration records reported by Supabase | 65 |
+| Same migration name in both lists | 14 |
+| Same name **and** exact version/timestamp | 7 |
 | Same name but filename timestamp differs | 7 |
 | Tracked SQL files with no exact remote migration name | 6 |
 | Remote records with no exact tracked filename stem | 51 |
@@ -29,6 +29,7 @@
 | `20260929123606_whatsapp_messaging_module.sql` | `20260929123606` | Exact version + name |
 | `20261008105155_add_qr_standees.sql` | `20261008105155` | Exact version + name; source restored from historical branch after checking live schema |
 | `20261010090656_catalog_checkout_transaction_hardening.sql` | `20261010090656` | Exact version + name; source committed with the checkout API change |
+| `20261010091336_catalog_cart_item_atomic_increment.sql` | `20261010091336` | Exact version + name; source committed with the atomic cart increment API change |
 | `20260930110000_phase1_workspace_auth_hardening.sql` | `20260929133513` | Name matches; filename version is `20260930110000` |
 | `20260930111500_phase1_role_defaults_whatsapp.sql` | `20260930054748` | Name matches; filename version is `20260930111500` |
 | `20260930113000_phase1_google_connection_deny_policy.sql` | `20260930054822` | Name matches; filename version is `20260930113000` |
@@ -140,6 +141,19 @@ This recovers one migration source from a historical feature branch. Inspection 
 ## Checkout transaction migration
 
 The `catalog_checkout_transaction_hardening` migration was applied once to production under version `20261010090656` and its corresponding SQL is tracked as `supabase/migrations/20261010090656_catalog_checkout_transaction_hardening.sql`. The function performs cart/order/item/stock/coupon operations in a single database transaction and its EXECUTE grant is restricted to `service_role`. A rollback-only database probe passed the successful-checkout assertions (subtotal ₹200, 25% coupon discount ₹50, total ₹150, stock 10→8, coupon usage 0→1, one order item and cleared cart) and the insufficient-stock rejection/rollback assertion. The probe was wrapped in a nested transaction and deliberately rolled back; a follow-up query confirmed zero probe products, coupons, carts and orders remained. A separate no-cart probe returned the expected `Your cart is empty.` exception. This does not replace a real browser checkout, coupon maximum-use race test with independent connections, or post-deploy customer journey test.
+
+## Atomic add-to-cart increment migration
+
+The production database now has `20261010091336_catalog_cart_item_atomic_increment`, tracked in Git as `supabase/migrations/20261010091336_catalog_cart_item_atomic_increment.sql`. It adds a partial unique index on `(workspace_id, session_key)` for non-null session keys and a server-only `add_catalog_cart_item` RPC. The route now requests an atomic increment instead of upserting quantity `1` over the existing value.
+
+A rollback-only database probe passed:
+- First add returned quantity `1`; second add returned `2`.
+- An attempted increment that would exceed stock was rejected.
+- The cart retained quantity `2` after that rejection.
+- The entire probe rolled back; follow-up checks found zero probe products, carts or cart items.
+- RPC execute rights were verified as `anon=false`, `authenticated=false`, `service_role=true`.
+
+Full browser UI verification and independent-connection concurrency testing still remain pending.
 
 ## Safe reconciliation plan
 
