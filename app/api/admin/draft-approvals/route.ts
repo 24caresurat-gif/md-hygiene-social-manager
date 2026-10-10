@@ -6,9 +6,11 @@ async function reviewer(req:NextRequest,workspaceId?:string){
   const u=await getUser(req);
   if(!u)return{error:NextResponse.json({error:'Unauthorized'},{status:401})};
   const s=admin();
-  const {data:profile,error:profileError}=await s.from('profiles').select('active').eq('id',u.id).maybeSingle();
+  const {data:profile,error:profileError}=await s.from('profiles').select('role,active').eq('id',u.id).maybeSingle();
   if(profileError)return{error:NextResponse.json({error:profileError.message},{status:500})};
   if(!profile||profile.active===false)return{error:NextResponse.json({error:'Your account is inactive.'},{status:403})};
+  const profileRole=String(profile.role||'').toLowerCase();
+  if(['admin','owner'].includes(profileRole))return{user:u,s,role:profileRole,isGlobalAdmin:true};
   if(!workspaceId)return{user:u,s};
   const {data:m,error:memberError}=await s.from('workplace_members').select('role,active').eq('workspace_id',workspaceId).eq('user_id',u.id).maybeSingle();
   if(memberError)return{error:NextResponse.json({error:memberError.message},{status:500})};
@@ -18,7 +20,7 @@ async function reviewer(req:NextRequest,workspaceId?:string){
     if(permissionError)return{error:NextResponse.json({error:permissionError.message},{status:500})};
     if(p?.can_approve!==true)return{error:NextResponse.json({error:'You do not have Approval permission.'},{status:403})};
   }
-  return{user:u,s,role:m.role};
+  return{user:u,s,role:m.role,isGlobalAdmin:false};
 }
 export async function GET(req:NextRequest){
   const u=await getUser(req);
