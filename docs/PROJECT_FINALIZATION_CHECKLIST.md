@@ -32,9 +32,11 @@ This checklist is the operational source of truth for making the application tid
 ### B2. Social content flow
 - [~] Fixed schema mismatch preventing `scheduled_posts.approval_status='draft'`: database CHECK now accepts `draft`, and Creative Studio's save-draft route sets it explicitly. Rollback-only DB insert passed and cron eligibility probe confirmed drafts are not publishable. Full browser create/edit/submit and approval cycle still pending.
 - [~] Immediate publishing now checks workspace-scoped authorization: active global admin/owner or workspace owner/admin; a manager additionally needs both `approval.can_approve` and `publishing.can_publish`. The publish API binds the approved record to the draft's workspace and submitter. Browser-level owner/admin, manager, and denied-member tests plus real-provider publish remain pending.
-- [ ] Submit draft for approval as a permitted staff member.
-- [ ] Approve, reject and request changes as a permitted reviewer.
-- [ ] Confirm an unapproved post cannot publish or enter scheduled publishing through an alternate API path.
+- [~] Hardened alternate `POST /api/scheduled-posts`: requires active workspace membership and Content create/submit permission; draft state is explicit, and non-owner/admin scheduled posts are `pending` instead of defaulting to `approved`.
+- [~] `/api/approvals/submit` now rejects malformed/past `scheduledFor` values instead of falling through to immediate submission and rejects inactive profiles. Review endpoint now blocks inactive profiles and handles permission query errors.
+- [~] All approval publish endpoints now enforce workspace role/permission checks and bind connected accounts to the approved workspace. Full live HTTP/browser tests remain pending; see [Approval & Publishing Authorization Audit](APPROVAL_PUBLISHING_AUDIT.md) for route-by-route findings and acceptance tests.
+- [ ] Submit draft for approval as a permitted staff member, then test approve/reject/request changes as a permitted reviewer.
+- [ ] Confirm the negative/positive HTTP cases in `APPROVAL_PUBLISHING_AUDIT.md`, including no unapproved scheduled post is cron-eligible.
 - [ ] Verify calendar timezone and schedule display.
 - [~] Code audit confirms cron uses a conditional claim (`status IN scheduled/failed`, `approval_status=approved`, attempts under limit) and skips when no row is returned, so two workers cannot both claim the same row at once. It also checks `social_posts` by scheduled post + account before publish. Remaining risk/test: a worker crash after a provider accepts a post but before the history row/job state is persisted can make external duplicate behaviour uncertain; real provider-level retry/idempotency testing remains pending.
 - [ ] Confirm publishing history/analytics match the recorded provider result after connected accounts are available.
