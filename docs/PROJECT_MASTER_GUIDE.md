@@ -7,9 +7,10 @@
 
 ## Current verified deployment snapshot
 
-- Current production deployment: READY (`dpl_J1Nh8FVbYg3g7a9vFiXQh22jgFjh`)
-- Production code commit: `05f668fce69197f5355ce3906132a559865a6516` (`fix: atomically claim CRM task-due workflow runs`)
+- Current production deployment: READY (`dpl_Bf6VCefoAVeRq7tyCrdx9VaJBh1i`)
+- Production code commit: `56293078ec59f9e242e73f89edffec98373de3ec` (`docs: replace Hobby cron schedule with GitHub scheduler`)
 - Vercel build completed and production aliases are assigned. Runtime-error scan for the hour after deployment reported no runtime errors.
+- The production GitHub Actions scheduler configuration is committed on `main`; it remains gated until the owner configures Vercel's automation-bypass secret, repository Action secrets, and `ENABLE_PRODUCTION_SCHEDULER=true` as described in [Cron Automation Setup](CRON_AUTOMATION_SETUP.md).
 - Tracked SQL migration inventory is documented in [SUPABASE_MIGRATION_RECONCILIATION.md](SUPABASE_MIGRATION_RECONCILIATION.md); remote migration history currently reports 68 applied records, and the repository tracks 23 migration SQL files. Preserve production migration history; do not replay tracked files blindly.
 - This is not the same as end-to-end certification. Real-account OAuth/publishing, workspace-isolation tests, cron invocation, and full user flows remain in the finalization checklist. Vercel deployment protection blocked the available route smoke-test fetch, so do not treat route HTTP behavior as verified.
 
