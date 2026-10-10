@@ -115,7 +115,11 @@ A read-only database probe selected an active workspace member and a different e
 - `is_admin(different_user_id)` returned `false`.
 - `has_workplace_permission(workspace_id, platform, permission, different_user_id)` returned `false`.
 
-The assertions completed without an error. This confirms the explicit `auth.uid()` mismatch guard in the SQL function definitions; it does **not** replace a full authenticated PostgREST test under two real browser sessions. Those API-level cross-workspace read/write tests remain required before sign-off.
+The assertions completed without an error. This confirms the explicit `auth.uid()` mismatch guard in the SQL function definitions.
+
+A second read-only test used `SET LOCAL ROLE authenticated` with a real active staff user's Auth subject that has no workspace memberships. RLS showed zero rows for the target workspace across `brands`, `catalog_products`, `catalog_orders`, `qr_standees`, and `social_posts`. An attempted insert into `catalog_products` was rejected by RLS; a follow-up query confirmed no probe row persisted. `workspace_review_settings` is separately and intentionally denied to browser roles at the SQL privilege level; its server-side API checks the workspace owner/admin before using service-role access.
+
+These SQL-session tests do **not** replace full authenticated PostgREST tests under two browser sessions, nor do they verify owner/admin positive access through the real UI. Those API-level cross-workspace read/write tests remain required before sign-off.
 
 ## Read-only schema spot checks
 
