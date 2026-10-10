@@ -17,6 +17,16 @@ export async function POST(req: NextRequest) {
   const { data: { user }, error: authError } = await sb.auth.getUser(token);
   if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  const { data: profile, error: profileError } = await sb
+    .from('profiles')
+    .select('active')
+    .eq('id', user.id)
+    .maybeSingle();
+  if (profileError) return NextResponse.json({ error: profileError.message }, { status: 500 });
+  if (!profile || profile.active === false) {
+    return NextResponse.json({ error: 'Your account is inactive.' }, { status: 403 });
+  }
+
   const body = await req.json().catch(() => null);
   const workspaceId = String(body?.workspaceId || body?.brandId || '');
   const accountIds = Array.isArray(body?.accountIds)
@@ -35,13 +45,14 @@ export async function POST(req: NextRequest) {
   // date/time chosen in the UI. We now honour it: a valid future timestamp
   // creates a row in scheduled_posts (picked up later by /api/cron/publish)
   // instead of publishing/submitting immediately.
-  const scheduledForRaw = body?.scheduledFor ? String(body.scheduledFor) : null;
+  const scheduledForRaw = body?.scheduledFor === undefined || body?.scheduledFor === null || String(body.scheduledFor).trim() === ''
+    ? null
+    : String(body.scheduledFor);
   const scheduledDate = scheduledForRaw ? new Date(scheduledForRaw) : null;
-  const isScheduled = !!(
-    scheduledDate &&
-    !Number.isNaN(scheduledDate.getTime()) &&
-    scheduledDate.getTime() > Date.now()
-  );
+  const isScheduled = scheduledForRaw !== null;
+  if (isScheduled && (!scheduledDate || Number.isNaN(scheduledDate.getTime()) || scheduledDate.getTime() <= Date.now())) {
+    return NextResponse.json({ error: 'scheduledFor must be a valid future date; clear the schedule to publish now.' }, { status: 400 });
+  }
 
   if (!workspaceId || !accountIds.length || !message) {
     return NextResponse.json(
