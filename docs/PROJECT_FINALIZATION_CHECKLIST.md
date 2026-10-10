@@ -11,7 +11,7 @@ This checklist is the operational source of truth for making the application tid
 
 ## A. Current baseline
 
-- [x] Production deployment is READY at https://md-hygiene-social-manager.vercel.app
+- [x] Production deployment is READY at https://md-hygiene-social-manager.vercel.app (deployment `dpl_8Zbww7V2YFPzTKHmkgsa497DvGwf`, commit `95350a1bbdc5972fbadb2801ecdd230783cf216b`; 136/136 static pages generated). Vercel's available fetch tool could not pass deployment protection for unauthenticated HTTP smoke tests.
 - [x] Compact, independently scrollable sidebar is deployed and the latest production build is READY.
 - [x] CRM execution history UI is present in main
 - [x] WhatsApp bot logs page and navigation are present in main
