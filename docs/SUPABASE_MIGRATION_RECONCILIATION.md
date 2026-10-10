@@ -139,7 +139,7 @@ This recovers one migration source from a historical feature branch. Inspection 
 
 ## Checkout transaction migration
 
-The `catalog_checkout_transaction_hardening` migration was applied once to production under version `20261010090656` and its corresponding SQL is tracked as `supabase/migrations/20261010090656_catalog_checkout_transaction_hardening.sql`. The function performs cart/order/item/stock/coupon operations in a single database transaction and its EXECUTE grant is restricted to `service_role`. A negative-path call with a non-existent cart returned the expected `Your cart is empty.` exception without creating an order. A full cart, coupon-limit, stock-race and browser checkout pass still remains required.
+The `catalog_checkout_transaction_hardening` migration was applied once to production under version `20261010090656` and its corresponding SQL is tracked as `supabase/migrations/20261010090656_catalog_checkout_transaction_hardening.sql`. The function performs cart/order/item/stock/coupon operations in a single database transaction and its EXECUTE grant is restricted to `service_role`. A rollback-only database probe passed the successful-checkout assertions (subtotal ₹200, 25% coupon discount ₹50, total ₹150, stock 10→8, coupon usage 0→1, one order item and cleared cart) and the insufficient-stock rejection/rollback assertion. The probe was wrapped in a nested transaction and deliberately rolled back; a follow-up query confirmed zero probe products, coupons, carts and orders remained. A separate no-cart probe returned the expected `Your cart is empty.` exception. This does not replace a real browser checkout, coupon maximum-use race test with independent connections, or post-deploy customer journey test.
 
 ## Safe reconciliation plan
 
