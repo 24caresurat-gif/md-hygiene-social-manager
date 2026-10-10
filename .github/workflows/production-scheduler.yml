@@ -1,0 +1,73 @@
+name: Production Scheduler
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-scheduler
+  cancel-in-progress: false
+
+jobs:
+  invoke-production-workers:
+    name: Invoke secured production cron endpoints
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Verify scheduler secret is configured
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        shell: bash
+        run: |
+          if [[ -z "${CRON_SECRET}" ]]; then
+            echo "::error::Add the repository Actions secret CRON_SECRET, matching the production Vercel CRON_SECRET, before enabling scheduled runs."
+            exit 1
+          fi
+
+      - name: Run scheduled publishing, WhatsApp campaigns and CRM task-due workers
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          BASE_URL: https://md-hygiene-social-manager.vercel.app
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          call_endpoint() {
+            local path="$1"
+            local response_file
+            local status
+            response_file="$(mktemp)"
+
+            echo "Invoking ${path}"
+            if ! status="$(curl --silent --show-error --connect-timeout 10 --max-time 55 \
+              --output "${response_file}" --write-out '%{http_code}' \
+              --header "Authorization: Bearer ${CRON_SECRET}" \
+              "${BASE_URL}${path}")"; then
+              echo "::error::Request to ${path} failed or timed out."
+              rm -f "${response_file}"
+              return 1
+            fi
+
+            if [[ "${status}" -lt 200 || "${status}" -ge 300 ]]; then
+              echo "::error::${path} returned HTTP ${status}."
+              head -c 1000 "${response_file}"
+              echo
+              rm -f "${response_file}"
+              return 1
+            fi
+
+            echo "${path} completed successfully (HTTP ${status})."
+            cat "${response_file}"
+            echo
+            rm -f "${response_file}"
+          }
+
+          # /api/cron/publish processes due social posts and scheduled WhatsApp
+          # campaigns. It also handles stale campaign runs; avoid invoking the
+          # separate WhatsApp route in the same tick and racing the same queue.
+          call_endpoint "/api/cron/publish"
+          call_endpoint "/api/cron/crm-task-due"
