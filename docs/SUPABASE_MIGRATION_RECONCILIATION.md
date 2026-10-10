@@ -8,13 +8,13 @@
 
 | Measure | Count |
 |---|---:|
-| SQL files currently tracked in `supabase/migrations/` on `main` | 17 |
+| SQL files currently tracked in `supabase/migrations/` on `main` | 18 |
 | Applied migration records reported by Supabase | 63 |
-| Same migration name in both lists | 11 |
-| Same name **and** exact version/timestamp | 4 |
+| Same migration name in both lists | 12 |
+| Same name **and** exact version/timestamp | 5 |
 | Same name but filename timestamp differs | 7 |
 | Tracked SQL files with no exact remote migration name | 6 |
-| Remote records with no exact tracked filename stem | 52 |
+| Remote records with no exact tracked filename stem | 51 |
 
 **Interpretation:** this is a migration-source/history mismatch, not proof that the production schema is missing these changes. Some tracked SQL files overlap or consolidate work recorded under different remote migration names. Do not replay the tracked files on production, mass-mark migrations as applied, delete migration records, or run `supabase migration repair` without a reviewed mapping.
 
@@ -27,6 +27,7 @@
 | `20260821090001_audit_fix_rls_and_fk_indexes.sql` | `20260821063335` | Name matches; filename version is `20260821090001` |
 | `20260821090003_harden_social_posts_workspace_rls.sql` | `20260821064404` | Name matches; filename version is `20260821090003` |
 | `20260929123606_whatsapp_messaging_module.sql` | `20260929123606` | Exact version + name |
+| `20261008105155_add_qr_standees.sql` | `20261008105155` | Exact version + name; source restored from historical branch after checking live schema |
 | `20260930110000_phase1_workspace_auth_hardening.sql` | `20260929133513` | Name matches; filename version is `20260930110000` |
 | `20260930111500_phase1_role_defaults_whatsapp.sql` | `20260930054748` | Name matches; filename version is `20260930111500` |
 | `20260930113000_phase1_google_connection_deny_policy.sql` | `20260930054822` | Name matches; filename version is `20260930113000` |
@@ -101,7 +102,6 @@ The records below were returned by Supabase, but there is no file in the current
 20261008104527_crm_core_phase1_hardening
 20261008104717_catalog_orders_phase2
 20261008104948_catalog_orders_indexes
-20261008105155_add_qr_standees
 20261008105240_crm_automation_phase2
 20261008105257_crm_whatsapp_contact_unique
 ```
@@ -119,8 +119,22 @@ The following expected relations exist in the production schema at audit time:
 - `public.google_business_reviews`
 - `public.catalog_orders`
 - `public.crm_workflows`
+- `public.qr_standees`
+- `public.review_requests`
 
-The probe for `public.workspace_review_requests` returned no relation. That name was only a probe candidate, not an asserted required table; review the current public review-request implementation before treating it as a defect.
+A probe for the candidate name `public.workspace_review_requests` returned no relation; the actual `public.review_requests` table exists.
+
+## Historical source recovered and verified
+
+The GitHub branch `feat/qr-standee` contained `20261009103000_add_qr_standees.sql` (source blob `fdd5a50d323c9a3d935030d528c12cff532b1f4f`). It has been restored to `main` as `supabase/migrations/20261008105155_add_qr_standees.sql`, matching the already-applied Supabase history version `20261008105155_add_qr_standees`. **This was a source-file restoration only; no migration was applied to production.**
+
+The live database was checked against the recovered source:
+- `public.qr_standees` exists with the seven expected columns.
+- Its primary key, three foreign keys, and `qr_standees_workspace_id_idx` match the source.
+- Both expected RLS policies exist.
+- `private.is_workspace_manager(uuid)` and `private.is_workspace_member(uuid)` exist, and their definitions bind access checks to `auth.uid()`.
+
+This recovers one migration source from a historical feature branch. Inspection of relevant audit/publishing and feature branches did not reveal a complete archive for the remaining remote history.
 
 ## Safe reconciliation plan
 
