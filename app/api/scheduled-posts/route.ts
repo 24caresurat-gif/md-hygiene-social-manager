@@ -11,18 +11,6 @@ async function userFromRequest(req: NextRequest) {
   const { data: { user } } = await client.auth.getUser(token);
   return user;
 }
-async function validateWorkspace(db: ReturnType<typeof admin>, userId: string, brandId: string, accountIds: string[]) {
-  const { data: brand } = await db.from('brands').select('id').eq('id', brandId).eq('user_id', userId).maybeSingle();
-  if (!brand) return 'Workspace not found.';
-  const ids: string[] = [...new Set(accountIds.filter(Boolean))];
-  if (!ids.length) return 'At least one social account is required.';
-  const { data: accounts, error } = await db.from('social_accounts').select('id,brand_id').eq('user_id', userId).in('id', ids);
-  if (error) return error.message;
-  if ((accounts || []).length !== ids.length) return 'One or more social accounts are not connected to your account.';
-  if ((accounts || []).some(a => a.brand_id !== brandId)) return 'All selected social accounts must belong to the selected workspace.';
-  return null;
-}
-
 export async function GET(req: NextRequest) {
   const user = await userFromRequest(req);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
