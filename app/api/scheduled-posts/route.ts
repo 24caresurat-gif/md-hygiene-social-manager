@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
   const db = admin();
   const { data: profile, error: profileError } = await db
     .from('profiles')
-    .select('active')
+    .select('role,active')
     .eq('id', user.id)
     .maybeSingle();
   if (profileError) return NextResponse.json({ error: profileError.message }, { status: 500 });
@@ -83,19 +83,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Your account is inactive.' }, { status: 403 });
   }
 
-  const { data: membership, error: membershipError } = await db
-    .from('workplace_members')
-    .select('role,active')
-    .eq('workspace_id', brandId)
-    .eq('user_id', user.id)
-    .maybeSingle();
+  const [{ data: brand, error: brandError }, { data: membership, error: membershipError }] = await Promise.all([
+    db.from('brands').select('id,user_id').eq('id', brandId).maybeSingle(),
+    db.from('workplace_members').select('role,active').eq('workspace_id', brandId).eq('user_id', user.id).maybeSingle(),
+  ]);
+  if (brandError) return NextResponse.json({ error: brandError.message }, { status: 500 });
   if (membershipError) return NextResponse.json({ error: membershipError.message }, { status: 500 });
-  if (!membership?.active) {
+  if (!brand) return NextResponse.json({ error: 'Workspace not found.' }, { status: 404 });
+
+  const role = String(membership?.role || '').toLowerCase();
+  const profileRole = String(profile.role || '').toLowerCase();
+  const isWorkspaceAdmin = ['admin', 'owner'].includes(profileRole) || brand.user_id === user.id ||
+    (membership?.active === true && ['owner', 'admin'].includes(role));
+  if (!isWorkspaceAdmin && membership?.active !== true) {
     return NextResponse.json({ error: 'You do not have access to this workspace.' }, { status: 403 });
   }
-
-  const role = String(membership.role || '').toLowerCase();
-  const isWorkspaceAdmin = role === 'owner' || role === 'admin';
   const permissionField = requestedStatus === 'draft' ? 'can_create' : 'can_submit';
 
   if (!isWorkspaceAdmin) {
