@@ -35,7 +35,7 @@ This checklist is the operational source of truth for making the application tid
 - [ ] Approve, reject and request changes as a permitted reviewer.
 - [ ] Confirm an unapproved post cannot publish or enter scheduled publishing through an alternate API path.
 - [ ] Verify calendar timezone and schedule display.
-- [ ] Verify one scheduled post is claimed/published once and failures are retriable without duplicate public posts.
+- [~] Code audit confirms cron uses a conditional claim (`status IN scheduled/failed`, `approval_status=approved`, attempts under limit) and skips when no row is returned, so two workers cannot both claim the same row at once. It also checks `social_posts` by scheduled post + account before publish. Remaining risk/test: a worker crash after a provider accepts a post but before the history row/job state is persisted can make external duplicate behaviour uncertain; real provider-level retry/idempotency testing remains pending.
 - [ ] Confirm publishing history/analytics match the recorded provider result after connected accounts are available.
 
 ### B3. Product Catalogue
