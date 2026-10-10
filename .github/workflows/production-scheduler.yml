@@ -14,6 +14,8 @@ concurrency:
 
 jobs:
   invoke-production-workers:
+    # Keep the schedule inert until both secrets have been configured by an owner.
+    if: ${{ vars.ENABLE_PRODUCTION_SCHEDULER == 'true' }}
     name: Invoke secured production cron endpoints
     runs-on: ubuntu-latest
     timeout-minutes: 4
