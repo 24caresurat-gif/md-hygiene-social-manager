@@ -45,6 +45,22 @@ The Approval Center previously called `/api/admin/draft-approvals` only, which s
 
 A workspace-scoped `GET/PATCH /api/admin/approvals` route now lists and reviews that composer workflow. The Approval Center page fetches both old and new queues, uses the appropriate review/publish endpoint for each, and keeps approved-but-unpublished rows visible for retry. Concurrent decision updates use a conditional transition from `pending`; the paired draft update is also checked and best-effort compensated if it cannot make the same transition.
 
+## Conditional publish claims and retry
+
+Production migration `20261010095804_scheduled_post_publish_retry_claim_fields` adds `scheduled_posts.publish_status/publish_error/publish_claimed_at/publish_attempts`, claim metadata to `post_approvals`, and `social_posts.post_approval_id` with a partial unique index for published account records.
+
+Both legacy manual draft-publish endpoints and the Create Post approval publisher now:
+- Claim with a conditional update before calling the social provider; a second concurrent request receives a conflict response.
+- Allow a stale claim older than ten minutes to be retried.
+- Set explicit `publishing`, `published`, or `failed` state and record the error/attempt count.
+- Check published `social_posts` rows by scheduled-post or approval ID plus account so known successful accounts are skipped on retry.
+
+This reduces concurrency duplicates, but does not prove strict exactly-once behaviour when a provider accepts a post and the next database history insert fails. Provider-connected retry tests are still required.
+
+## Shared workspace-owned social accounts
+
+Create Post, Drafts, Creative Studio, AI Caption, scheduled post creation, scheduled cron and approved-publish validation now accept an account linked by either `brand_id` or `workspace_id`. They do not require the current content creator to be the social-account creator; workspace membership and publish/submit permissions are checked separately. Direct Meta endpoints resolve a legacy `brand_id` to the workspace when `workspace_id` is null. Actual OAuth and provider calls remain postponed to the final integration phase.
+
 ## Deliberate direct-publish permission model
 
 `/api/meta/facebook/publish` and `/api/meta/instagram/publish` are separate “publish now” endpoints. They authorize an active workspace member with `publishing.can_publish` (owners/admins are allowed directly). These endpoints accept new content and an account ID rather than a pending draft ID; they do not serve as a way to publish a specific pending draft. Product policy should continue treating `can_publish` as an explicit direct-publishing entitlement. The primary composer routes through `/api/approvals/submit`.
