@@ -78,7 +78,8 @@ Create Post, Drafts, Creative Studio, AI Caption, scheduled post creation, sched
 ## Verification status
 
 **Code changes committed:** yes.  
-**Production build:** must be recorded from the deployment that includes this report/code revision.  
+**Production build:** Vercel deployment `dpl_8Zbww7V2YFPzTKHmkgsa497DvGwf` is `READY` for commit `95350a1bbdc5972fbadb2801ecdd230783cf216b` (Next.js production build completed; 136/136 static pages generated). The Vercel runtime-error scan reported no errors in the last 24 hours at audit time.  
+**Unauthenticated HTTP smoke:** blocked by Vercel deployment protection in the available fetch path, so HTTP responses were not verified in this run.  
 **Live authenticated HTTP tests:** still required for (the UI now connects both approval queues, but this has only been build/code-verified so far):
 - Member without `can_submit` → POST `/api/scheduled-posts` denied.
 - Member with `can_submit` → scheduled post is `pending`, never immediately eligible for cron.
