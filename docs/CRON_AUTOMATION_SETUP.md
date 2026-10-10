@@ -15,14 +15,15 @@ Both called handlers require `Authorization: Bearer <CRON_SECRET>`, and allow up
 
 ## One-time required setup
 
-GitHub Actions does not automatically receive Vercel environment variables. Add the same production cron secret to GitHub:
+GitHub Actions does not automatically receive Vercel environment variables. Add two secrets:
 
-1. Open the repository: https://github.com/24caresurat-gif/md-hygiene-social-manager
-2. Go to **Settings → Secrets and variables → Actions → New repository secret**.
-3. Set the name to `CRON_SECRET`.
-4. Set its value to exactly the production `CRON_SECRET` configured in Vercel for this project. Keep it in the secret field only; do not commit it or paste it into a chat, issue, or log.
+1. In the Vercel project dashboard, open **Settings → Deployment Protection → Protection Bypass for Automation** and create a dedicated bypass secret (note: `GitHub Actions production cron scheduler`). Keep SSO/deployment protection enabled; do not make the production site public just to accommodate the scheduler.
+2. Open the repository: https://github.com/24caresurat-gif/md-hygiene-social-manager
+3. Go to **Settings → Secrets and variables → Actions → New repository secret**.
+4. Add `CRON_SECRET` with the exact production value from Vercel Project Settings → Environment Variables.
+5. Add `VERCEL_AUTOMATION_BYPASS_SECRET` with the dedicated value created in Vercel → Deployment Protection → Protection Bypass for Automation.
 
-The secret is currently configured as a production-only Vercel environment variable. The GitHub secret must be added separately; this cannot be inferred from the variable's presence in Vercel.
+Keep both values only in encrypted secret fields; never commit or paste them into a chat, issue, or log. The current app's Vercel deployment has SSO protection enabled, so the workflow sends the bypass secret in the `x-vercel-protection-bypass` header as well as the application-level bearer secret. The available Vercel connection returned a permission error when attempting to create the bypass through the API, so this one-time protection setting must be created in the Vercel dashboard by an authorized project member.
 
 ## Verify the scheduler
 
