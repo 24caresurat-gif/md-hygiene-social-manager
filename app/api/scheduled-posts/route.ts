@@ -14,11 +14,39 @@ async function userFromRequest(req: NextRequest) {
 export async function GET(req: NextRequest) {
   const user = await userFromRequest(req);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const brandId = new URL(req.url).searchParams.get('brandId');
+  const brandId = new URL(req.url).searchParams.get('brandId') || '';
+  if (!brandId) return NextResponse.json({ error: 'brandId is required.' }, { status: 400 });
+
   const db = admin();
-  let q = db.from('scheduled_posts').select('*').eq('user_id', user.id).order('scheduled_for', { ascending: true });
-  if (brandId) q = q.eq('brand_id', brandId);
-  const { data, error } = await q;
+  const [{ data: profile, error: profileError }, { data: brand, error: brandError }, { data: membership, error: membershipError }] = await Promise.all([
+    db.from('profiles').select('role,active').eq('id', user.id).maybeSingle(),
+    db.from('brands').select('id,user_id').eq('id', brandId).maybeSingle(),
+    db.from('workplace_members').select('role,active').eq('workspace_id', brandId).eq('user_id', user.id).maybeSingle(),
+  ]);
+  if (profileError) return NextResponse.json({ error: profileError.message }, { status: 500 });
+  if (brandError) return NextResponse.json({ error: brandError.message }, { status: 500 });
+  if (membershipError) return NextResponse.json({ error: membershipError.message }, { status: 500 });
+  if (!profile || profile.active === false) return NextResponse.json({ error: 'Your account is inactive.' }, { status: 403 });
+  if (!brand) return NextResponse.json({ error: 'Workspace not found.' }, { status: 404 });
+
+  const profileRole = String(profile.role || '').toLowerCase();
+  const membershipRole = String(membership?.role || '').toLowerCase();
+  const isPrivileged = ['admin', 'owner'].includes(profileRole) || brand.user_id === user.id ||
+    (membership?.active === true && ['owner', 'admin'].includes(membershipRole));
+  if (!isPrivileged && membership?.active !== true) {
+    return NextResponse.json({ error: 'You do not have access to this workspace.' }, { status: 403 });
+  }
+  if (!isPrivileged) {
+    const { data: permission, error: permissionError } = await db.from('workspace_member_permissions')
+      .select('can_view').eq('workspace_id', brandId).eq('user_id', user.id).eq('module', 'calendar').maybeSingle();
+    if (permissionError) return NextResponse.json({ error: permissionError.message }, { status: 500 });
+    if (permission?.can_view !== true) return NextResponse.json({ error: 'Calendar view permission is required.' }, { status: 403 });
+  }
+
+  // Calendar is workspace-owned, not user-owned: members with Calendar access
+  // should see all drafts/scheduled jobs belonging to the selected workspace.
+  const { data, error } = await db.from('scheduled_posts').select('*')
+    .eq('brand_id', brandId).order('scheduled_for', { ascending: true });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ posts: data ?? [] });
 }
@@ -132,7 +160,51 @@ export async function DELETE(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const id = new URL(req.url).searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'id is required.' }, { status: 400 });
-  const { error } = await admin().from('scheduled_posts').delete().eq('id', id).eq('user_id', user.id).in('status', ['draft', 'scheduled', 'failed', 'cancelled']);
+
+  const db = admin();
+  const { data: post, error: postError } = await db.from('scheduled_posts')
+    .select('id,user_id,brand_id,workspace_id,status,approval_status')
+    .eq('id', id).maybeSingle();
+  if (postError) return NextResponse.json({ error: postError.message }, { status: 500 });
+  if (!post) return NextResponse.json({ error: 'Scheduled post not found.' }, { status: 404 });
+  if (!['draft', 'scheduled', 'failed'].includes(post.status)) {
+    return NextResponse.json({ error: 'This post can no longer be cancelled.' }, { status: 409 });
+  }
+
+  const workspaceId = post.workspace_id || post.brand_id;
+  const [{ data: profile, error: profileError }, { data: brand, error: brandError }, { data: membership, error: membershipError }] = await Promise.all([
+    db.from('profiles').select('role,active').eq('id', user.id).maybeSingle(),
+    db.from('brands').select('id,user_id').eq('id', post.brand_id).maybeSingle(),
+    db.from('workplace_members').select('role,active').eq('workspace_id', workspaceId).eq('user_id', user.id).maybeSingle(),
+  ]);
+  if (profileError) return NextResponse.json({ error: profileError.message }, { status: 500 });
+  if (brandError) return NextResponse.json({ error: brandError.message }, { status: 500 });
+  if (membershipError) return NextResponse.json({ error: membershipError.message }, { status: 500 });
+  if (!profile || profile.active === false) return NextResponse.json({ error: 'Your account is inactive.' }, { status: 403 });
+  if (!brand) return NextResponse.json({ error: 'Workspace not found.' }, { status: 404 });
+
+  const profileRole = String(profile.role || '').toLowerCase();
+  const membershipRole = String(membership?.role || '').toLowerCase();
+  const isPrivileged = ['admin', 'owner'].includes(profileRole) || brand.user_id === user.id ||
+    (membership?.active === true && ['owner', 'admin'].includes(membershipRole));
+  if (!isPrivileged && membership?.active !== true) {
+    return NextResponse.json({ error: 'You do not have access to this workspace.' }, { status: 403 });
+  }
+
+  if (!isPrivileged && post.user_id !== user.id) {
+    const { data: permission, error: permissionError } = await db.from('workspace_member_permissions')
+      .select('can_edit,can_manage').eq('workspace_id', workspaceId).eq('user_id', user.id).eq('module', 'calendar').maybeSingle();
+    if (permissionError) return NextResponse.json({ error: permissionError.message }, { status: 500 });
+    if (permission?.can_edit !== true && permission?.can_manage !== true) {
+      return NextResponse.json({ error: 'Calendar edit permission is required to cancel another member’s post.' }, { status: 403 });
+    }
+  }
+
+  const { data: updated, error } = await db.from('scheduled_posts')
+    .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+    .eq('id', id).eq('brand_id', post.brand_id).eq('status', post.status)
+    .select('id,status').maybeSingle();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true });
+  if (!updated) return NextResponse.json({ error: 'This post changed before it could be cancelled. Refresh the calendar.' }, { status: 409 });
+  return NextResponse.json({ ok: true, post: updated });
 }
