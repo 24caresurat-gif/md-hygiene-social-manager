@@ -27,7 +27,7 @@ This checklist is the operational source of truth for making the application tid
 - [ ] Verify changing the selected workspace reloads all workspace-owned lists and forms.
 - [ ] Attempt direct API reads/writes using Workspace A token against Workspace B IDs; requests must be denied or return no rows.
 - [ ] Verify staff cannot reach owner/admin-only Settings or management endpoints.
-- [ ] Reconcile tracked SQL migration files with the 62 migrations currently reported by the Supabase project. The guide's earlier snapshot listed 14 SQL files; two reviewed security migrations are now tracked in Git. Confirm which earlier remote migrations are missing from source before creating any additional migration files; do not delete or rewrite remote migration history.
+- [ ] Reconcile tracked SQL migration files with the 63 migrations currently reported by the Supabase project. The guide's earlier snapshot listed 14 SQL files; three reviewed security migrations are now tracked in Git. Confirm which earlier remote migrations are missing from source before creating any additional migration files; do not delete or rewrite remote migration history.
 
 ### B2. Social content flow
 - [ ] Create draft, edit draft, upload media, and confirm persistence.
@@ -109,7 +109,7 @@ Do not begin these connections until the rest of the core product audit is compl
 - [ ] Verify actual scheduled invocation for CRM task-due, publishing and WhatsApp campaigns; review runtime logs afterwards. The current 24-hour Vercel runtime-error scan reported no errors, but scheduled invocation itself is not yet proven.
 - [ ] Confirm public environment variables contain no service-role keys, app secrets, OAuth secrets or provider access tokens.
 - [ ] Enable Supabase Auth leaked-password protection in the dashboard.
-- [x] Remove `PUBLIC`/`anon` execute access from `admin_delete_workspace(uuid)`; verified `anon=false`, `authenticated=true`, `service_role=true`. Its body still requires a signed-in admin. Still test the owner/admin UI path.
+- [x] Restrict `admin_delete_workspace(uuid)` to `service_role` only; verified `anon=false`, `authenticated=false`, `service_role=true`. Current workspace deletion uses the secured `/api/brands/[id]` route, which checks owner/admin membership. Test that UI path during acceptance testing.
 - [x] Revoke `PUBLIC`, `anon`, and `authenticated` execution of the legacy `create_order_with_csr(jsonb,jsonb,text)` RPC; verified only `service_role` retains execute. Its referenced legacy `orders/products/coupons` tables are absent; current catalogue checkout uses the separate `catalog_*` flow. Confirm no external/legacy client depends on this RPC before final sign-off.
 - [ ] Review direct RPC exposure for `can_access_workplace`, `has_workplace_permission`, and `is_admin`. Current definitions bind supplied user IDs to `auth.uid()`, which is a key guard; preserve helper execution needed by RLS while testing that direct calls cannot reveal another user's/workspace's information.
 - [ ] Review Supabase performance advisories observed at audit time: 30 unindexed foreign keys, 38 auth/RLS initialization-plan warnings, 17 multiple-permissive-policy warnings, and 76 unused-index notices. Prioritize actual query patterns and validate before making index/policy changes.
