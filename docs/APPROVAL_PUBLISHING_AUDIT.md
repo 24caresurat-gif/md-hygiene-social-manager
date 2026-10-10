@@ -30,6 +30,12 @@ It now rejects a supplied malformed or non-future `scheduledFor` with HTTP 400. 
 
 The workspace draft-review helper now checks the caller's profile and refuses review actions for missing or inactive profiles. Permission-table read errors are returned as errors rather than being silently interpreted as an absent permission.
 
+### 3a. Composer submit authorization and global/workspace owners
+
+The current composer submit endpoint now uses the shared `workspaceAccess` helper and the service-role client for trusted server-side relationship checks. This makes its rules consistent with the workspace switcher and review/publish APIs: active global admin/owner profiles and actual workspace owners can submit without a separate membership row; active workspace members must still have `content.can_submit` unless they are workspace owner/admin. An inactive/missing profile is rejected. Social accounts can be shared at the workspace level and are validated against either `brand_id` or `workspace_id` rather than the posting user's own ID.
+
+The future-schedule validation remains strict: if a schedule value is supplied, it must parse to a future timestamp or the request returns HTTP 400 rather than falling through to immediate submit.
+
 ### 4. Workspace-scoped publish authorization
 
 The duplicate draft-publishing endpoints now require a valid active user and workspace-scoped publish authority:
