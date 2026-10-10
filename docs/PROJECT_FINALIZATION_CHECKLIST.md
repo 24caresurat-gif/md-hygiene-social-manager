@@ -12,7 +12,7 @@ This checklist is the operational source of truth for making the application tid
 ## A. Current baseline
 
 - [x] Production deployment is READY at https://md-hygiene-social-manager.vercel.app
-- [x] Sidebar compact/scroll CSS is in the current production commit `af0c3d3`
+- [x] Compact, independently scrollable sidebar is deployed and the latest production build is READY.
 - [x] CRM execution history UI is present in main
 - [x] WhatsApp bot logs page and navigation are present in main
 - [x] CRM task-due API route exists and is authenticated with `CRON_SECRET`
@@ -27,7 +27,7 @@ This checklist is the operational source of truth for making the application tid
 - [ ] Verify changing the selected workspace reloads all workspace-owned lists and forms.
 - [ ] Attempt direct API reads/writes using Workspace A token against Workspace B IDs; requests must be denied or return no rows.
 - [ ] Verify staff cannot reach owner/admin-only Settings or management endpoints.
-- [ ] Review the 14 SQL migration files against the actual Supabase migration history and apply only missing migrations after review.
+- [ ] Reconcile tracked SQL migration files with the 60 migrations currently reported by the Supabase project. Confirm which remote changes are not represented in Git before generating/applying any migration; do not delete migration history.
 
 ### B2. Social content flow
 - [ ] Create draft, edit draft, upload media, and confirm persistence.
@@ -106,14 +106,19 @@ Do not begin these connections until the rest of the core product audit is compl
 ## E. Priority 1 — Production configuration and operations
 - [ ] Verify required Vercel environment variable names are present and non-empty without exposing values.
 - [ ] Confirm `CRON_SECRET` is configured for production only and that unauthenticated requests to cron endpoints are rejected.
-- [ ] Verify actual scheduled invocation for CRM task-due, publishing and WhatsApp campaigns; review runtime logs afterwards.
+- [ ] Verify actual scheduled invocation for CRM task-due, publishing and WhatsApp campaigns; review runtime logs afterwards. The current 24-hour Vercel runtime-error scan reported no errors, but scheduled invocation itself is not yet proven.
 - [ ] Confirm public environment variables contain no service-role keys, app secrets, OAuth secrets or provider access tokens.
-- [ ] Confirm Supabase leaked-password protection setting and review Supabase security advisors.
+- [ ] Enable Supabase Auth leaked-password protection in the dashboard.
+- [ ] Review exposed `SECURITY DEFINER` function permissions: `admin_delete_workspace` has an `anon` EXECUTE grant even though its body requires a signed-in admin; remove unnecessary grants through a reviewed migration and confirm owner/admin management still works.
+- [ ] Review `create_order_with_csr` before changing its public execute access because anonymous checkout may depend on it; validate supplied customer identity and order isolation.
+- [ ] Review direct RPC exposure for `can_access_workplace`, `has_workplace_permission`, and `is_admin`; preserve the helper execution needed by RLS while avoiding unintended direct data disclosure.
+- [ ] Review Supabase performance advisories observed at audit time: 30 unindexed foreign keys, 38 auth/RLS initialization-plan warnings, 17 multiple-permissive-policy warnings, and 76 unused-index notices. Prioritize actual query patterns and validate before making index/policy changes.
 - [ ] Verify backup/recovery expectations for production data and uploaded media.
 
 ## F. Priority 2 — UI and repository cleanup
 - [x] Make the sidebar more compact and add a dedicated scrollable navigation area; production deployment is READY.
 - [ ] Use grouped/collapsible navigation sections while preserving permission-based visibility.
+- [ ] Test sidebar at short desktop heights, standard desktop, tablet and mobile; current CSS has an independently scrollable navigation area, but manual browser verification is still pending.
 - [ ] Test sidebar scrolling at short desktop heights, normal desktop, tablet and mobile.
 - [ ] Identify duplicate/empty/obsolete source files before removing any. Current review candidates include `app/api/meta/facebook/callback/route2.ts` and `app/api/meta/facebook/placeholder.txt`; verify references/history before deletion.
 - [ ] Align forms, table spacing, status badges, loading/empty/error states and mobile overflow.
