@@ -78,7 +78,7 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
       .in('id',ids).in('platform',['facebook','instagram']);
     if(accountsError)throw accountsError;
     if((accounts||[]).length!==ids.length)throw new Error('One or more selected social accounts are no longer connected or are unsupported.');
-    if((accounts||[]).some((a:any)=>a.brand_id!==draft.brand_id||a.user_id!==draft.user_id||a.status!=='connected')){
+    if((accounts||[]).some((a:any)=>a.brand_id!==draft.brand_id||a.status!=='connected')){
       throw new Error('Approved post accounts no longer match the approved workspace.');
     }
 
