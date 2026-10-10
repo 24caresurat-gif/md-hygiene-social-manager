@@ -39,6 +39,12 @@ The duplicate draft-publishing endpoints now require a valid active user and wor
 
 The approved record is checked before provider calls. Account authorization now binds selected connected accounts to the approved workspace, rather than requiring the account creator to be the same user who submitted the draft; this supports shared workspace-owned social accounts. The primary approval publish endpoint also verifies that the approval row, workspace, submitter and associated draft match.
 
+## Approval Center queue integration
+
+The Approval Center previously called `/api/admin/draft-approvals` only, which serves the legacy `scheduled_posts` workflow. The current composer writes to `post_drafts` + `post_approvals`, so those pending submissions had no review list/API route.
+
+A workspace-scoped `GET/PATCH /api/admin/approvals` route now lists and reviews that composer workflow. The Approval Center page fetches both old and new queues, uses the appropriate review/publish endpoint for each, and keeps approved-but-unpublished rows visible for retry. Concurrent decision updates use a conditional transition from `pending`; the paired draft update is also checked and best-effort compensated if it cannot make the same transition.
+
 ## Deliberate direct-publish permission model
 
 `/api/meta/facebook/publish` and `/api/meta/instagram/publish` are separate “publish now” endpoints. They authorize an active workspace member with `publishing.can_publish` (owners/admins are allowed directly). These endpoints accept new content and an account ID rather than a pending draft ID; they do not serve as a way to publish a specific pending draft. Product policy should continue treating `can_publish` as an explicit direct-publishing entitlement. The primary composer routes through `/api/approvals/submit`.
@@ -47,7 +53,7 @@ The approved record is checked before provider calls. Account authorization now 
 
 **Code changes committed:** yes.  
 **Production build:** must be recorded from the deployment that includes this report/code revision.  
-**Live authenticated HTTP tests:** still required for:
+**Live authenticated HTTP tests:** still required for (the UI now connects both approval queues, but this has only been build/code-verified so far):
 - Member without `can_submit` → POST `/api/scheduled-posts` denied.
 - Member with `can_submit` → scheduled post is `pending`, never immediately eligible for cron.
 - Owner/admin → scheduled post is `approved`.
