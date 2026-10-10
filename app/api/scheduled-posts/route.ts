@@ -90,9 +90,9 @@ export async function POST(req: NextRequest) {
 
   const { data: accounts, error: accountError } = await db
     .from('social_accounts')
-    .select('id,brand_id,status')
+    .select('id,brand_id,workspace_id,status')
     .in('id', accountIds)
-    .eq('brand_id', brandId)
+    .or(`brand_id.eq.${brandId},workspace_id.eq.${brandId}`)
     .eq('status', 'connected');
   if (accountError) return NextResponse.json({ error: accountError.message }, { status: 500 });
   if ((accounts || []).length !== accountIds.length) {
