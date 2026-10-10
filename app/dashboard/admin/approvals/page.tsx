@@ -13,6 +13,8 @@ type LegacyDraft = {
   media_url: string | null;
   account_ids: string[];
   approval_status: string;
+  status: string;
+  scheduled_for?: string | null;
   submitted_at: string | null;
   reviewer_note: string | null;
   updated_at: string;
@@ -254,6 +256,7 @@ export default function ApprovalsPage() {
                     <span className={`pill ${pending ? 'pending' : 'approved'}`}>{status.replaceAll('_',' ')}</span>
                     <span className="pill">{accountCount(item)} account(s)</span>
                     {submittedAt(item) && <span className="pill">Submitted {new Date(submittedAt(item) as string).toLocaleString()}</span>}
+                    {item.kind === 'legacy' && item.status === 'scheduled' && item.scheduled_for && <span className="pill">Scheduled {new Date(item.scheduled_for).toLocaleString()}</span>}
                   </div>
                   <p className="caption">{caption(item) || 'No caption provided.'}</p>
                   {publishError(item) && <p className="error-text">Last publish error: {publishError(item)}</p>}
