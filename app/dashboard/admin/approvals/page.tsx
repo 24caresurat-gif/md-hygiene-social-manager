@@ -164,8 +164,9 @@ export default function ApprovalsPage() {
       }
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unable to review this post.');
+      const message = e instanceof Error ? e.message : 'Unable to review this post.';
       await load();
+      setError(message);
     } finally {
       setBusy('');
     }
@@ -191,8 +192,9 @@ export default function ApprovalsPage() {
       if (!response.ok) throw new Error(data.error || 'Publishing failed. The approved post is still available to retry.');
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unable to publish approved post.');
+      const message = e instanceof Error ? e.message : 'Unable to publish approved post.';
       await load();
+      setError(message);
     } finally {
       setBusy('');
     }
