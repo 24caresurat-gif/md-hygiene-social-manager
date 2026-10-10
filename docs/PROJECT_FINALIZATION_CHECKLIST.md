@@ -11,12 +11,12 @@ This checklist is the operational source of truth for making the application tid
 
 ## A. Current baseline
 
-- [x] Production deployment is READY at https://md-hygiene-social-manager.vercel.app (latest code deployment `dpl_J1Nh8FVbYg3g7a9vFiXQh22jgFjh`, commit `05f668fce69197f5355ce3906132a559865a6516`; Vercel build completed and deployment aliases are assigned). Vercel's available fetch tool still could not pass deployment protection for unauthenticated HTTP smoke tests.
+- [x] Production deployment is READY at https://md-hygiene-social-manager.vercel.app (latest code deployment `dpl_Bf6VCefoAVeRq7tyCrdx9VaJBh1i`, commit `56293078ec59f9e242e73f89edffec98373de3ec`; Vercel build completed and deployment aliases are assigned). Vercel's available fetch tool still could not pass deployment protection for unauthenticated HTTP smoke tests.
 - [x] Compact, independently scrollable sidebar is deployed and the latest production build is READY.
 - [x] CRM execution history UI is present in main
 - [x] WhatsApp bot logs page and navigation are present in main
 - [x] CRM task-due API route exists and is authenticated with `CRON_SECRET`; the GitHub Actions scheduler is prepared for five-minute execution, pending the matching repository secret and live run.
-- [x] Vercel runtime-error scan returned no runtime errors in the hour after deployment `dpl_J1Nh8FVbYg3g7a9vFiXQh22jgFjh` at audit time
+- [x] Vercel runtime-error scan returned no runtime errors in the hour after deployment `dpl_Bf6VCefoAVeRq7tyCrdx9VaJBh1i` at audit time
 - [ ] Run a real browser pass through key pages on desktop and mobile
 - [ ] Capture final test date, tester, workspace used and observed result
 
