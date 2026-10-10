@@ -62,7 +62,7 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
     if(approval.publish_status==='published')return NextResponse.json({error:'This approved post has already been published.'},{status:409});
 
     const {data:draft,error:draftError}=await db.from('post_drafts')
-      .select('id,user_id,brand_id,message,media_urls,account_ids,approval_status')
+      .select('id,user_id,brand_id,workspace_id,message,media_urls,account_ids,approval_status')
       .eq('id',approval.draft_id).maybeSingle();
     if(draftError)throw draftError;
     if(!draft)return NextResponse.json({error:'Post draft not found.'},{status:404});
@@ -74,11 +74,11 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
     const ids=Array.isArray(draft.account_ids)?draft.account_ids.map(String):[];
     if(!ids.length)return NextResponse.json({error:'No social accounts are attached to this approved post.'},{status:400});
     const {data:accounts,error:accountsError}=await db.from('social_accounts')
-      .select('id,user_id,name,platform,platform_account_id,access_token,status,brand_id')
+      .select('id,user_id,name,platform,platform_account_id,access_token,status,brand_id,workspace_id')
       .in('id',ids).in('platform',['facebook','instagram']);
     if(accountsError)throw accountsError;
     if((accounts||[]).length!==ids.length)throw new Error('One or more selected social accounts are no longer connected or are unsupported.');
-    if((accounts||[]).some((a:any)=>a.brand_id!==draft.brand_id||a.status!=='connected')){
+    if((accounts||[]).some((a:any)=>(a.brand_id!==draft.brand_id&&a.workspace_id!==(draft.workspace_id||approval.workplace_id))||a.status!=='connected')){
       throw new Error('Approved post accounts no longer match the approved workspace.');
     }
 
