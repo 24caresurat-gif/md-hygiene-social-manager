@@ -24,7 +24,7 @@ export async function POST(request:Request){
     const{data:member}=await supabase.from('workplace_members').select('role,active').eq('workspace_id',workspaceId).eq('user_id',userId).maybeSingle();
     if(!member?.active)return NextResponse.json({error:'You do not have access to this workspace.'},{status:403});
     if(member.role!=='owner'&&member.role!=='admin'){
-      const{data:permission}=await supabase.from('workspace_member_permissions').select('can_publish').eq('workspace_id',account.workspace_id).eq('user_id',userId).eq('module','publishing').maybeSingle();
+      const{data:permission}=await supabase.from('workspace_member_permissions').select('can_publish').eq('workspace_id',workspaceId).eq('user_id',userId).eq('module','publishing').maybeSingle();
       if(!permission?.can_publish)return NextResponse.json({error:'Publishing permission is required.'},{status:403});
     }
     if(account.status!=='connected'||!account.access_token)return NextResponse.json({error:'Instagram connection is not active. Please reconnect it.'},{status:400});
