@@ -7,11 +7,11 @@
 
 ## Current verified deployment snapshot
 
-- Current production deployment: READY
-- Production commit: `af0c3d3f9edd03e0f98bab2011a3e88e36d81f75` (`fix(ui): compact sidebar and enable navigation scrolling`)
-- Earlier route/migration inventory snapshot: 51 dashboard pages, 86 API route handlers, and 14 tracked SQL migration files at that time. The current database-vs-repository migration reconciliation is documented in [SUPABASE_MIGRATION_RECONCILIATION.md](SUPABASE_MIGRATION_RECONCILIATION.md); do not treat that older count as current.
-- Vercel runtime error scan over the previous 24 hours: no runtime errors reported.
-- This is not the same as end-to-end certification. Real-account OAuth/publishing, workspace-isolation tests, cron invocation, and full user flows remain in the finalization checklist.
+- Current production deployment: READY (`dpl_J1Nh8FVbYg3g7a9vFiXQh22jgFjh`)
+- Production code commit: `05f668fce69197f5355ce3906132a559865a6516` (`fix: atomically claim CRM task-due workflow runs`)
+- Vercel build completed and production aliases are assigned. Runtime-error scan for the hour after deployment reported no runtime errors.
+- Tracked SQL migration inventory is documented in [SUPABASE_MIGRATION_RECONCILIATION.md](SUPABASE_MIGRATION_RECONCILIATION.md); remote migration history currently reports 68 applied records, and the repository tracks 23 migration SQL files. Preserve production migration history; do not replay tracked files blindly.
+- This is not the same as end-to-end certification. Real-account OAuth/publishing, workspace-isolation tests, cron invocation, and full user flows remain in the finalization checklist. Vercel deployment protection blocked the available route smoke-test fetch, so do not treat route HTTP behavior as verified.
 
 ## Product modules and what they do
 
@@ -67,8 +67,10 @@
 - Workflow actions include task creation, lead stage changes, approved WhatsApp template sending, and product suggestions.
 - Reports show pipeline/stage outcomes and task/follow-up health.
 - Execution history: the Automation page includes recent workflow runs and result detail.
-- Task-due cron: configured in `vercel.json` for `0 3 * * *` (03:00 UTC / 08:30 India time). The endpoint requires `Authorization: Bearer $CRON_SECRET`. Do not expose that secret to the browser.
-- Current known behavior: the daily scheduler scans open tasks with due times and linked leads; tasks without a lead are skipped. Validate whether this matches the business expectation before final sign-off.
+- Task-due cron: configured in `vercel.json` for `0 3 * * *` (03:00 UTC / 08:30 India time). The endpoint requires `Authorization: Bearer $CRON_SECRET`; code fails closed if the secret is absent. Do not expose that secret to the browser.
+- Duplicate protection: production migration `20261010105454_crm_task_due_atomic_claim` adds unique partial index `crm_workflow_runs_task_due_once_idx` on `(workflow_id, entity_id)` for `entity_type='crm_task'`. The route inserts a `queued` execution claim before running workflow actions, then finalizes that row. A second concurrent claim for the same workflow/task pair is skipped instead of running actions twice.
+- Recovery trade-off: if a worker crashes after recording the claim but before finalizing the run, the queued claim prevents automatic replay. Review/repair of stale queued entries will need an explicit recovery policy so automatic recovery cannot repeat already executed external actions.
+- Current known behavior: the daily scheduler scans open tasks with due times and linked leads; tasks without a lead are skipped. Production currently has zero CRM workflow definitions, so positive execution and concurrent HTTP tests remain pending. Vercel deployment protection blocked direct endpoint smoke tests in the available test path.
 
 ### 7. WhatsApp Business
 **Purpose:** shared inbox and conversation/message management, approved templates, campaigns, interactive replies, product suggestions, bot flows, contacts sync and CRM integration.
