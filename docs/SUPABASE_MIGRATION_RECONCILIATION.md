@@ -162,7 +162,7 @@ A rollback-only database probe passed:
 - The entire probe rolled back; follow-up checks found zero probe products, carts or cart items.
 - RPC execute rights were verified as `anon=false`, `authenticated=false`, `service_role=true`.
 
-Full browser UI verification and independent-connection concurrency testing still remain pending.
+A combined rollback-only add-to-cart→checkout probe also passed: two adds produced quantity 2, checkout totaled 80 for two items at 40 each, stock fell from 5 to 3, the order item quantity was 2 and the cart cleared. The full probe rolled back; follow-up checks confirmed zero probe products, carts or orders remained. Full browser UI verification and independent-connection concurrency testing still remain pending.
 
 ## Safe reconciliation plan
 
