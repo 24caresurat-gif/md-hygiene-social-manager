@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Your account is inactive.' }, { status: 403 });
   }
 
-  let access;
+  let access: Awaited<ReturnType<typeof workspaceAccess>> | null = null;
   try {
     access = await workspaceAccess(db, user.id, workspaceId);
   } catch (e) {
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
   }
 
   const role = String(access.role || '').toLowerCase();
-  const ownerOrAdmin = access.isOwner || access.is_owner_or_admin || access.globalAdmin ||
+  const ownerOrAdmin = access.isOwner || access.globalAdmin ||
     role === 'owner' || role === 'admin';
   let canSubmit = ownerOrAdmin;
   if (!canSubmit) {
