@@ -31,6 +31,7 @@ This checklist is the operational source of truth for making the application tid
 
 ### B2. Social content flow
 - [~] Fixed schema mismatch preventing `scheduled_posts.approval_status='draft'`: database CHECK now accepts `draft`, and Creative Studio's save-draft route sets it explicitly. Rollback-only DB insert passed and cron eligibility probe confirmed drafts are not publishable. Full browser create/edit/submit and approval cycle still pending.
+- [~] Immediate publishing now checks workspace-scoped authorization: active global admin/owner or workspace owner/admin; a manager additionally needs both `approval.can_approve` and `publishing.can_publish`. The publish API binds the approved record to the draft's workspace and submitter. Browser-level owner/admin, manager, and denied-member tests plus real-provider publish remain pending.
 - [ ] Submit draft for approval as a permitted staff member.
 - [ ] Approve, reject and request changes as a permitted reviewer.
 - [ ] Confirm an unapproved post cannot publish or enter scheduled publishing through an alternate API path.
