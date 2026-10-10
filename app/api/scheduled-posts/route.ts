@@ -38,17 +38,105 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const user = await userFromRequest(req);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const body = await req.json().catch(() => null);
-  if (!body?.brandId || !Array.isArray(body.accountIds) || !body.accountIds.length || !body.scheduledFor) return NextResponse.json({ error: 'brandId, accountIds and scheduledFor are required.' }, { status: 400 });
-  const accountIds: string[] = body.accountIds.map((id: unknown) => String(id)).filter(Boolean);
-  const when = new Date(body.scheduledFor);
-  if (Number.isNaN(when.getTime()) || when.getTime() <= Date.now()) return NextResponse.json({ error: 'scheduledFor must be a valid future date.' }, { status: 400 });
+  const brandId = String(body?.brandId || '').trim();
+  const requestedStatus = body?.status === 'draft' ? 'draft' : 'scheduled';
+  const rawAccountIds = Array.isArray(body?.accountIds) ? body.accountIds.map((id: unknown) => String(id).trim()).filter(Boolean) : [];
+  const accountIds = [...new Set(rawAccountIds)];
+  const when = new Date(body?.scheduledFor);
+
+  if (!brandId || !accountIds.length || !body?.scheduledFor) {
+    return NextResponse.json({ error: 'brandId, accountIds and scheduledFor are required.' }, { status: 400 });
+  }
+  if (accountIds.length !== rawAccountIds.length) {
+    return NextResponse.json({ error: 'Duplicate social accounts are not allowed.' }, { status: 400 });
+  }
+  if (Number.isNaN(when.getTime()) || when.getTime() <= Date.now()) {
+    return NextResponse.json({ error: 'scheduledFor must be a valid future date.' }, { status: 400 });
+  }
+
   const db = admin();
-  const validationError = await validateWorkspace(db, user.id, String(body.brandId), accountIds);
-  if (validationError) return NextResponse.json({ error: validationError }, { status: 403 });
-  const { data, error } = await db.from('scheduled_posts').insert({ user_id: user.id, brand_id: body.brandId, account_ids: accountIds, caption: String(body.caption || ''), link: body.link || null, media_url: body.mediaUrl || null, scheduled_for: when.toISOString(), status: body.status === 'draft' ? 'draft' : 'scheduled' }).select('*').single();
+  const { data: profile, error: profileError } = await db
+    .from('profiles')
+    .select('active')
+    .eq('id', user.id)
+    .maybeSingle();
+  if (profileError) return NextResponse.json({ error: profileError.message }, { status: 500 });
+  if (!profile || profile.active === false) {
+    return NextResponse.json({ error: 'Your account is inactive.' }, { status: 403 });
+  }
+
+  const { data: membership, error: membershipError } = await db
+    .from('workplace_members')
+    .select('role,active')
+    .eq('workspace_id', brandId)
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (membershipError) return NextResponse.json({ error: membershipError.message }, { status: 500 });
+  if (!membership?.active) {
+    return NextResponse.json({ error: 'You do not have access to this workspace.' }, { status: 403 });
+  }
+
+  const role = String(membership.role || '').toLowerCase();
+  const isWorkspaceAdmin = role === 'owner' || role === 'admin';
+  const permissionField = requestedStatus === 'draft' ? 'can_create' : 'can_submit';
+
+  if (!isWorkspaceAdmin) {
+    const { data: permission, error: permissionError } = await db
+      .from('workspace_member_permissions')
+      .select('can_create,can_submit')
+      .eq('workspace_id', brandId)
+      .eq('user_id', user.id)
+      .eq('module', 'content')
+      .maybeSingle();
+    if (permissionError) return NextResponse.json({ error: permissionError.message }, { status: 500 });
+    if (permission?.[permissionField] !== true) {
+      return NextResponse.json({
+        error: requestedStatus === 'draft'
+          ? 'You do not have Create permission for Content.'
+          : 'You do not have Submit permission for Content.',
+      }, { status: 403 });
+    }
+  }
+
+  const { data: accounts, error: accountError } = await db
+    .from('social_accounts')
+    .select('id,brand_id,status')
+    .in('id', accountIds)
+    .eq('brand_id', brandId)
+    .eq('status', 'connected');
+  if (accountError) return NextResponse.json({ error: accountError.message }, { status: 500 });
+  if ((accounts || []).length !== accountIds.length) {
+    return NextResponse.json({ error: 'One or more selected social accounts are not connected to this workspace.' }, { status: 403 });
+  }
+
+  // The alternate scheduling API follows the same rule as /api/approvals/submit:
+  // only workspace owners/admins schedule as approved; staff submissions remain
+  // pending and the cron worker cannot publish them until a reviewer approves.
+  const approvalStatus = requestedStatus === 'draft'
+    ? 'draft'
+    : isWorkspaceAdmin ? 'approved' : 'pending';
+
+  const { data, error } = await db
+    .from('scheduled_posts')
+    .insert({
+      user_id: user.id,
+      brand_id: brandId,
+      workspace_id: brandId,
+      account_ids: accountIds,
+      caption: String(body?.caption || '').trim(),
+      link: body?.link ? String(body.link) : null,
+      media_url: body?.mediaUrl ? String(body.mediaUrl) : null,
+      scheduled_for: when.toISOString(),
+      status: requestedStatus,
+      approval_status: approvalStatus,
+    })
+    .select('*')
+    .single();
+
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ post: data }, { status: 201 });
+  return NextResponse.json({ post: data, approvalStatus }, { status: 201 });
 }
 
 export async function DELETE(req: NextRequest) {
