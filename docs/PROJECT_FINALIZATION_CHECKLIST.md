@@ -25,7 +25,7 @@ This checklist is the operational source of truth for making the application tid
 ### B1. User, workspace and permissions
 - [ ] Test owner/admin/staff access using separate test accounts.
 - [ ] Verify changing the selected workspace reloads all workspace-owned lists and forms.
-- [ ] Attempt direct API reads/writes using Workspace A token against Workspace B IDs; requests must be denied or return no rows.
+- [~] Read-only SQL-session RLS probe as an active staff user with no workspace membership returned zero rows for another workspace across `brands`, `catalog_products`, `catalog_orders`, `qr_standees`, and `social_posts`. A `catalog_products` insert was rejected by RLS and no row persisted. Full two-browser-session PostgREST/API tests against Workspace A/B IDs remain pending.
 - [ ] Verify staff cannot reach owner/admin-only Settings or management endpoints.
 - [~] Migration reconciliation report added: production history has 65 applied records vs 20 tracked SQL files; 14 exact-name matches (7 with exact versions), 7 name matches with timestamp mismatch, 6 tracked files without exact remote names, and 51 remote records without exact filename-stem matches. Restored the applied QR standee source and tracked the applied checkout-transaction and atomic cart-increment migrations. This remains a source/history mismatch, not proof of missing schema. Follow [the reconciliation report](SUPABASE_MIGRATION_RECONCILIATION.md); preserve production history and do not replay or repair migrations blindly.
 
