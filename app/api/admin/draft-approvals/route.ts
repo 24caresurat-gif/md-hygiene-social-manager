@@ -20,5 +20,62 @@ async function reviewer(req:NextRequest,workspaceId?:string){
   }
   return{user:u,s,role:m.role};
 }
-export async function GET(req:NextRequest){const u=await getUser(req);if(!u)return NextResponse.json({error:'Unauthorized'},{status:401});const s=admin();const workspaceId=new URL(req.url).searchParams.get('workspace_id')||'';if(!workspaceId)return NextResponse.json({error:'workspace_id is required.'},{status:400});const r=await reviewer(req,workspaceId);if(r.error)return r.error;const{data,error}=await s.from('scheduled_posts').select('*').eq('brand_id',workspaceId).eq('status','draft').in('approval_status',['pending','approved']).order('submitted_at',{ascending:false});if(error)return NextResponse.json({error:error.message},{status:500});return NextResponse.json({drafts:data||[]});}
-export async function PATCH(req:NextRequest){const body=await req.json().catch(()=>null);const id=String(body?.id||'');const decision=String(body?.decision||'');const note=String(body?.note||'').trim()||null;if(!id||!['approved','rejected','changes_requested'].includes(decision))return NextResponse.json({error:'id and a valid decision are required.'},{status:400});const s=admin();const{data:d,error}=await s.from('scheduled_posts').select('id,brand_id,status,approval_status').eq('id',id).maybeSingle();if(error)return NextResponse.json({error:error.message},{status:500});if(!d)return NextResponse.json({error:'Draft not found.'},{status:404});const r=await reviewer(req,d.brand_id);if(r.error)return r.error;if(d.status!=='draft'||d.approval_status!=='pending')return NextResponse.json({error:'This draft is no longer awaiting approval.'},{status:400});const now=new Date().toISOString();const{data:updated,error:up}=await s.from('scheduled_posts').update({approval_status:decision,reviewer_note:note,reviewed_by:r.user!.id,reviewed_at:now,approved_by:decision==='approved'?r.user!.id:null,approved_at:decision==='approved'?now:null}).eq('id',id).eq('status','draft').eq('approval_status','pending').select('*').maybeSingle();if(up)return NextResponse.json({error:up.message},{status:500});if(!updated)return NextResponse.json({error:'This draft was reviewed by someone else. Refresh the queue.'},{status:409});await s.from('scheduled_post_activity_log').insert({scheduled_post_id:id,actor_user_id:r.user!.id,action:decision,note,metadata:{}});return NextResponse.json({draft:updated});}
+export async function GET(req:NextRequest){
+  const u=await getUser(req);
+  if(!u)return NextResponse.json({error:'Unauthorized'},{status:401});
+  const s=admin();
+  const workspaceId=new URL(req.url).searchParams.get('workspace_id')||'';
+  if(!workspaceId)return NextResponse.json({error:'workspace_id is required.'},{status:400});
+  const r=await reviewer(req,workspaceId);
+  if(r.error)return r.error;
+  const {data,error}=await s.from('scheduled_posts').select('*')
+    .eq('brand_id',workspaceId)
+    .in('status',['draft','scheduled'])
+    .in('approval_status',['pending','approved'])
+    .order('submitted_at',{ascending:false});
+  if(error)return NextResponse.json({error:error.message},{status:500});
+  // Drafts can be approved and awaiting a manual publish retry. Scheduled posts
+  // are shown only while pending review; approved schedules belong to the cron.
+  const drafts=(data||[]).filter((item:any)=>item.status==='draft'||item.approval_status==='pending');
+  return NextResponse.json({drafts});
+}
+export async function PATCH(req:NextRequest){
+  const body=await req.json().catch(()=>null);
+  const id=String(body?.id||'');
+  const decision=String(body?.decision||'');
+  const note=String(body?.note||'').trim()||null;
+  if(!id||!['approved','rejected','changes_requested'].includes(decision)){
+    return NextResponse.json({error:'id and a valid decision are required.'},{status:400});
+  }
+  const s=admin();
+  const {data:d,error}=await s.from('scheduled_posts')
+    .select('id,brand_id,workspace_id,status,approval_status')
+    .eq('id',id).maybeSingle();
+  if(error)return NextResponse.json({error:error.message},{status:500});
+  if(!d)return NextResponse.json({error:'Draft not found.'},{status:404});
+  const r=await reviewer(req,d.workspace_id||d.brand_id);
+  if(r.error)return r.error;
+  if(!['draft','scheduled'].includes(d.status)||d.approval_status!=='pending'){
+    return NextResponse.json({error:'This post is no longer awaiting approval.'},{status:409});
+  }
+  const now=new Date().toISOString();
+  const nextStatus=d.status==='scheduled'&&decision!=='approved'
+    ?(decision==='rejected'?'cancelled':'draft')
+    :d.status;
+  const {data:updated,error:up}=await s.from('scheduled_posts').update({
+    status:nextStatus,
+    approval_status:decision,
+    reviewer_note:note,
+    reviewed_by:r.user!.id,
+    reviewed_at:now,
+    approved_by:decision==='approved'?r.user!.id:null,
+    approved_at:decision==='approved'?now:null,
+  }).eq('id',id).eq('status',d.status).eq('approval_status','pending')
+    .select('*').maybeSingle();
+  if(up)return NextResponse.json({error:up.message},{status:500});
+  if(!updated)return NextResponse.json({error:'This post was reviewed by someone else. Refresh the queue.'},{status:409});
+  const {error:logError}=await s.from('scheduled_post_activity_log').insert({
+    scheduled_post_id:id,actor_user_id:r.user!.id,action:decision,note,metadata:{}
+  });
+  return NextResponse.json({draft:updated,...(logError?{warning:'Decision saved, but activity history could not be recorded.'}:{})});
+}
