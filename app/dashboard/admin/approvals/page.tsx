@@ -76,7 +76,6 @@ function publishError(item: QueueItem) {
 }
 
 export default function ApprovalsPage() {
-  const [workspaceId, setWorkspaceId] = useState('');
   const [items, setItems] = useState<QueueItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -96,11 +95,9 @@ export default function ApprovalsPage() {
       const activeWorkspace = localStorage.getItem('mdsm:selectedWorkspaceId') || '';
       if (!activeWorkspace) {
         setItems([]);
-        setWorkspaceId('');
         setError('Select a workspace in the dashboard before opening Approvals.');
         return;
       }
-      setWorkspaceId(activeWorkspace);
       const access = await token();
       const query = `workspace_id=${encodeURIComponent(activeWorkspace)}`;
       const [legacyResponse, composerResponse] = await Promise.all([
