@@ -43,7 +43,7 @@ This checklist is the operational source of truth for making the application tid
 - [ ] Test featured product, compare-at price, coupon percentage/fixed discount, min order and max use limit.
 - [ ] Run a public storefront add-to-cart/wishlist/checkout flow.
 - [ ] Verify server-side order total and discount; never trust a total supplied only by the browser.
-- [~] Public checkout now delegates order, order-item, stock and coupon updates to a service-role-only atomic database transaction; the no-cart error path was verified. Full real-cart, coupon, parallel-checkout and browser E2E tests remain pending.
+- [~] Public checkout uses the service-role-only atomic database transaction. Rollback-only DB probe passed: subtotal 200, 25% discount 50, total 150; stock 10→8; coupon usage 0→1; order item recorded; cart cleared. Insufficient-stock check rejected and rolled back, and follow-up confirmed no test data remained. Production deployment `dpl_69mRpZfTBQ5kMfwfMGMZQb7SJjvx` is READY. Full real browser checkout and concurrency/max-coupon tests remain pending.
 - [ ] Confirm order appears under the correct workspace.
 
 ### B4. Digital Card and leads
