@@ -122,14 +122,16 @@ export async function PATCH(request: NextRequest) {
       approved_at: decision === 'approved' ? reviewedAt : null,
       updated_at: reviewedAt,
     };
-    const { error: draftError } = await auth.db.from('post_drafts')
-      .update(draftUpdate).eq('id', approval.draft_id).eq('approval_status', 'pending');
-    if (draftError) {
-      // Best-effort compensation so the approval record does not claim a decision
-      // when its paired draft failed to move to the same state.
+    const { data: updatedDraft, error: draftError } = await auth.db.from('post_drafts')
+      .update(draftUpdate).eq('id', approval.draft_id).eq('approval_status', 'pending')
+      .select('id').maybeSingle();
+    if (draftError || !updatedDraft) {
+      // Best-effort compensation so the approval row does not claim a decision
+      // when its paired draft could not make the same state transition.
       await auth.db.from('post_approvals').update({ status: 'pending', reviewer_note: null, reviewed_by: null, reviewed_at: null })
         .eq('id', id).eq('status', decision);
-      throw draftError;
+      if (draftError) throw draftError;
+      return NextResponse.json({ error: 'The draft state changed before this decision was saved. Refresh the queue.' }, { status: 409 });
     }
 
     return NextResponse.json({ approval: updatedApproval });
