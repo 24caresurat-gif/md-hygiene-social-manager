@@ -60,8 +60,8 @@ export async function GET(request: NextRequest) {
     }
 
     const { data: approvals, error } = await auth.db.from('post_approvals')
-      .select('id,draft_id,workplace_id,submitted_by,status,reviewer_note,submitted_at')
-      .eq('workplace_id', workspaceId).eq('status', 'pending')
+      .select('id,draft_id,workplace_id,submitted_by,status,reviewer_note,submitted_at,publish_status,publish_error')
+      .eq('workplace_id', workspaceId).in('status', ['pending', 'approved'])
       .order('submitted_at', { ascending: false });
     if (error) throw error;
 
@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
     const draftById = new Map((drafts || []).map((draft: any) => [draft.id, draft]));
     const result = (approvals || [])
       .map((approval: any) => ({ ...approval, draft: draftById.get(approval.draft_id) || null, workspace_name: brand?.name || 'Workspace' }))
-      .filter((approval: any) => approval.draft !== null);
+      .filter((approval: any) => approval.draft !== null && (approval.status === 'pending' || approval.publish_status !== 'published'));
 
     return NextResponse.json({ approvals: result });
   } catch (error) {
