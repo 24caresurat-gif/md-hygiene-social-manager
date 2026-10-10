@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { runWhatsAppCampaignBatch } from '../../../../lib/whatsapp-campaign-worker';
 
+export const maxDuration = 60;
+
 const GRAPH = 'https://graph.facebook.com/v23.0';
 
 function admin() {
