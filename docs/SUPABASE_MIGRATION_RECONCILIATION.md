@@ -8,13 +8,13 @@
 
 | Measure | Count |
 |---|---:|
-| SQL files currently tracked in `supabase/migrations/` on `main` | 22 |
-| Applied migration records reported by Supabase | 67 |
-| Same migration name in both lists | 16 |
-| Same name **and** exact version/timestamp | 9 |
+| SQL files currently tracked in `supabase/migrations/` on `main` | 23 |
+| Applied migration records reported by Supabase | 68 |
+| Same migration name in both lists | 17 |
+| Same name **and** exact version/timestamp | 10 |
 | Same name but filename timestamp differs | 7 |
-| Tracked SQL files with no exact remote migration name | 6 |
-| Remote records with no exact tracked filename stem | 51 |
+| Tracked SQL files with no exact remote migration name | 5 |
+| Remote records with no exact tracked filename stem | 50 |
 
 **Interpretation:** this is a migration-source/history mismatch, not proof that the production schema is missing these changes. Some tracked SQL files overlap or consolidate work recorded under different remote migration names. Do not replay the tracked files on production, mass-mark migrations as applied, delete migration records, or run `supabase migration repair` without a reviewed mapping.
 
@@ -32,6 +32,7 @@
 | `20261010091336_catalog_cart_item_atomic_increment.sql` | `20261010091336` | Exact version + name; source committed with the atomic cart increment API change |
 | `20261010092313_scheduled_posts_allow_draft_approval_state.sql` | `20261010092313` | Exact version + name; fixes the pre-submission draft approval-state constraint |
 | `20261010095804_scheduled_post_publish_retry_claim_fields.sql` | `20261010095804` | Exact version + name; adds publish status/claim/attempt fields and links composer social-post history to the approval row |
+| `20261010105454_crm_task_due_atomic_claim.sql` | `20261010105454` | Exact version + name; enforces one task-due workflow claim per workflow/task pair |
 | `20260930110000_phase1_workspace_auth_hardening.sql` | `20260929133513` | Name matches; filename version is `20260930110000` |
 | `20260930111500_phase1_role_defaults_whatsapp.sql` | `20260930054748` | Name matches; filename version is `20260930111500` |
 | `20260930113000_phase1_google_connection_deny_policy.sql` | `20260930054822` | Name matches; filename version is `20260930113000` |
@@ -189,7 +190,7 @@ Migration `20261010095804_scheduled_post_publish_retry_claim_fields` is applied 
 
 ## Safe reconciliation plan
 
-1. Preserve the production database and all 63 existing migration history records.
+1. Preserve the production database and all 68 existing migration history records.
 2. Recover migration SQL sources from original repository commits, working copies, release artefacts or the operator who first applied them. Record source SHA and remote version for each recovered file.
 3. For each remote-only name, inspect the actual migration content if recoverable and compare its DDL/RLS/function changes with tracked files and live schema. A table existing today does not prove which migration created it.
 4. Where an old SQL source cannot be recovered, take a reviewed schema snapshot from the production schema (for example, a controlled `supabase db pull` from an authorized workstation/branch) and keep it explicitly labelled as a baseline snapshot—not as a historical migration to replay.
