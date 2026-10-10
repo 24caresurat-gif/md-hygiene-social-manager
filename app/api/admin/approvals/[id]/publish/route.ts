@@ -5,7 +5,7 @@ type Account = { id:string; user_id:string; name:string; platform:string; platfo
 
 function serviceDb(){const url=process.env.NEXT_PUBLIC_SUPABASE_URL;const key=process.env.SUPABASE_SERVICE_ROLE_KEY;if(!url||!key)throw new Error('Server Supabase configuration is missing.');return createClient(url,key,{auth:{autoRefreshToken:false,persistSession:false}})}
 async function callerFromRequest(request:Request){
-  const token=request.headers.get('authorization')?.replace(/^Bearer\\s+/i,'');
+  const token=request.headers.get('authorization')?.replace(/^Bearer\s+/i,'');
   if(!token)return null;
   const anon=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,url=process.env.NEXT_PUBLIC_SUPABASE_URL;
   if(!anon||!url)return null;
