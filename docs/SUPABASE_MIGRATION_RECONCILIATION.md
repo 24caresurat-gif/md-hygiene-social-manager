@@ -108,6 +108,15 @@ The records below were returned by Supabase, but there is no file in the current
 20261008105257_crm_whatsapp_contact_unique
 ```
 
+## RLS helper caller-identity guard probe
+
+A read-only database probe selected an active workspace member and a different existing Auth user, then set the simulated `request.jwt.claim.sub` to the other user's ID. The three helper functions were called with the member's different ID:
+- `can_access_workplace(workspace_id, different_user_id)` returned `false`.
+- `is_admin(different_user_id)` returned `false`.
+- `has_workplace_permission(workspace_id, platform, permission, different_user_id)` returned `false`.
+
+The assertions completed without an error. This confirms the explicit `auth.uid()` mismatch guard in the SQL function definitions; it does **not** replace a full authenticated PostgREST test under two real browser sessions. Those API-level cross-workspace read/write tests remain required before sign-off.
+
 ## Read-only schema spot checks
 
 The following expected relations exist in the production schema at audit time:
