@@ -21,8 +21,9 @@ export async function POST(request: Request) {
     const { data: accountRow, error: accountError } = await supabase.from('social_accounts').select('id,name,platform_account_id,access_token,platform,status,workspace_id,brand_id').eq('id', accountId).eq('platform', 'facebook').single();
     if (accountError || !accountRow) return NextResponse.json({ error: 'Connected Facebook Page not found.' }, { status: 404 });
     const account = accountRow as Account;
-    if (!account.workspace_id) return NextResponse.json({ error: 'Facebook Page is not assigned to a workspace.' }, { status: 403 });
-    const { data: member } = await supabase.from('workplace_members').select('role,active').eq('workspace_id', account.workspace_id).eq('user_id', userId).maybeSingle();
+    const workspaceId = account.workspace_id || account.brand_id;
+    if (!workspaceId) return NextResponse.json({ error: 'Facebook Page is not assigned to a workspace.' }, { status: 403 });
+    const { data: member } = await supabase.from('workplace_members').select('role,active').eq('workspace_id', workspaceId).eq('user_id', userId).maybeSingle();
     if (!member?.active) return NextResponse.json({ error: 'You do not have access to this workspace.' }, { status: 403 });
     if (member.role !== 'owner' && member.role !== 'admin') {
       const { data: permission } = await supabase.from('workspace_member_permissions').select('can_publish').eq('workspace_id', account.workspace_id).eq('user_id', userId).eq('module', 'publishing').maybeSingle();
