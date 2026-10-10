@@ -15,7 +15,7 @@ This checklist is the operational source of truth for making the application tid
 - [x] Compact, independently scrollable sidebar is deployed and the latest production build is READY.
 - [x] CRM execution history UI is present in main
 - [x] WhatsApp bot logs page and navigation are present in main
-- [x] CRM task-due API route exists and is authenticated with `CRON_SECRET`
+- [x] CRM task-due API route exists and is authenticated with `CRON_SECRET`; the GitHub Actions scheduler is prepared for five-minute execution, pending the matching repository secret and live run.
 - [x] Vercel runtime-error scan returned no runtime errors in the hour after deployment `dpl_J1Nh8FVbYg3g7a9vFiXQh22jgFjh` at audit time
 - [ ] Run a real browser pass through key pages on desktop and mobile
 - [ ] Capture final test date, tester, workspace used and observed result
@@ -114,7 +114,8 @@ Do not begin these connections until the rest of the core product audit is compl
 ## E. Priority 1 — Production configuration and operations
 - [ ] Verify required Vercel environment variable names are present and non-empty without exposing values.
 - [ ] Confirm `CRON_SECRET` is configured for production only and that unauthenticated requests to cron endpoints are rejected.
-- [ ] Verify actual scheduled invocation for CRM task-due, publishing and WhatsApp campaigns; review runtime logs afterwards. The current 24-hour Vercel runtime-error scan reported no errors, but scheduled invocation itself is not yet proven.
+- [~] GitHub Actions scheduler ` .github/workflows/production-scheduler.yml` is configured for every 5 minutes and calls the secured publishing/WhatsApp + CRM task-due workers. Required GitHub repository Action secret `CRON_SECRET` has not been added/verified through the available app connection, so the scheduler is not yet proven active.
+- [ ] Add GitHub Actions repository secret `CRON_SECRET` matching Vercel production value, run `Production Scheduler` manually, verify both endpoints return successful HTTP statuses, and confirm runtime logs/results.
 - [ ] Confirm public environment variables contain no service-role keys, app secrets, OAuth secrets or provider access tokens.
 - [ ] Enable Supabase Auth leaked-password protection in the dashboard.
 - [x] Restrict `admin_delete_workspace(uuid)` to `service_role` only; verified `anon=false`, `authenticated=false`, `service_role=true`. Current workspace deletion uses the secured `/api/brands/[id]` route, which checks owner/admin membership. Test that UI path during acceptance testing.
