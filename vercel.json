@@ -6,11 +6,5 @@
     "deploymentEnabled": {
       "main": true
     }
-  },
-  "crons": [
-    {
-      "path": "/api/cron/crm-task-due",
-      "schedule": "0 3 * * *"
-    }
-  ]
+  }
 }
