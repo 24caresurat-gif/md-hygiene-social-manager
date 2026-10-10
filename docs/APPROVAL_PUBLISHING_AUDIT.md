@@ -24,7 +24,7 @@ The publishing cron continues to select only rows with status `scheduled` or `fa
 
 `POST /api/approvals/submit` previously computed `isScheduled=false` for a malformed/past timestamp. If the UI sent such a value, the code could continue down the immediate-submission path instead of returning a scheduling error.
 
-It now rejects a supplied malformed or non-future `scheduledFor` with HTTP 400. Immediate publishing/submission remains possible only when the caller leaves the schedule field empty. The endpoint also blocks missing/inactive profiles.
+It now rejects a supplied malformed or non-future `scheduledFor` with HTTP 400. The composer now keeps the optional Schedule Date empty by default (unless opened with a calendar date), so an immediate submit does not accidentally send today's default date/time. Immediate publishing/submission remains possible only when the caller leaves the schedule field empty. The endpoint also blocks missing/inactive profiles.
 
 ### 3. Approval action for inactive profiles
 
