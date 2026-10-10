@@ -30,13 +30,26 @@ export default function PublishPage() {
       const c = getSupabase();
       const { data: { user } } = await c.auth.getUser();
       if (!user) { location.href = '/login'; return; }
-      const { data: profile } = await c.from('profiles').select('role').eq('id', user.id).maybeSingle();
-      setIsAdmin(profile?.role === 'admin');
+      const { data: { session } } = await c.auth.getSession();
+      if (!session?.access_token) { setError('Your session has expired.'); setLoading(false); return; }
       const p = new URLSearchParams(location.search);
       const id = p.get('brandId') || localStorage.getItem('mdsm:selectedWorkspaceId') || '';
       setBrandId(id);
       setScheduleDate(p.get('scheduledDate') || new Date().toISOString().slice(0, 10));
       if (!id) { setError('Select a workspace first.'); setLoading(false); return; }
+
+      const accessResponse = await fetch(`/api/workspace-access?workspace_id=${encodeURIComponent(id)}`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        cache: 'no-store',
+      });
+      const accessData = await accessResponse.json().catch(() => ({}));
+      if (!accessResponse.ok) {
+        setError(accessData.error || 'You do not have access to this workspace.');
+        setLoading(false);
+        return;
+      }
+      setIsAdmin(accessData.is_owner_or_admin === true);
+
       const r = await c.from('social_accounts').select('id,name,handle,platform,status')
         .eq('user_id', user.id).eq('brand_id', id).eq('status', 'connected')
         .in('platform', ['facebook', 'instagram']).order('platform');
