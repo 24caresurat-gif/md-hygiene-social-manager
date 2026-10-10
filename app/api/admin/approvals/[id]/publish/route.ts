@@ -17,8 +17,9 @@ async function callerFromRequest(request:Request){
 async function canPublishInWorkspace(s:ReturnType<typeof serviceDb>,userId:string,workspaceId:string){
   const {data:profile,error:profileError}=await s.from('profiles').select('role,active').eq('id',userId).maybeSingle();
   if(profileError)throw profileError;
+  if(profile?.active===false)return false;
   const role=String(profile?.role||'').toLowerCase();
-  if(profile?.active!==false&&['admin','owner'].includes(role))return true;
+  if(['admin','owner'].includes(role))return true;
 
   const [{data:workspace,error:workspaceError},{data:membership,error:membershipError}]=await Promise.all([
     s.from('workspaces').select('id,owner_user_id').eq('id',workspaceId).maybeSingle(),
