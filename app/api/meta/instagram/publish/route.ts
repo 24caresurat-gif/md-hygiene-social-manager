@@ -19,8 +19,9 @@ export async function POST(request:Request){
     const userId=userData.user.id;
     const{data:account,error}=await supabase.from('social_accounts').select('id,name,platform_account_id,access_token,status,workspace_id,brand_id').eq('id',accountId).eq('platform','instagram').single();
     if(error||!account)return NextResponse.json({error:'Connected Instagram account not found.'},{status:404});
-    if(!account.workspace_id)return NextResponse.json({error:'Instagram account is not assigned to a workspace.'},{status:403});
-    const{data:member}=await supabase.from('workplace_members').select('role,active').eq('workspace_id',account.workspace_id).eq('user_id',userId).maybeSingle();
+    const workspaceId=account.workspace_id||account.brand_id;
+     if(!workspaceId)return NextResponse.json({error:'Instagram account is not assigned to a workspace.'},{status:403});
+    const{data:member}=await supabase.from('workplace_members').select('role,active').eq('workspace_id',workspaceId).eq('user_id',userId).maybeSingle();
     if(!member?.active)return NextResponse.json({error:'You do not have access to this workspace.'},{status:403});
     if(member.role!=='owner'&&member.role!=='admin'){
       const{data:permission}=await supabase.from('workspace_member_permissions').select('can_publish').eq('workspace_id',account.workspace_id).eq('user_id',userId).eq('module','publishing').maybeSingle();
