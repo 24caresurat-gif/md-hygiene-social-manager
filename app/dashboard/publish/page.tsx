@@ -35,7 +35,7 @@ export default function PublishPage() {
       const p = new URLSearchParams(location.search);
       const id = p.get('brandId') || localStorage.getItem('mdsm:selectedWorkspaceId') || '';
       setBrandId(id);
-      setScheduleDate(p.get('scheduledDate') || new Date().toISOString().slice(0, 10));
+      setScheduleDate(p.get('scheduledDate') || '');
       if (!id) { setError('Select a workspace first.'); setLoading(false); return; }
 
       const accessResponse = await fetch(`/api/workspace-access?workspace_id=${encodeURIComponent(id)}`, {
