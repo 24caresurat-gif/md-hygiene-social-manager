@@ -8,10 +8,10 @@
 
 | Measure | Count |
 |---|---:|
-| SQL files currently tracked in `supabase/migrations/` on `main` | 21 |
-| Applied migration records reported by Supabase | 66 |
-| Same migration name in both lists | 15 |
-| Same name **and** exact version/timestamp | 8 |
+| SQL files currently tracked in `supabase/migrations/` on `main` | 22 |
+| Applied migration records reported by Supabase | 67 |
+| Same migration name in both lists | 16 |
+| Same name **and** exact version/timestamp | 9 |
 | Same name but filename timestamp differs | 7 |
 | Tracked SQL files with no exact remote migration name | 6 |
 | Remote records with no exact tracked filename stem | 51 |
@@ -31,6 +31,7 @@
 | `20261010090656_catalog_checkout_transaction_hardening.sql` | `20261010090656` | Exact version + name; source committed with the checkout API change |
 | `20261010091336_catalog_cart_item_atomic_increment.sql` | `20261010091336` | Exact version + name; source committed with the atomic cart increment API change |
 | `20261010092313_scheduled_posts_allow_draft_approval_state.sql` | `20261010092313` | Exact version + name; fixes the pre-submission draft approval-state constraint |
+| `20261010095804_scheduled_post_publish_retry_claim_fields.sql` | `20261010095804` | Exact version + name; adds publish status/claim/attempt fields and links composer social-post history to the approval row |
 | `20260930110000_phase1_workspace_auth_hardening.sql` | `20260929133513` | Name matches; filename version is `20260930110000` |
 | `20260930111500_phase1_role_defaults_whatsapp.sql` | `20260930054748` | Name matches; filename version is `20260930111500` |
 | `20260930113000_phase1_google_connection_deny_policy.sql` | `20260930054822` | Name matches; filename version is `20260930113000` |
@@ -176,6 +177,15 @@ The `scheduled_posts_approval_status_check` constraint originally allowed only `
 Production migration `20261010092313_scheduled_posts_allow_draft_approval_state` now permits `draft` as a valid pre-submission state. The Creative Studio save-draft route explicitly writes this state. A rollback-only insert probe confirmed a `status='draft', approval_status='draft'` row is accepted, while the cron's eligible set (status scheduled/failed + approval approved + scheduled time due) excludes the draft. The probe was rolled back and confirmed no row remained.
 
 This is a schema/API compatibility fix; full browser create/edit/submit and approval workflow testing is still required.
+
+## Publish retry claim schema
+
+The production database now tracks manual publish state explicitly:
+- `scheduled_posts`: `publish_status`, `publish_error`, `publish_claimed_at`, `publish_attempts`.
+- `post_approvals`: `publish_claimed_at`, `publish_attempts` (the table already held `publish_status` and `publish_error`).
+- `social_posts`: nullable `post_approval_id`, a foreign key to `post_approvals`, plus a partial unique index on `(post_approval_id, social_account_id)` for published records.
+
+Migration `20261010095804_scheduled_post_publish_retry_claim_fields` is applied in production and source-tracked in GitHub. It supports conditional `publishing` claims, retry/error tracking, stale-claim recovery after ten minutes, and skipping account posts already recorded as published. It prevents concurrent publish requests from both owning the same claim. An external provider can still accept a post before the following database history insert fails; that provider/DB failure window requires real-provider testing and cannot be proven exactly-once using a database claim alone.
 
 ## Safe reconciliation plan
 
