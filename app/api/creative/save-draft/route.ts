@@ -61,6 +61,7 @@ export async function POST(request: NextRequest) {
       media_url: mediaUrl,
       scheduled_for: new Date().toISOString(),
       status: 'draft',
+      approval_status: 'draft',
     }).select('id').single();
 
     if (error) {
