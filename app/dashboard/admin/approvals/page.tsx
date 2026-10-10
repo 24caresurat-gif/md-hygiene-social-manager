@@ -267,6 +267,12 @@ export default function ApprovalsPage() {
               <div className="actions">
                 {!pending ? (
                   <button className="primary" disabled={busy===key} onClick={() => void publishApproved(item)}>{busy===key ? 'Publishing…' : '↻ Publish Approved'}</button>
+                ) : item.kind === 'legacy' && item.status === 'scheduled' ? (
+                  <>
+                    <button className="primary" disabled={busy===key} onClick={() => void decide(item,'approved')}>{busy===key ? 'Saving…' : '✓ Approve Schedule'}</button>
+                    <button disabled={busy===key} onClick={() => void decide(item,'changes_requested')}>✎ Request Changes</button>
+                    <button className="danger" disabled={busy===key} onClick={() => void decide(item,'rejected')}>✕ Reject</button>
+                  </>
                 ) : (
                   <>
                     <button className="primary" disabled={busy===key} onClick={() => void decide(item,'approved',true)}>{busy===key ? 'Working…' : '✓ Approve & Publish'}</button>
