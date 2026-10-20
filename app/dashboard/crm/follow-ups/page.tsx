@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import AppShell from '../../components/AppShell';
 import { getSupabase } from '../../../../lib/supabase-browser';
 
@@ -19,6 +19,7 @@ const activityTypes = [['call','Call'],['whatsapp','WhatsApp'],['email','Email']
 
 export default function CRMFollowUpsPage() {
   const [workspaceId, setWorkspaceId] = useState('');
+  const workspaceIdRef = useRef('');
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [entries, setEntries] = useState<FollowUp[]>([]);
@@ -56,11 +57,13 @@ export default function CRMFollowUpsPage() {
     let id = '';
     try { id = localStorage.getItem('mdsm:selectedWorkspaceId') || ''; } catch {}
     if (!id) { location.href = '/dashboard'; return; }
+    workspaceIdRef.current = id;
     setWorkspaceId(id);
     void load(id);
     const onWorkspace = (event: Event) => {
       const next = (event as CustomEvent<{ workspaceId?: string }>).detail?.workspaceId || '';
-      if (next && next !== id) {
+      if (next && next !== workspaceIdRef.current) {
+        workspaceIdRef.current = next;
         setWorkspaceId(next);
         setForm({ lead_id: '', contact_id: '', activity_type: 'call', note: '', status: 'completed', next_follow_up_at: '' });
         void load(next);
