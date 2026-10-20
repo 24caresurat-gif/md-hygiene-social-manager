@@ -5,7 +5,7 @@ import AppShell from '../../components/AppShell';
 import { getSupabase } from '../../../../lib/supabase-browser';
 
 type Contact = { id: string; name: string | null; phone: string | null; email: string | null };
-type Lead = { id: string; title: string; stage: string; contact_id: string | null; contact?: Contact | null };
+type Lead = { id: string; title: string; stage: string; contact_id: string | null };
 type FollowUp = {
   id: string; lead_id: string | null; contact_id: string | null; activity_type: string;
   note: string; status: string; next_follow_up_at: string | null; created_at: string;
@@ -36,7 +36,7 @@ export default function CRMFollowUpsPage() {
       const sb = getSupabase();
       const [c, l, h] = await Promise.all([
         sb.from('crm_contacts').select('id,name,phone,email').eq('workspace_id', id).order('created_at', { ascending: false }),
-        sb.from('crm_leads').select('id,title,stage,contact_id,contact:crm_contacts(id,name,phone,email)').eq('workspace_id', id).order('created_at', { ascending: false }),
+        sb.from('crm_leads').select('id,title,stage,contact_id').eq('workspace_id', id).order('created_at', { ascending: false }),
         sb.from('crm_follow_up_history').select('*,lead:crm_leads(id,title,stage),contact:crm_contacts(id,name,phone,email)').eq('workspace_id', id).order('created_at', { ascending: false }).limit(100)
       ]);
       if (c.error) throw c.error;
