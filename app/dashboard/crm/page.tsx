@@ -110,7 +110,7 @@ export default function CRMPage(){
         return [l.title,c?.name||'',c?.phone||'',c?.email||'',c?.company||'',l.source,l.stage,l.score,l.value,l.notes||''];
       })
     ];
-    const csv='\\uFEFF'+rows.map(row=>row.map(csvCell).join(',')).join('\\r\\n');
+    const csv='\uFEFF'+rows.map(row=>row.map(csvCell).join(',')).join('\r\n');
     const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
     const a=document.createElement('a');a.href=url;a.download='crm-leads-export.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
   }
@@ -125,7 +125,7 @@ export default function CRMPage(){
       const rows=parseCrmCsv(await file.text());
       if(rows.length<2)throw new Error('CSV must include a header row and at least one data row.');
       if(rows.length>501)throw new Error('Import is limited to 500 leads per file.');
-      const headers=rows[0].map(h=>h.trim().toLowerCase().replace(/[\\s-]+/g,'_'));
+      const headers=rows[0].map(h=>h.trim().toLowerCase().replace(/[\s-]+/g,'_'));
       const get=(cells:string[],...keys:string[])=>{
         for(const key of keys){const index=headers.indexOf(key);if(index>=0&&String(cells[index]||'').trim())return String(cells[index]).trim();}
         return '';
