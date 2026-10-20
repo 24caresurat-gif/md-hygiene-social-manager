@@ -26,6 +26,11 @@ function preview(message: any) {
   return '[' + type + ']';
 }
 
+function normalizeCrmPhone(value: unknown) {
+  const digits = String(value || '').replace(/\\D/g, '');
+  return digits.length >= 10 ? digits.slice(-10) : digits;
+}
+
 async function inbound(db: any, connection: any, value: any, message: any) {
   const phone = String(message?.from || '').trim();
   const providerId = String(message?.id || '').trim();
@@ -107,7 +112,14 @@ async function inbound(db: any, connection: any, value: any, message: any) {
 }
 
 async function syncCrmAndWorkflows(db:any,workspaceId:string,conversation:any,contact:any,text:string){
-  let {data:crmContact}=await db.from('crm_contacts').select('*').eq('workspace_id',workspaceId).eq('phone',contact.phone).maybeSingle();
+  const {data:crmContacts,error:contactsError}=await db.from('crm_contacts')
+    .select('*').eq('workspace_id',workspaceId).order('created_at',{ascending:false});
+  if(contactsError)throw contactsError;
+
+  const normalizedInboundPhone=normalizeCrmPhone(contact.phone);
+  let crmContact:any=(crmContacts||[]).find((c:any)=>c.whatsapp_contact_id===contact.id)
+    || (crmContacts||[]).find((c:any)=>normalizedInboundPhone && normalizeCrmPhone(c.phone)===normalizedInboundPhone);
+
   if(!crmContact){
     const {data:created,error}=await db.from('crm_contacts').insert({
       workspace_id:workspaceId,whatsapp_contact_id:contact.id,name:contact.name||conversation.contact_name||null,
@@ -116,12 +128,15 @@ async function syncCrmAndWorkflows(db:any,workspaceId:string,conversation:any,co
     if(error)throw error;
     crmContact=created;
   }else{
-    await db.from('crm_contacts').update({
+    const {data:updatedContact,error:updateContactError}=await db.from('crm_contacts').update({
       whatsapp_contact_id:contact.id,
       name:crmContact.name||contact.name||conversation.contact_name||null,
+      phone:crmContact.phone||contact.phone,
       last_contacted_at:new Date().toISOString(),
       updated_at:new Date().toISOString()
-    }).eq('id',crmContact.id).eq('workspace_id',workspaceId);
+    }).eq('id',crmContact.id).eq('workspace_id',workspaceId).select('*').single();
+    if(updateContactError)throw updateContactError;
+    crmContact=updatedContact;
   }
 
   let {data:lead}=await db.from('crm_leads').select('*').eq('workspace_id',workspaceId).eq('contact_id',crmContact.id)
