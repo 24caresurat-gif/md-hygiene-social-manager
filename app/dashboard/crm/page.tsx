@@ -14,6 +14,23 @@ const styles = `
 `;
 
 const stageLabels:[string,string][]=[['new','New'],['qualified','Qualified'],['proposal','Proposal'],['negotiation','Negotiation'],['won','Won'],['lost','Lost']];
+const validLeadStages=new Set(stageLabels.map(([stage])=>stage));
+function normalizeCrmPhone(value:unknown){const digits=String(value||'').replace(/\\D/g,'');return digits.length>=10?digits.slice(-10):digits;}
+function parseCrmCsv(input:string):string[][]{
+  const rows:string[][]=[];let row:string[]=[];let field='';let quoted=false;
+  for(let i=0;i<input.length;i++){
+    const ch=input[i];
+    if(quoted){if(ch==='"'&&input[i+1]==='"'){field+='"';i++;}else if(ch==='"'){quoted=false;}else{field+=ch;}continue;}
+    if(ch==='"'&&field.length===0){quoted=true;continue;}
+    if(ch===','){row.push(field);field='';continue;}
+    if(ch==='\\n'||ch==='\\r'){if(ch==='\\r'&&input[i+1]==='\\n')i++;row.push(field);field='';if(row.some(v=>v.trim()))rows.push(row);row=[];continue;}
+    field+=ch;
+  }
+  if(quoted)throw new Error('CSV has an unclosed quote.');
+  row.push(field);if(row.some(v=>v.trim()))rows.push(row);
+  return rows;
+}
+function csvCell(value:unknown){return '"'+String(value??'').replace(/"/g,'""')+'"';}
 
 export default function CRMPage(){
   const [workspaceId,setWorkspaceId]=useState('');
@@ -21,7 +38,7 @@ export default function CRMPage(){
   const [contacts,setContacts]=useState<Contact[]>([]);
   const [leads,setLeads]=useState<Lead[]>([]);
   const [tasks,setTasks]=useState<Task[]>([]);
-  const [loading,setLoading]=useState(true),[saving,setSaving]=useState(false),[notice,setNotice]=useState(''),[error,setError]=useState(''),[query,setQuery]=useState('');
+  const [loading,setLoading]=useState(true),[saving,setSaving]=useState(false),[importing,setImporting]=useState(false),[notice,setNotice]=useState(''),[error,setError]=useState(''),[query,setQuery]=useState('');
   const [contactForm,setContactForm]=useState({name:'',phone:'',email:'',company:'',source:'manual',lifecycle_stage:'lead',whatsapp_opt_in:false});
   const [leadForm,setLeadForm]=useState({title:'',contact_id:'',source:'manual',stage:'new',score:'50',value:'',notes:''});
   const [taskForm,setTaskForm]=useState({title:'',contact_id:'',lead_id:'',task_type:'follow_up',priority:'normal',due_at:''});
@@ -54,11 +71,17 @@ export default function CRMPage(){
 
   async function saveContact(){
     if(!contactForm.name.trim()&&!contactForm.phone.trim()&&!contactForm.email.trim()){setError('Add at least a name, phone or email.');return}
+    const phoneKey=normalizeCrmPhone(contactForm.phone),emailKey=contactForm.email.trim().toLowerCase();
+    const duplicate=contacts.find(c=>(phoneKey&&normalizeCrmPhone(c.phone)===phoneKey)||(emailKey&&String(c.email||'').trim().toLowerCase()===emailKey));
+    if(duplicate){setError('This phone number or email already exists in Contacts. Use the existing contact instead of creating a duplicate.');return}
     setSaving(true);setError('');setNotice('');
     try{const user=(await getSupabase().auth.getUser()).data.user;const {error}=await getSupabase().from('crm_contacts').insert({...contactForm,workspace_id:workspaceId,created_by:user?.id||null});if(error)throw error;setContactForm({name:'',phone:'',email:'',company:'',source:'manual',lifecycle_stage:'lead',whatsapp_opt_in:false});setNotice('Contact added.');await load()}catch(e){setError(e instanceof Error?e.message:'Unable to create contact.')}finally{setSaving(false)}
   }
   async function saveLead(){
     if(!leadForm.title.trim()){setError('Lead title is required.');return}
+    const titleKey=leadForm.title.trim().toLowerCase();
+    const duplicate=leads.find(l=>String(l.title||'').trim().toLowerCase()===titleKey&&(leadForm.contact_id?l.contact_id===leadForm.contact_id:!l.contact_id));
+    if(duplicate){setError('A lead with this title and contact already exists. Open the existing lead instead.');return}
     setSaving(true);setError('');setNotice('');
     try{const user=(await getSupabase().auth.getUser()).data.user;const {data:newLead,error}=await getSupabase().from('crm_leads').insert({...leadForm,workspace_id:workspaceId,value:Number(leadForm.value||0),score:Number(leadForm.score||0),created_by:user?.id||null,contact_id:leadForm.contact_id||null}).select('id').single();if(error)throw error;
       if(newLead&&user){
@@ -79,6 +102,94 @@ export default function CRMPage(){
   async function updateLeadStage(id:string,stage:string){const {error}=await getSupabase().from('crm_leads').update({stage,updated_at:new Date().toISOString()}).eq('id',id).eq('workspace_id',workspaceId);if(error)setError(error.message);else await load()}
   async function completeTask(id:string){const {error}=await getSupabase().from('crm_tasks').update({status:'completed',completed_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',id).eq('workspace_id',workspaceId);if(error)setError(error.message);else await load()}
   async function deleteContact(id:string){if(!confirm('Delete this contact? Linked leads will keep their lead record without the contact.'))return;const {error}=await getSupabase().from('crm_contacts').delete().eq('id',id).eq('workspace_id',workspaceId);if(error)setError(error.message);else await load()}
+  function exportLeadsCsv(){
+    const rows=[
+      ['lead_title','contact_name','phone','email','company','source','stage','score','value','notes'],
+      ...leads.map(l=>{
+        const c=contacts.find(x=>x.id===l.contact_id)||l.contact||null;
+        return [l.title,c?.name||'',c?.phone||'',c?.email||'',c?.company||'',l.source,l.stage,l.score,l.value,l.notes||''];
+      })
+    ];
+    const csv='\\uFEFF'+rows.map(row=>row.map(csvCell).join(',')).join('\\r\\n');
+    const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+    const a=document.createElement('a');a.href=url;a.download='crm-leads-export.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+  }
+
+  async function importLeadsCsv(file:File){
+    setError('');setNotice('');
+    if(file.size>5*1024*1024){setError('CSV must be 5 MB or smaller.');return}
+    setImporting(true);
+    let createdLeads=0,createdContacts=0,skipped=0,failed=0;
+    const rowErrors:string[]=[];
+    try{
+      const rows=parseCrmCsv(await file.text());
+      if(rows.length<2)throw new Error('CSV must include a header row and at least one data row.');
+      if(rows.length>501)throw new Error('Import is limited to 500 leads per file.');
+      const headers=rows[0].map(h=>h.trim().toLowerCase().replace(/[\\s-]+/g,'_'));
+      const get=(cells:string[],...keys:string[])=>{
+        for(const key of keys){const index=headers.indexOf(key);if(index>=0&&String(cells[index]||'').trim())return String(cells[index]).trim();}
+        return '';
+      };
+      if(!headers.some(h=>['lead_title','title','lead','client_name','firm_name'].includes(h)))throw new Error('Missing lead title column. Use lead_title, title, client_name, or firm_name.');
+      const sb=getSupabase();
+      const {data:userData}=await sb.auth.getUser();
+      const [{data:contactData,error:contactLoadError},{data:leadData,error:leadLoadError}]=await Promise.all([
+        sb.from('crm_contacts').select('id,name,phone,email,company,source,lifecycle_stage,status,whatsapp_opt_in').eq('workspace_id',workspaceId),
+        sb.from('crm_leads').select('id,title,contact_id,source,stage,score,value,notes').eq('workspace_id',workspaceId)
+      ]);
+      if(contactLoadError)throw contactLoadError;if(leadLoadError)throw leadLoadError;
+      const knownContacts=(contactData||[]) as Contact[];
+      const knownLeads=(leadData||[]) as Lead[];
+      for(let i=1;i<rows.length;i++){
+        const cells=rows[i];
+        try{
+          const title=get(cells,'lead_title','title','lead','firm_name','client_name');
+          if(!title){skipped++;continue;}
+          const name=get(cells,'contact_name','customer_name','client_name','name','firm_name');
+          const phone=get(cells,'phone','phone1','mobile','mobile_no','phone_number');
+          const email=get(cells,'email','email_address').toLowerCase();
+          const company=get(cells,'company','company_name','firm_name');
+          const phoneKey=normalizeCrmPhone(phone);
+          let contact=knownContacts.find(c=>(phoneKey&&normalizeCrmPhone(c.phone)===phoneKey)||(email&&String(c.email||'').trim().toLowerCase()===email));
+          const possibleLead=knownLeads.find(l=>{
+            if(String(l.title||'').trim().toLowerCase()!==title.toLowerCase())return false;
+            if(contact)return l.contact_id===contact.id;
+            if(phoneKey){const linked=knownContacts.find(c=>c.id===l.contact_id);return Boolean(linked&&normalizeCrmPhone(linked.phone)===phoneKey);}
+            return !l.contact_id;
+          });
+          if(possibleLead){skipped++;continue;}
+          if(!contact&&(name||phone||email)){
+            const {data:newContact,error:newContactError}=await sb.from('crm_contacts').insert({
+              workspace_id:workspaceId,name:name||null,phone:phone||null,email:email||null,company:company||null,
+              source:get(cells,'source')||'csv_import',lifecycle_stage:'lead',status:'active',
+              tags:[],custom_fields:{import_source:'csv'},whatsapp_opt_in:false,created_by:userData.user?.id||null
+            }).select('id,name,phone,email,company,source,lifecycle_stage,status,whatsapp_opt_in').single();
+            if(newContactError)throw newContactError;
+            contact=newContact as Contact;knownContacts.unshift(contact);createdContacts++;
+          }
+          const rawStage=get(cells,'stage','status').toLowerCase();
+          const stage=validLeadStages.has(rawStage)?rawStage:'new';
+          const rawScore=Number(get(cells,'score','lead_score')||50);
+          const rawValue=Number(get(cells,'value','amount','deal_value')||0);
+          const {data:newLead,error:newLeadError}=await sb.from('crm_leads').insert({
+            workspace_id:workspaceId,contact_id:contact?.id||null,title,
+            source:get(cells,'source','lead_source')||'csv_import',stage,
+            score:Number.isFinite(rawScore)?Math.max(0,Math.min(100,Math.round(rawScore))):50,
+            value:Number.isFinite(rawValue)?Math.max(0,rawValue):0,
+            notes:get(cells,'notes','remark','last_remark')||null,created_by:userData.user?.id||null
+          }).select('id,title,contact_id,source,stage,score,value,notes').single();
+          if(newLeadError)throw newLeadError;
+          knownLeads.unshift(newLead as Lead);createdLeads++;
+        }catch(e){
+          failed++;if(rowErrors.length<4)rowErrors.push('Row '+(i+1)+': '+(e instanceof Error?e.message:'Import error'));
+        }
+      }
+      setNotice('CSV import finished: '+createdLeads+' leads added, '+createdContacts+' contacts added, '+skipped+' duplicates/empty rows skipped, '+failed+' rows failed.'+(rowErrors.length?' '+rowErrors.join(' | '):''));
+      await load();
+    }catch(e){setError(e instanceof Error?e.message:'Unable to import CSV.');}
+    finally{setImporting(false);}
+  }
+
   async function syncWhatsApp(){setError('');setNotice('');try{const s=(await getSupabase().auth.getSession()).data.session;if(!s)throw new Error('Session expired');const r=await fetch('/api/crm/whatsapp-sync',{method:'POST',headers:{Authorization:'Bearer '+s.access_token,'Content-Type':'application/json'},body:JSON.stringify({workspaceId})});const d=await r.json();if(!r.ok)throw new Error(d?.error||'Unable to sync WhatsApp contacts.');setNotice('WhatsApp CRM sync complete: '+d.created+' created, '+d.linked+' linked.');await load()}catch(e){setError(e instanceof Error?e.message:'Unable to sync WhatsApp contacts.')}}
 
   return <AppShell title="CRM"><div className="crm"><style jsx>{styles}</style>
@@ -110,7 +221,7 @@ export default function CRMPage(){
 
     {tab==='contacts'&&<section className="panel"><div className="panel-head"><div><div className="eyebrow">CONTACT DATABASE</div><h2>Contacts</h2><p>Central customer database for CRM and WhatsApp workflows.</p></div><input className="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search name, phone, email or company…" /></div><div className="form"><label className="field">Name<input className="input" value={contactForm.name} onChange={e=>setContactForm({...contactForm,name:e.target.value})} placeholder="Customer name" /></label><label className="field">Phone<input className="input" value={contactForm.phone} onChange={e=>setContactForm({...contactForm,phone:e.target.value})} placeholder="+91…" /></label><label className="field">Email<input className="input" value={contactForm.email} onChange={e=>setContactForm({...contactForm,email:e.target.value})} placeholder="customer@example.com" /></label><label className="field">Company<input className="input" value={contactForm.company} onChange={e=>setContactForm({...contactForm,company:e.target.value})} placeholder="Company / business" /></label><label className="field">Lifecycle<select className="select" value={contactForm.lifecycle_stage} onChange={e=>setContactForm({...contactForm,lifecycle_stage:e.target.value})}><option value="lead">Lead</option><option value="prospect">Prospect</option><option value="customer">Customer</option><option value="inactive">Inactive</option></select></label><label className="field">Source<input className="input" value={contactForm.source} onChange={e=>setContactForm({...contactForm,source:e.target.value})} placeholder="WhatsApp, Website, Referral…" /></label><label className="field full check"><input type="checkbox" checked={contactForm.whatsapp_opt_in} onChange={e=>setContactForm({...contactForm,whatsapp_opt_in:e.target.checked})}/> WhatsApp opt-in available</label><div className="field full"><button className="btn primary" disabled={saving} onClick={()=>void saveContact()}>{saving?'Saving…':'Add Contact'}</button></div></div><div className="rows" style={{marginTop:12}}>{loading?<div className="empty">Loading contacts…</div>:filteredContacts.length?filteredContacts.map(c=><div className="row" key={c.id}><div><strong>{c.name||'Unnamed contact'}</strong><small>{[c.phone,c.email,c.company].filter(Boolean).join(' · ')||'No contact details'}</small></div><span className="badge">{c.lifecycle_stage}</span><span className={c.whatsapp_opt_in?'badge green':'badge'}>{c.whatsapp_opt_in?'WhatsApp opt-in':'No opt-in'}</span><button className="btn danger" onClick={()=>void deleteContact(c.id)}>Delete</button></div>):<div className="empty"><strong>No contacts yet</strong>Add your first contact above.</div>}</div></section>}
 
-    {tab==='leads'&&<><section className="panel"><div className="panel-head"><div><div className="eyebrow">LEAD MANAGEMENT</div><h2>Create & Qualify Leads</h2><p>Track score, value, stage and linked contacts.</p></div></div><div className="form"><label className="field">Lead title<input className="input" value={leadForm.title} onChange={e=>setLeadForm({...leadForm,title:e.target.value})} placeholder="New website enquiry" /></label><label className="field">Contact<select className="select" value={leadForm.contact_id} onChange={e=>setLeadForm({...leadForm,contact_id:e.target.value})}><option value="">No linked contact</option>{contacts.map(c=><option key={c.id} value={c.id}>{c.name||c.phone||'Unnamed'}</option>)}</select></label><label className="field">Stage<select className="select" value={leadForm.stage} onChange={e=>setLeadForm({...leadForm,stage:e.target.value})}>{stageLabels.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></label><label className="field">Score (0-100)<input className="input" type="number" min="0" max="100" value={leadForm.score} onChange={e=>setLeadForm({...leadForm,score:e.target.value})}/></label><label className="field">Value<input className="input" type="number" min="0" value={leadForm.value} onChange={e=>setLeadForm({...leadForm,value:e.target.value})} placeholder="0" /></label><label className="field">Source<input className="input" value={leadForm.source} onChange={e=>setLeadForm({...leadForm,source:e.target.value})} placeholder="WhatsApp / Website / Referral" /></label><label className="field full">Notes<textarea className="textarea" value={leadForm.notes} onChange={e=>setLeadForm({...leadForm,notes:e.target.value})} placeholder="Qualification notes…" /></label><div className="field full"><button className="btn primary" disabled={saving} onClick={()=>void saveLead()}>{saving?'Saving…':'Add Lead'}</button></div></div></section><section className="panel" style={{marginTop:14}}><div className="panel-head"><div><div className="eyebrow">PIPELINE</div><h2>Lead Pipeline</h2><p>Use the stage buttons to move a lead forward.</p></div></div><div className="rows">{loading?<div className="empty">Loading leads…</div>:leads.length?leads.map(l=><div className="row" key={l.id}><div><strong>{l.title}</strong><small>{l.contact?.name||l.contact?.phone||'No contact'} · Score {l.score} · Value {Number(l.value||0).toLocaleString()}</small></div><select className="select" value={l.stage} onChange={e=>void updateLeadStage(l.id,e.target.value)}>{stageLabels.map(([v,label])=><option key={v} value={v}>{label}</option>)}</select><span className={l.score>=70?'badge green':l.score>=40?'badge blue':'badge orange'}>{l.score>=70?'Hot':l.score>=40?'Warm':'Cold'}</span><button className="btn" onClick={()=>{setTaskForm(f=>({...f,lead_id:l.id,contact_id:l.contact_id||''}));setTab('tasks')}}>Follow up</button><button className="btn teal" onClick={async()=>{try{const s=(await getSupabase().auth.getSession()).data.session;if(!s)throw new Error('Session expired');const r=await fetch('/api/crm/qualify',{method:'POST',headers:{Authorization:'Bearer '+s.access_token,'Content-Type':'application/json'},body:JSON.stringify({workspaceId,leadId:l.id,message:l.notes||l.title})});const d=await r.json();if(!r.ok)throw new Error(d?.error||'Qualification failed.');setNotice('Lead qualified: '+d.lead.score+'/100.');await load()}catch(e){setError(e instanceof Error?e.message:'Qualification failed.')}}}>Qualify</button></div>):<div className="empty"><strong>No leads yet</strong>Create the first lead above.</div>}</div></section></>}
+    {tab==='leads'&&<><section className="panel"><div className="panel-head"><div><div className="eyebrow">LEAD MANAGEMENT</div><h2>Create & Qualify Leads</h2><p>Track score, value, stage and linked contacts. CSV import/export is workspace-scoped.</p></div><div className="actions"><button className="btn" onClick={exportLeadsCsv} disabled={loading||!leads.length}>Export CSV</button><label className="btn teal" style={{display:'inline-flex',alignItems:'center',gap:6,opacity:importing?.55:1,cursor:importing?'wait':'pointer'}}>{importing?'Importing…':'Import CSV'}<input type="file" accept=".csv,text/csv" disabled={importing||loading} style={{display:'none'}} onChange={e=>{const file=e.currentTarget.files?.[0];e.currentTarget.value='';if(file)void importLeadsCsv(file)}} /></label></div></div><div className="form"><label className="field">Lead title<input className="input" value={leadForm.title} onChange={e=>setLeadForm({...leadForm,title:e.target.value})} placeholder="New website enquiry" /></label><label className="field">Contact<select className="select" value={leadForm.contact_id} onChange={e=>setLeadForm({...leadForm,contact_id:e.target.value})}><option value="">No linked contact</option>{contacts.map(c=><option key={c.id} value={c.id}>{c.name||c.phone||'Unnamed'}</option>)}</select></label><label className="field">Stage<select className="select" value={leadForm.stage} onChange={e=>setLeadForm({...leadForm,stage:e.target.value})}>{stageLabels.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></label><label className="field">Score (0-100)<input className="input" type="number" min="0" max="100" value={leadForm.score} onChange={e=>setLeadForm({...leadForm,score:e.target.value})}/></label><label className="field">Value<input className="input" type="number" min="0" value={leadForm.value} onChange={e=>setLeadForm({...leadForm,value:e.target.value})} placeholder="0" /></label><label className="field">Source<input className="input" value={leadForm.source} onChange={e=>setLeadForm({...leadForm,source:e.target.value})} placeholder="WhatsApp / Website / Referral" /></label><label className="field full">Notes<textarea className="textarea" value={leadForm.notes} onChange={e=>setLeadForm({...leadForm,notes:e.target.value})} placeholder="Qualification notes…" /></label><div className="field full"><button className="btn primary" disabled={saving} onClick={()=>void saveLead()}>{saving?'Saving…':'Add Lead'}</button></div></div></section><section className="panel" style={{marginTop:14}}><div className="panel-head"><div><div className="eyebrow">PIPELINE</div><h2>Lead Pipeline</h2><p>Use the stage buttons to move a lead forward.</p></div></div><div className="rows">{loading?<div className="empty">Loading leads…</div>:leads.length?leads.map(l=><div className="row" key={l.id}><div><strong>{l.title}</strong><small>{l.contact?.name||l.contact?.phone||'No contact'} · Score {l.score} · Value {Number(l.value||0).toLocaleString()}</small></div><select className="select" value={l.stage} onChange={e=>void updateLeadStage(l.id,e.target.value)}>{stageLabels.map(([v,label])=><option key={v} value={v}>{label}</option>)}</select><span className={l.score>=70?'badge green':l.score>=40?'badge blue':'badge orange'}>{l.score>=70?'Hot':l.score>=40?'Warm':'Cold'}</span><button className="btn" onClick={()=>{setTaskForm(f=>({...f,lead_id:l.id,contact_id:l.contact_id||''}));setTab('tasks')}}>Follow up</button><button className="btn teal" onClick={async()=>{try{const s=(await getSupabase().auth.getSession()).data.session;if(!s)throw new Error('Session expired');const r=await fetch('/api/crm/qualify',{method:'POST',headers:{Authorization:'Bearer '+s.access_token,'Content-Type':'application/json'},body:JSON.stringify({workspaceId,leadId:l.id,message:l.notes||l.title})});const d=await r.json();if(!r.ok)throw new Error(d?.error||'Qualification failed.');setNotice('Lead qualified: '+d.lead.score+'/100.');await load()}catch(e){setError(e instanceof Error?e.message:'Qualification failed.')}}}>Qualify</button></div>):<div className="empty"><strong>No leads yet</strong>Create the first lead above.</div>}</div></section></>}
 
     {tab==='tasks'&&<section className="panel"><div className="panel-head"><div><div className="eyebrow">TASK & FOLLOW-UP TRACKING</div><h2>Tasks</h2><p>Keep every follow-up visible and tied to the customer or lead.</p></div></div><div className="form"><label className="field">Task title<input className="input" value={taskForm.title} onChange={e=>setTaskForm({...taskForm,title:e.target.value})} placeholder="Call customer back" /></label><label className="field">Type<select className="select" value={taskForm.task_type} onChange={e=>setTaskForm({...taskForm,task_type:e.target.value})}><option value="follow_up">Follow-up</option><option value="call">Call</option><option value="message">Message</option><option value="meeting">Meeting</option><option value="reminder">Reminder</option><option value="other">Other</option></select></label><label className="field">Contact<select className="select" value={taskForm.contact_id} onChange={e=>setTaskForm({...taskForm,contact_id:e.target.value})}><option value="">No contact</option>{contacts.map(c=><option key={c.id} value={c.id}>{c.name||c.phone||'Unnamed'}</option>)}</select></label><label className="field">Lead<select className="select" value={taskForm.lead_id} onChange={e=>setTaskForm({...taskForm,lead_id:e.target.value})}><option value="">No lead</option>{leads.map(l=><option key={l.id} value={l.id}>{l.title}</option>)}</select></label><label className="field">Priority<select className="select" value={taskForm.priority} onChange={e=>setTaskForm({...taskForm,priority:e.target.value})}><option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option></select></label><label className="field">Due date/time<input className="input" type="datetime-local" value={taskForm.due_at} onChange={e=>setTaskForm({...taskForm,due_at:e.target.value})}/></label><div className="field full"><button className="btn primary" disabled={saving} onClick={()=>void saveTask()}>{saving?'Saving…':'Create Task'}</button></div></div><div className="task-list" style={{marginTop:14}}>{loading?<div className="empty">Loading tasks…</div>:tasks.length?tasks.map(t=><div className="task" key={t.id}><div><strong>{t.title}</strong><small>{t.contact?.name||t.contact?.phone||'No contact'}{t.lead?.title?' · '+t.lead.title:''}</small></div><span className="badge">{t.priority}</span><span className={t.status==='completed'?'badge green':'badge orange'}>{t.status}</span>{t.status!=='completed'&&<button className="btn teal" onClick={()=>void completeTask(t.id)}>Complete</button>}</div>):<div className="empty"><strong>No tasks yet</strong>Create a follow-up above.</div>}</div></section>}
   </div></AppShell>
