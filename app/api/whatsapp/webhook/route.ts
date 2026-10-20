@@ -27,7 +27,7 @@ function preview(message: any) {
 }
 
 function normalizeCrmPhone(value: unknown) {
-  const digits = String(value || '').replace(/\\D/g, '');
+  const digits = String(value || '').replace(/\D/g, '');
   return digits.length >= 10 ? digits.slice(-10) : digits;
 }
 
