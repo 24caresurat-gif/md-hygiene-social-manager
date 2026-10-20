@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import { adminDb, authenticatedUser, workspaceAccess } from '../../../../lib/workspace-auth';
 
+function normalizePhone(value: unknown) {
+  const digits = String(value || '').replace(/\D/g, '');
+  return digits.length >= 10 ? digits.slice(-10) : digits;
+}
+
 export async function POST(request:Request){
   try{
     const body=await request.json().catch(()=>({}));
@@ -19,15 +24,19 @@ export async function POST(request:Request){
     const phones=(waContacts||[]).map((c:any)=>String(c.phone||'').trim()).filter(Boolean);
     const {data:existing,error:existingError}=await db.from('crm_contacts')
       .select('id,phone,name,email,company,source,lifecycle_stage,whatsapp_contact_id')
-      .eq('workspace_id',workspaceId);
+      .eq('workspace_id',workspaceId).order('created_at',{ascending:false});
     if(existingError)throw existingError;
-    const existingByPhone=new Map((existing||[]).filter((c:any)=>c.phone).map((c:any)=>[String(c.phone).trim(),c]));
+    const existingByPhone=new Map<string,any>();
+    for(const c of existing||[]){
+      const key=normalizePhone(c.phone);
+      if(key&&!existingByPhone.has(key))existingByPhone.set(key,c);
+    }
 
     let created=0,linked=0,updated=0;
     for(const wa of waContacts||[]){
       const phone=String(wa.phone||'').trim();
       if(!phone)continue;
-      const current=existingByPhone.get(phone);
+      const current=existingByPhone.get(normalizePhone(phone));
       if(!current){
         const {error}=await db.from('crm_contacts').insert({
           workspace_id:workspaceId,whatsapp_contact_id:wa.id,name:wa.name||null,phone,
