@@ -11,8 +11,8 @@
 - Later main commit `a1a6ba88366138143106e8d75e27c1a73c364807` consolidates CI workflow definitions only; the latest application runtime remains the READY deployment above.
 - Provider-token database privileges were hardened and verified against the live Supabase role/column privileges.
 - Direct Meta publishing authorization was aligned with workspace role/permission rules, and the Facebook Page connect API accepts the existing UI payload.
-- The production GitHub Actions scheduler configuration is committed on `main`; it remains gated until the owner configures Vercel's automation-bypass secret, repository Action secrets, and `ENABLE_PRODUCTION_SCHEDULER=true` as described in [Cron Automation Setup](CRON_AUTOMATION_SETUP.md).
-- Tracked SQL migration inventory is documented in [SUPABASE_MIGRATION_RECONCILIATION.md](SUPABASE_MIGRATION_RECONCILIATION.md); the latest audit found 72 applied migration records and 27 tracked SQL files. Preserve production migration history; do not replay tracked files blindly. Preserve production migration history; do not replay tracked files blindly.
+- The production GitHub Actions scheduler is configured and recent scheduled runs returned HTTP 200 from both the publishing and CRM task-due workers. The inspected run had zero due jobs; verify actual posts/tasks once real scheduled work exists. The duplicate legacy publisher has been made manual-only.
+- Tracked SQL migration inventory is documented in [SUPABASE_MIGRATION_RECONCILIATION.md](SUPABASE_MIGRATION_RECONCILIATION.md); the latest audit found 72 applied migration records and 27 tracked SQL files. Preserve production migration history; do not replay tracked files blindly.
 - This is not the same as end-to-end certification. Real-account OAuth/publishing, workspace-isolation tests, cron invocation, and full user flows remain in the finalization checklist. Vercel deployment protection blocked the available route smoke-test fetch, so do not treat route HTTP behavior as verified.
 
 ## Product modules and what they do
