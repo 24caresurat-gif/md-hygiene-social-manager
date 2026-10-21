@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { adminDb, workspaceAccess } from '../../../../../lib/workspace-auth';
 const INSTAGRAM_APP_ID = process.env.INSTAGRAM_APP_ID || '1327116485900860';
 const INSTAGRAM_APP_SECRET = process.env.INSTAGRAM_APP_SECRET;
 export async function GET(request: Request) {
@@ -26,9 +27,14 @@ export async function GET(request: Request) {
     const anon=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,supabaseUrl=process.env.NEXT_PUBLIC_SUPABASE_URL;if(!anon||!supabaseUrl)throw new Error('Supabase configuration is missing.');
     const supabase=createClient(supabaseUrl,anon,{global:{headers:{Authorization:`Bearer ${authToken}`}}});
     const {data:user,error:authError}=await supabase.auth.getUser(authToken);if(authError||!user.user)throw new Error('Login session is invalid. Please reconnect.');
+    const db=adminDb();
+    const access=await workspaceAccess(db,user.user.id,brandId);
+    const privileged=Boolean(access&&(access.globalAdmin||access.isOwner||['owner','admin'].includes(String(access.role||'').toLowerCase())));
+    if(!access?.hasAccess||!privileged)throw new Error('Only a Workspace Owner or Admin can connect Instagram.');
     const now=new Date().toISOString(),payload={user_id:user.user.id,platform:'instagram',name:profileData.name||profileData.username||`Instagram ${profileData.id}`,handle:profileData.username||null,platform_account_id:String(profileData.id),access_token:accessToken,status:'connected',brand_id:brandId,token_expires_at:expiresAt,token_checked_at:now,token_last_refreshed_at:now,token_status:'active',token_error:null,updated_at:now};
-    const {data:existing}=await supabase.from('social_accounts').select('id').eq('user_id',user.user.id).eq('platform','instagram').eq('platform_account_id',String(profileData.id)).eq('brand_id',brandId).maybeSingle();
-    const result=existing?await supabase.from('social_accounts').update(payload).eq('id',existing.id).eq('user_id',user.user.id):await supabase.from('social_accounts').insert(payload);if(result.error)throw result.error;
+    const {data:existing,error:existingError}=await db.from('social_accounts').select('id').eq('user_id',user.user.id).eq('platform','instagram').eq('platform_account_id',String(profileData.id)).eq('brand_id',brandId).maybeSingle();
+    if(existingError)throw existingError;
+    const result=existing?await db.from('social_accounts').update(payload).eq('id',existing.id).eq('user_id',user.user.id):await db.from('social_accounts').insert(payload);if(result.error)throw result.error;
     return NextResponse.redirect(new URL('/dashboard/accounts?instagram=connected',url.origin));
   }catch(error){return fail(error instanceof Error?error.message:'Unable to connect Instagram.')}
 }
