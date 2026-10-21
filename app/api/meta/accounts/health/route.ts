@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { adminDb, authenticatedUser, workspaceAccess } from '../../../../../lib/workspace-auth';
-import { inspectMetaToken } from '../../../../../lib/meta-token';
+import { inspectMetaToken, reconnectRequired } from '../../../../../lib/meta-token';
 
 export async function GET(request: Request) {
   const token = request.headers.get('authorization')?.replace(/^Bearer\\s+/i, '');
@@ -34,9 +34,9 @@ export async function GET(request: Request) {
       if ((account.platform === 'facebook' || account.platform === 'instagram') && account.access_token) {
         const info = await inspectMetaToken(account.access_token);
         const checkedAt = new Date().toISOString();
-        const connectionStatus = info.valid
-          ? (account.status === 'reconnect_required' ? 'connected' : account.status)
-          : 'reconnect_required';
+        const connectionStatus = !info.valid || reconnectRequired(info.status)
+          ? 'reconnect_required'
+          : (account.status === 'reconnect_required' ? 'connected' : account.status);
         const update = await db.from('social_accounts').update({
           token_expires_at: info.expiresAt, token_checked_at: checkedAt,
           token_status: info.status, token_error: info.error, status: connectionStatus,
