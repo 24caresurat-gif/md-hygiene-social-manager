@@ -1,12 +1,13 @@
 # Code Complete / Live E2E Pending
 
-The current application source and database changes are deployed, and GitHub/Vercel builds are passing. The project must **not** be described as 100% certified until the live acceptance checks below pass. The production database currently has no catalogue products/orders, no Digital Cards, no CRM tasks/workflows, no WhatsApp connection/templates/campaigns/bot flows, and no Google Business profiles/reviews, so those user journeys cannot yet be certified against real saved records.
+The current application source and database changes are deployed; latest production deployment `dpl_J4BA85NuLsi8sd9XWRqtFYTJu6Uf` (commit `b360815ef36659db90218e7d9d68317a90b74dcd`) is READY, and GitHub/Vercel builds are passing. The project must **not** be described as 100% certified until the live acceptance checks below pass. The production database currently has no catalogue products/orders, no Digital Cards, no CRM tasks/workflows, no WhatsApp connection/templates/campaigns/bot flows, and no Google Business profiles/reviews, so those user journeys cannot yet be certified against real saved records.
 
 ## Owner/operator steps still required
 
 - Add a valid `OPENAI_API_KEY` to Vercel Production to enable AI caption/image generation/edit endpoints. The variable is currently absent; these endpoints intentionally return HTTP 503 without it.
 - In Supabase Auth settings, enable leaked-password protection.
 - Complete signed-in browser tests with separate Workspace A/Workspace B users for Owner/Admin/Staff permissions, workspace switching and cross-workspace isolation.
+- Visually verify the new collapsible sidebar groups, active-page auto-expansion and scroll behavior on desktop/tablet/mobile.
 - Create a catalogue product and perform a public storefront cart/wishlist/coupon/checkout test; verify the order is workspace-scoped and linked to a CRM contact, lead and follow-up.
 - Publish a Digital Card, open it signed out, submit each public form once and verify CRM linking and authorized-only access.
 - Create a controlled CRM task/workflow and verify qualification, actions, execution history and duplicate-claim protection.

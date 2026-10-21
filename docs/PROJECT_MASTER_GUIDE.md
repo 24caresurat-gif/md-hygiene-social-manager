@@ -7,12 +7,12 @@
 
 ## Current verified deployment snapshot
 
-- Current application-runtime deployment: READY (`dpl_3LEZKuX7BfEHodDVBQZcvBGXSBXX`), code commit `899d85aa8eec1ecd865a0e88ab0da31a33926ec3` (Facebook Page connect payload alignment).
-- Later main commit `a1a6ba88366138143106e8d75e27c1a73c364807` consolidates CI workflow definitions only; the latest application runtime remains the READY deployment above.
-- Provider-token database privileges were hardened and verified against the live Supabase role/column privileges.
-- Direct Meta publishing authorization was aligned with workspace role/permission rules, and the Facebook Page connect API accepts the existing UI payload.
+- Current application-runtime deployment: READY (`dpl_J4BA85NuLsi8sd9XWRqtFYTJu6Uf`), code commit `b360815ef36659db90218e7d9d68317a90b74dcd`.
+- Provider-token direct client reads/writes are revoked and verified in live Supabase privileges; Facebook/Instagram OAuth writes and disconnect operations use authorized server-side access.
+- Accounts and Settings both list workspace-wide connection metadata without sending provider tokens to the browser; Meta token health/reconnect state is saved server-side.
+- Sidebar navigation is grouped into collapsible sections while preserving role-filtered navigation and independent scrolling.
 - The production GitHub Actions scheduler is configured and recent scheduled runs returned HTTP 200 from both the publishing and CRM task-due workers. The inspected run had zero due jobs; verify actual posts/tasks once real scheduled work exists. The duplicate legacy publisher has been made manual-only.
-- Tracked SQL migration inventory is documented in [SUPABASE_MIGRATION_RECONCILIATION.md](SUPABASE_MIGRATION_RECONCILIATION.md); the latest audit found 72 applied migration records and 27 tracked SQL files. Preserve production migration history; do not replay tracked files blindly.
+- Tracked SQL migration inventory is documented in [SUPABASE_MIGRATION_RECONCILIATION.md](SUPABASE_MIGRATION_RECONCILIATION.md); the latest audit found 73 applied migration records and 28 tracked SQL files. Preserve production migration history; do not replay tracked files blindly.
 - This is not the same as end-to-end certification. Real-account OAuth/publishing, workspace-isolation tests, cron invocation, and full user flows remain in the finalization checklist. Vercel deployment protection blocked the available route smoke-test fetch, so do not treat route HTTP behavior as verified.
 
 ## Product modules and what they do
