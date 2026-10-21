@@ -30,8 +30,8 @@ export async function POST(request: Request) {
 
     const { data: pages, error: pagesError } = await db.from('social_accounts')
       .select('id,name,platform_account_id,access_token,brand_id,workspace_id')
-      .eq('user_id', user.user.id).eq('platform', 'facebook').eq('status', 'connected')
-      .eq('brand_id', brandId);
+      .eq('platform', 'facebook').eq('status', 'connected')
+      .or(`workspace_id.eq.${brandId},brand_id.eq.${brandId}`);
     if (pagesError) throw pagesError;
 
     let connected = 0;
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
       const updateHealth = await db.from('social_accounts').update({
         token_expires_at: tokenInfo.expiresAt, token_checked_at: checkedAt,
         token_status: tokenInfo.status, token_error: tokenInfo.error,
-      }).eq('id', page.id).eq('user_id', user.user.id);
+      }).eq('id', page.id);
       if (updateHealth.error) throw updateHealth.error;
       if (!tokenInfo.valid) { skipped.push(`${page.name}: Facebook connection needs to be reconnected`); continue; }
 
@@ -54,10 +54,12 @@ export async function POST(request: Request) {
       if (!ig?.id) { skipped.push(`${page.name}: no Instagram Business account linked`); continue; }
 
       const { data: existing, error: existingError } = await db.from('social_accounts').select('id')
-        .eq('user_id', user.user.id).eq('platform', 'instagram').eq('platform_account_id', ig.id).eq('brand_id', brandId).maybeSingle();
+        .eq('platform', 'instagram').eq('platform_account_id', ig.id)
+        .or(`workspace_id.eq.${brandId},brand_id.eq.${brandId}`)
+        .order('created_at', { ascending: false }).limit(1).maybeSingle();
       if (existingError) throw existingError;
       const payload = {
-        user_id: user.user.id, platform: 'instagram',
+        platform: 'instagram',
         name: ig.name || ig.username || page.name, handle: ig.username || null,
         platform_account_id: ig.id, access_token: page.access_token, status: 'connected',
         brand_id: brandId, workspace_id: brandId, updated_at: checkedAt,
@@ -65,8 +67,8 @@ export async function POST(request: Request) {
         token_last_refreshed_at: checkedAt, token_status: tokenInfo.status, token_error: null,
       };
       const save = existing
-        ? await db.from('social_accounts').update(payload).eq('id', existing.id).eq('user_id', user.user.id)
-        : await db.from('social_accounts').insert(payload);
+        ? await db.from('social_accounts').update(payload).eq('id', existing.id)
+        : await db.from('social_accounts').insert({ ...payload, user_id: user.user.id });
       if (save.error) throw save.error;
       connected++;
     }
