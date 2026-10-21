@@ -49,9 +49,10 @@ export async function saveGoogleSocialAccount(args:{
   supabase:any; userId:string; workspaceId:string; brandId:string|null;
   account:any; tokenData:any;
 }) {
+  const db=adminDb();
   const resource=String(args.account?.name||'').trim();
   if(!resource) throw new Error('Google returned an account without a resource name.');
-  const existing=await args.supabase.from('social_accounts').select('id,refresh_token')
+  const existing=await db.from('social_accounts').select('id')
     .eq('user_id',args.userId).eq('workspace_id',args.workspaceId).eq('platform','google_business')
     .eq('platform_account_id',resource).maybeSingle();
   if(existing.error) throw existing.error;
@@ -65,11 +66,11 @@ export async function saveGoogleSocialAccount(args:{
     token_checked_at:now,token_last_refreshed_at:now,token_status:'active',token_error:null,status:'connected',updated_at:now
   };
   if(existing.data?.id){
-    const result=await args.supabase.from('social_accounts').update(payload).eq('id',existing.data.id).eq('user_id',args.userId);
+    const result=await db.from('social_accounts').update(payload).eq('id',existing.data.id).eq('user_id',args.userId);
     if(result.error) throw result.error;
     return String(existing.data.id);
   }
-  const result=await args.supabase.from('social_accounts').insert(payload).select('id').single();
+  const result=await db.from('social_accounts').insert(payload).select('id').single();
   if(result.error) throw result.error;
   return String(result.data.id);
 }
