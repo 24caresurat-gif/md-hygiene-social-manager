@@ -7,11 +7,12 @@
 
 ## Current verified deployment snapshot
 
-- Current production deployment: READY (`dpl_Bf6VCefoAVeRq7tyCrdx9VaJBh1i`)
-- Production code commit: `56293078ec59f9e242e73f89edffec98373de3ec` (`docs: replace Hobby cron schedule with GitHub scheduler`)
-- Vercel build completed and production aliases are assigned. Runtime-error scan for the hour after deployment reported no runtime errors.
+- Current application-runtime deployment: READY (`dpl_3LEZKuX7BfEHodDVBQZcvBGXSBXX`), code commit `899d85aa8eec1ecd865a0e88ab0da31a33926ec3` (Facebook Page connect payload alignment).
+- Later main commit `a1a6ba88366138143106e8d75e27c1a73c364807` consolidates CI workflow definitions only; the latest application runtime remains the READY deployment above.
+- Provider-token database privileges were hardened and verified against the live Supabase role/column privileges.
+- Direct Meta publishing authorization was aligned with workspace role/permission rules, and the Facebook Page connect API accepts the existing UI payload.
 - The production GitHub Actions scheduler configuration is committed on `main`; it remains gated until the owner configures Vercel's automation-bypass secret, repository Action secrets, and `ENABLE_PRODUCTION_SCHEDULER=true` as described in [Cron Automation Setup](CRON_AUTOMATION_SETUP.md).
-- Tracked SQL migration inventory is documented in [SUPABASE_MIGRATION_RECONCILIATION.md](SUPABASE_MIGRATION_RECONCILIATION.md); remote migration history currently reports 68 applied records, and the repository tracks 23 migration SQL files. Preserve production migration history; do not replay tracked files blindly.
+- Tracked SQL migration inventory is documented in [SUPABASE_MIGRATION_RECONCILIATION.md](SUPABASE_MIGRATION_RECONCILIATION.md); the latest audit found 72 applied migration records and 27 tracked SQL files. Preserve production migration history; do not replay tracked files blindly. Preserve production migration history; do not replay tracked files blindly.
 - This is not the same as end-to-end certification. Real-account OAuth/publishing, workspace-isolation tests, cron invocation, and full user flows remain in the finalization checklist. Vercel deployment protection blocked the available route smoke-test fetch, so do not treat route HTTP behavior as verified.
 
 ## Product modules and what they do
