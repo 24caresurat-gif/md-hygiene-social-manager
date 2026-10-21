@@ -39,6 +39,10 @@
 | `20261010073105_revoke_anon_admin_delete_workspace.sql` | `20261010073105` | Exact version + name |
 | `20261010073158_revoke_public_legacy_csr_order_rpc.sql` | `20261010073158` | Exact version + name |
 | `20261010073358_restrict_admin_delete_workspace_rpc_to_server.sql` | `20261010073358` | Exact version + name |
+| `20261020123000_crm_follow_up_history.sql` | `20261020113357` | Name matches; filename timestamp differs. |
+| `20261020133000_crm_digital_card_intake_sync.sql` | `20261020121719` | Name matches; filename timestamp differs. |
+| `20261020143000_crm_catalog_order_sync.sql` | `20261020123836` | Name matches; filename timestamp differs. |
+| `20261021150000_server_only_provider_tokens.sql` | `20261021094908` | Name matches; filename timestamp differs; removes direct client SELECT access to provider tokens. |
 
 ## Tracked SQL files without an exact remote migration name
 
