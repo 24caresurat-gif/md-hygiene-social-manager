@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { GOOGLE_BUSINESS_SCOPE } from '../../../../../lib/google-business';
+import { adminDb, workspaceAccess } from '../../../../../lib/workspace-auth';
 
 export async function POST(request:Request){
   try{
@@ -17,10 +18,10 @@ export async function POST(request:Request){
     const supabase=createClient(supabaseUrl,anonKey,{global:{headers:{Authorization:`Bearer ${token}`}}});
     const {data:userData,error:userError}=await supabase.auth.getUser(token);
     if(userError||!userData.user)return NextResponse.json({error:'Invalid session.'},{status:401});
-    const member=await supabase.from('workplace_members').select('workspace_id,role,active')
-      .eq('workspace_id',workspace).eq('user_id',userData.user.id).eq('active',true).maybeSingle();
-    if(member.error)throw member.error;
-    if(!member.data)return NextResponse.json({error:'You do not have access to this workspace.'},{status:403});
+    const db = adminDb();
+    const access = await workspaceAccess(db, userData.user.id, workspace);
+    if (!access?.hasAccess) return NextResponse.json({ error: 'You do not have access to this workspace.' }, { status: 403 });
+    if (!access.canManage) return NextResponse.json({ error: 'Only workspace owners, admins or managers can connect Google Business.' }, { status: 403 });
 
     const state=crypto.randomUUID(),origin=new URL(request.url).origin;
     const redirectUri=process.env.GOOGLE_OAUTH_REDIRECT_URI||`${origin}/api/google/business/callback`;
