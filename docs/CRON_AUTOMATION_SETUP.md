@@ -13,6 +13,11 @@ The standalone `/api/cron/whatsapp-campaigns` endpoint is intentionally not call
 
 Both called handlers require `Authorization: Bearer <CRON_SECRET>`, and allow up to 60 seconds for a run. The workflow does not retry timed-out requests automatically because these workers can perform external side effects; the next scheduled tick can retry jobs using their persisted state.
 
+
+## Single-scheduler rule
+
+Only `.github/workflows/production-scheduler.yml` is allowed to run automatically. It invokes `/api/cron/publish` and `/api/cron/crm-task-due` using the matching `CRON_SECRET` and Vercel automation-bypass header. The older `Scheduled Publishing` workflow is now manual-only and does not call the production endpoint, preventing two scheduled jobs from claiming the same publishing queue.
+
 ## One-time required setup
 
 GitHub Actions does not automatically receive Vercel environment variables. Add two secrets:
