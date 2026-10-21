@@ -15,8 +15,8 @@ This checklist is the operational source of truth for making the application tid
 - [x] Compact, independently scrollable sidebar is deployed and the latest production build is READY.
 - [x] CRM execution history UI is present in main
 - [x] WhatsApp bot logs page and navigation are present in main
-- [x] CRM task-due API route exists and is authenticated with `CRON_SECRET`; the GitHub Actions scheduler is prepared for five-minute execution, pending the matching repository secret and live run.
-- [x] Vercel runtime-error scan returned no runtime errors in the hour after deployment `dpl_Bf6VCefoAVeRq7tyCrdx9VaJBh1i` at audit time
+- [x] Production Scheduler is configured and recent authenticated GitHub Actions runs invoked both `/api/cron/publish` and `/api/cron/crm-task-due` successfully. The inspected run processed zero posts/tasks because no due jobs were queued; this confirms invocation, not publishing outcomes.
+- [~] Full current runtime-error sweep remains pending after end-to-end browser/provider testing; unauthenticated route smoke tests are blocked by Vercel deployment protection, so READY/build status alone is not a runtime certification.
 - [ ] Run a real browser pass through key pages on desktop and mobile
 - [ ] Capture final test date, tester, workspace used and observed result
 
