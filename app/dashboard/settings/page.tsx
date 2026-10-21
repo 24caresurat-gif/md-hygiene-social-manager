@@ -6,7 +6,7 @@ import AppShell from '../components/AppShell';
 import WhatsAppConnect from './WhatsAppConnect';
 
 type Member = { id: string; user_id: string; employee_id: string; role: string; active: boolean; profiles?: { full_name?: string } | null };
-type Connection = { id: string; platform: string; name: string; handle: string | null; status: string; token_expires_at?: string | null; token_error?: string | null };
+type Connection = { id: string; platform: string; name: string; handle: string | null; status: string; token_status?: string | null; token_expires_at?: string | null; token_error?: string | null };
 
 export default function SettingsPage() {
   const [id, setId] = useState('');
@@ -41,16 +41,14 @@ export default function SettingsPage() {
 
   async function loadConnections(workspaceId: string) {
     try {
-      const client = getSupabase();
-      const user = (await client.auth.getUser()).data.user;
-      if (!user) throw new Error('Session expired');
-      const { data, error } = await client.from('social_accounts')
-        .select('id,platform,name,handle,status,token_expires_at,token_error')
-        .eq('user_id', user.id).eq('brand_id', workspaceId)
-        .in('platform', ['facebook', 'instagram', 'google_business'])
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      setConnections((data || []) as Connection[]);
+      const token = await sessionToken();
+      const response = await fetch('/api/social-accounts?workspaceId=' + encodeURIComponent(workspaceId), {
+        headers: { Authorization: 'Bearer ' + token },
+        cache: 'no-store',
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data?.error || 'Unable to load connected channels.');
+      setConnections((data.accounts || []) as Connection[]);
     } catch (e) {
       setConnectionMsg(e instanceof Error ? e.message : 'Unable to load connected channels.');
     }
@@ -275,7 +273,7 @@ export default function SettingsPage() {
                 <div className="connection-icon">{icon}</div>
                 <div className="connection-copy">
                   <div className="connection-title"><div><h3>{title}</h3><p>{description}</p></div><span className={account ? 'connection-status connected' : 'connection-status'}>{account ? 'Connected' : 'Not connected'}</span></div>
-                  {account ? <div className="connected-account"><strong>{account.name}</strong><span>{account.handle ? '@' + account.handle : account.platform.replace('_', ' ')}{account.token_error ? ' · ' + account.token_error : ''}</span></div> : <div className="connected-account empty-connection"><strong>Ready to connect</strong><span>OAuth setup is the only external step remaining.</span></div>}
+                  {account ? <div className="connected-account"><strong>{account.name}</strong><span>{account.handle ? '@' + account.handle : account.platform.replace('_', ' ')}{account.token_status ? ' · token ' + account.token_status.replace('_', ' ') : ''}{account.token_error ? ' · ' + account.token_error : ''}</span></div> : <div className="connected-account empty-connection"><strong>Ready to connect</strong><span>OAuth setup is the only external step remaining.</span></div>}
                 </div>
                 <div className="connection-actions">
                   <button className="btn btn-primary" disabled={!!connectionBusy} onClick={() => void startConnection(platform)}>{connectionBusy === platform ? 'Opening…' : account ? 'Reconnect' : 'Connect'}</button>
