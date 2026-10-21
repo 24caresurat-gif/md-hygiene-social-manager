@@ -1,11 +1,11 @@
 # Code Complete / Live E2E Pending
 
-The current application source and database changes are deployed; latest production deployment `dpl_J4BA85NuLsi8sd9XWRqtFYTJu6Uf` (commit `b360815ef36659db90218e7d9d68317a90b74dcd`) is READY, and GitHub/Vercel builds are passing. The project must **not** be described as 100% certified until the live acceptance checks below pass. The production database currently has no catalogue products/orders, no Digital Cards, no CRM tasks/workflows, no WhatsApp connection/templates/campaigns/bot flows, and no Google Business profiles/reviews, so those user journeys cannot yet be certified against real saved records.
+The current application source and database changes are deployed; latest production deployment `dpl_HQ6PimM8U4pGtbREmUc2uGAnAyw9` (commit `888a3d9229c9d42e4ad958a09baf2d4a1884ff30`) is READY, and GitHub/Vercel builds are passing. The project must **not** be described as 100% certified until the live acceptance checks below pass. The production database currently has no catalogue products/orders, no Digital Cards, no CRM tasks/workflows, no WhatsApp connection/templates/campaigns/bot flows, and no Google Business profiles/reviews, so those user journeys cannot yet be certified against real saved records.
 
 ## Owner/operator steps still required
 
-- Add a valid `OPENAI_API_KEY` to Vercel Production to enable AI caption/image generation/edit endpoints. The variable is currently absent; these endpoints intentionally return HTTP 503 without it.
-- In Supabase Auth settings, enable leaked-password protection.
+- Add a valid `OPENAI_API_KEY` to Vercel Production to enable AI caption/image generation/edit endpoints. The variable is currently absent; these endpoints intentionally return HTTP 503 without it. Add `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` when the final Google Business integration phase begins; those credentials are also absent from the current Vercel environment inventory.
+- In Supabase Auth settings, enable leaked-password protection. The remaining Supabase Security Advisor warning is this setting; see [official Supabase password-security guidance](https://supabase.com/docs/guides/auth/password-security).
 - Complete signed-in browser tests with separate Workspace A/Workspace B users for Owner/Admin/Staff permissions, workspace switching and cross-workspace isolation.
 - Visually verify the new collapsible sidebar groups, active-page auto-expansion and scroll behavior on desktop/tablet/mobile.
 - Create a catalogue product and perform a public storefront cart/wishlist/coupon/checkout test; verify the order is workspace-scoped and linked to a CRM contact, lead and follow-up.
@@ -19,6 +19,7 @@ The current application source and database changes are deployed; latest product
 
 - Production deployment is READY; latest commit is recorded in the project finalization checklist.
 - Token credentials are not directly readable/writable by `anon`/`authenticated` roles; provider operations run through authorized server-side routes.
+- Workspace authorization helpers are in the non-exposed `private` schema; empty search_path and RLS synthetic-user probes passed after migration.
 - Catalogue checkout math, stock/coupon atomicity, add-to-cart quantity increments and catalogue/CRM + Digital Card/CRM triggers passed rollback-only database tests with no persistent probe records.
 - Production cron endpoints returned authenticated HTTP 200 on a recent GitHub Actions run, but it processed zero jobs; provider publishing still needs a real queued test.
 - All 58 public tables currently have RLS enabled; complete live workspace-level negative read/write testing remains pending.

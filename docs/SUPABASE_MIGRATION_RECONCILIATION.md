@@ -8,15 +8,15 @@
 
 | Measure | Count |
 |---|---:|
-| SQL files currently tracked in `supabase/migrations/` on `main` | 28 |
-| Applied migration records reported by Supabase | 73 |
-| Same migration name in both lists | 22 |
+| SQL files currently tracked in `supabase/migrations/` on `main` | 30 |
+| Applied migration records reported by Supabase | 75 |
+| Same migration name in both lists | 24 |
 | Same name **and** exact version/timestamp | 10 |
-| Same name but filename timestamp differs | 12 |
+| Same name but filename timestamp differs | 14 |
 | Tracked SQL files with no exact remote migration name | 6 |
 | Remote records with no exact tracked filename stem | 51 |
 
-**Interpretation (rechecked 2026-10-21):** this is a migration-source/history mismatch, not proof that the production schema is missing these changes. Recent CRM/token-security migrations have also been applied. Do not replay files or run migration repair solely to force timestamp/name counts to match. Some tracked SQL files overlap or consolidate work recorded under different remote migration names. Do not replay the tracked files on production, mass-mark migrations as applied, delete migration records, or run `supabase migration repair` without a reviewed mapping.
+**Interpretation (rechecked 2026-10-21):** this is a migration-source/history mismatch, not proof that the production schema is missing these changes. Recent CRM, token-security and workspace-helper hardening migrations have also been applied. Do not replay files or run migration repair solely to force timestamp/name counts to match. Some tracked SQL files overlap or consolidate work recorded under different remote migration names. Do not replay the tracked files on production, mass-mark migrations as applied, delete migration records, or run `supabase migration repair` without a reviewed mapping.
 
 ## Tracked files with a matching remote name
 
@@ -44,6 +44,8 @@
 | `20261020143000_crm_catalog_order_sync.sql` | `20261020123836` | Name matches; filename timestamp differs. |
 | `20261021150000_server_only_provider_tokens.sql` | `20261021094908` | Name matches; filename timestamp differs; removes direct client SELECT access to provider tokens. |
 | `20261021160000_secure_social_account_writes.sql` | `20261021102950` | Name matches; filename timestamp differs; revokes direct client mutations on social account credentials while preserving server-side writes. |
+| `20261021183000_harden_workspace_security_definers.sql` | `20261021122901` | Name matches; filename timestamp differs; applies an empty `search_path` to workspace authorization helpers. |
+| `20261021193000_move_workspace_helpers_private.sql` | `20261021123446` | Name matches; filename timestamp differs; moves RLS authorization helpers into the non-exposed `private` schema and preserves stored policy references. |
 
 ## Tracked SQL files without an exact remote migration name
 

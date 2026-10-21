@@ -11,17 +11,18 @@ This checklist is the operational source of truth for making the application tid
 
 ## A. Current baseline
 
-- [x] Latest application runtime deployment is READY at https://md-hygiene-social-manager.vercel.app (deployment `dpl_J4BA85NuLsi8sd9XWRqtFYTJu6Uf`, commit `b360815ef36659db90218e7d9d68317a90b74dcd`). It includes credential-write lockdown, workspace-wide Accounts and Settings channel lists, separate token-health labels, expired-token reconnect state, and grouped/collapsible sidebar sections.
+- [x] Latest application runtime deployment is READY at https://md-hygiene-social-manager.vercel.app (deployment `dpl_HQ6PimM8U4pGtbREmUc2uGAnAyw9`, commit `888a3d9229c9d42e4ad958a09baf2d4a1884ff30`). It includes credential-write lockdown, workspace-wide Accounts and Settings channel lists, separate token-health labels, expired-token reconnect state, grouped/collapsible sidebar sections, and private-schema workspace RLS helpers.
 - [x] Compact, independently scrollable sidebar is deployed and the latest production build is READY.
 - [x] Sidebar navigation is grouped into collapsible Main, Publishing, Business, CRM, Communication, Reviews and Settings sections (PR #37). Current-page group auto-expansion and role-filtered links are preserved.
 - [x] CRM execution history UI is present in main
 - [x] WhatsApp bot logs page and navigation are present in main
 - [x] Production Scheduler is configured and recent authenticated GitHub Actions runs invoked both `/api/cron/publish` and `/api/cron/crm-task-due` successfully. The inspected run processed zero posts/tasks because no due jobs were queued; this confirms invocation, not publishing outcomes.
-- [~] Full current runtime-error sweep remains pending after end-to-end browser/provider testing; unauthenticated route smoke tests are blocked by Vercel deployment protection, so READY/build status alone is not a runtime certification.
+- [~] Vercel reports no grouped runtime errors in the last 24 hours as of 2026-10-21. Full runtime-error review after authenticated end-to-end browser/provider testing remains pending; unauthenticated route smoke tests are blocked by deployment protection, so READY/build status alone is not a runtime certification.
 - [ ] Run a real browser pass through key pages on desktop and mobile
 - [ ] Capture final test date, tester, workspace used and observed result
 
 - [x] Provider-token SELECT access removed from `anon`/`authenticated` roles for `social_accounts.access_token/refresh_token` and `whatsapp_connections.access_token`; direct `social_accounts` INSERT/UPDATE/DELETE/TRUNCATE privileges are also revoked. Post-migration privilege probes confirm that only server-side `service_role` reads/writes provider credentials.
+- [x] RLS helpers `is_admin`, `can_access_workplace`, and `has_workplace_permission` moved from the API-exposed `public` schema to the non-exposed `private` schema with empty `search_path`; RLS read probes still returned zero rows for a synthetic unauthenticated user. Supabase Security Advisor no longer reports the three SECURITY DEFINER RPC findings.
 - [x] Direct Facebook/Instagram publish APIs now use shared immediate-publish authorization (manager requires both approval and publishing permissions); TypeScript/build CI passed on PR #25.
 - [x] Facebook Page connect route accepts the actual Accounts UI `brandId` payload as well as `workspaceId`; code deployed in current READY production commit.
 - [x] Accounts lists workspace-wide social connections (legacy `brand_id` or `workspace_id`) and shows token health separately; token health is saved server-side and uses workspace authorization (PRs #32, #34, #35; final production deployment `dpl_J4BA85NuLsi8sd9XWRqtFYTJu6Uf`).
@@ -35,7 +36,7 @@ This checklist is the operational source of truth for making the application tid
 - [ ] Verify changing the selected workspace reloads all workspace-owned lists and forms.
 - [~] Read-only SQL-session RLS probe as an active staff user with no workspace membership returned zero rows for another workspace across `brands`, `catalog_products`, `catalog_orders`, `qr_standees`, and `social_posts`. A `catalog_products` insert was rejected by RLS and no row persisted. Full two-browser-session PostgREST/API tests against Workspace A/B IDs remain pending.
 - [ ] Verify staff cannot reach owner/admin-only Settings or management endpoints.
-- [~] Migration inventory rechecked 2026-10-21 after the account-credential hardening migration: 73 applied records and 28 tracked SQL files. 22 names match (10 with exact version, 12 with timestamp mismatch), 6 tracked filenames lack an exact remote name, and 51 remote names lack a tracked file. This is a provenance/history mismatch, not proof of missing schema. Never replay or repair blindly; see [the reconciliation report](SUPABASE_MIGRATION_RECONCILIATION.md).
+- [~] Migration inventory rechecked 2026-10-21 after the workspace-helper hardening migrations: 75 applied records and 30 tracked SQL files. 24 names match (10 with exact version, 14 with timestamp mismatch), 6 tracked filenames lack an exact remote name, and 51 remote names lack a tracked file. This is a provenance/history mismatch, not proof of missing schema. Never replay or repair blindly; see [the reconciliation report](SUPABASE_MIGRATION_RECONCILIATION.md).
 
 ### B2. Social content flow
 - [~] Fixed schema mismatch preventing `scheduled_posts.approval_status='draft'`: database CHECK now accepts `draft`, and Creative Studio's save-draft route sets it explicitly. Rollback-only DB insert passed and cron eligibility probe confirmed drafts are not publishable. Full browser create/edit/submit and approval cycle still pending.
@@ -121,7 +122,7 @@ Do not begin these connections until the rest of the core product audit is compl
 
 ## E. Priority 1 — Production configuration and operations
 - [ ] Verify required Vercel environment variable names are present and non-empty without exposing values.
-- [ ] Configure `OPENAI_API_KEY` in Vercel Production if AI caption, image generation and Creative Studio edit features are in the intended release; the current environment inventory does not contain it, and generate/edit routes return 503 without it.
+- [ ] Add `OPENAI_API_KEY` directly in Vercel Production to activate AI caption, image generation and Creative Studio edit features; the key is absent and generate/edit routes return 503 without it. Do not paste the secret into chat or GitHub.
 - [ ] Confirm `CRON_SECRET` is configured for production only and that unauthenticated requests to cron endpoints are rejected.
 - [x] GitHub Actions scheduler `.github/workflows/production-scheduler.yml` ran successfully with authenticated HTTP 200 results for both `/api/cron/publish` and `/api/cron/crm-task-due` on 2026-10-21. That run processed zero publishing jobs and inspected zero CRM tasks because no due jobs/workflows were queued; publishing outcomes still require queued test work.
 - [x] Production scheduler setup verified: GitHub Actions run `39551322300` returned HTTP 200 from `/api/cron/publish` and `/api/cron/crm-task-due`. The run observed zero jobs. Keep the Vercel bypass and cron secret protected; repeat this setup only if the project/environment is recreated.
