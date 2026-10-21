@@ -8,11 +8,11 @@
 
 | Measure | Count |
 |---|---:|
-| SQL files currently tracked in `supabase/migrations/` on `main` | 27 |
-| Applied migration records reported by Supabase | 72 |
-| Same migration name in both lists | 21 |
+| SQL files currently tracked in `supabase/migrations/` on `main` | 28 |
+| Applied migration records reported by Supabase | 73 |
+| Same migration name in both lists | 22 |
 | Same name **and** exact version/timestamp | 10 |
-| Same name but filename timestamp differs | 11 |
+| Same name but filename timestamp differs | 12 |
 | Tracked SQL files with no exact remote migration name | 6 |
 | Remote records with no exact tracked filename stem | 51 |
 
@@ -43,6 +43,7 @@
 | `20261020133000_crm_digital_card_intake_sync.sql` | `20261020121719` | Name matches; filename timestamp differs. |
 | `20261020143000_crm_catalog_order_sync.sql` | `20261020123836` | Name matches; filename timestamp differs. |
 | `20261021150000_server_only_provider_tokens.sql` | `20261021094908` | Name matches; filename timestamp differs; removes direct client SELECT access to provider tokens. |
+| `20261021160000_secure_social_account_writes.sql` | `20261021102950` | Name matches; filename timestamp differs; revokes direct client mutations on social account credentials while preserving server-side writes. |
 
 ## Tracked SQL files without an exact remote migration name
 

@@ -11,7 +11,7 @@ This checklist is the operational source of truth for making the application tid
 
 ## A. Current baseline
 
-- [x] Production deployment containing latest application runtime code is READY at https://md-hygiene-social-manager.vercel.app (deployment `dpl_3LEZKuX7BfEHodDVBQZcvBGXSBXX`, commit `899d85aa8eec1ecd865a0e88ab0da31a33926ec3`). Subsequent main commit `a1a6ba88366138143106e8d75e27c1a73c364807` only consolidates CI workflows and does not change the application runtime.
+- [x] Production deployment containing the latest application runtime code is READY at https://md-hygiene-social-manager.vercel.app (deployment `dpl_C8qFzW44rGYcPVWUEguUGS3zwtGX`, commit `39edae431aa40491d4c77aeb205997583b315f72`). This deployment includes the workspace-wide Accounts list and separate token-health status UI.
 - [x] Compact, independently scrollable sidebar is deployed and the latest production build is READY.
 - [x] CRM execution history UI is present in main
 - [x] WhatsApp bot logs page and navigation are present in main
@@ -20,9 +20,10 @@ This checklist is the operational source of truth for making the application tid
 - [ ] Run a real browser pass through key pages on desktop and mobile
 - [ ] Capture final test date, tester, workspace used and observed result
 
-- [x] Provider-token SELECT access removed from `anon`/`authenticated` roles for `social_accounts.access_token/refresh_token` and `whatsapp_connections.access_token`; service-role access remains. Privilege probe passed after migration `server_only_provider_tokens`.
+- [x] Provider-token SELECT access removed from `anon`/`authenticated` roles for `social_accounts.access_token/refresh_token` and `whatsapp_connections.access_token`; direct `social_accounts` INSERT/UPDATE/DELETE/TRUNCATE privileges are also revoked. Post-migration privilege probes confirm that only server-side `service_role` reads/writes provider credentials.
 - [x] Direct Facebook/Instagram publish APIs now use shared immediate-publish authorization (manager requires both approval and publishing permissions); TypeScript/build CI passed on PR #25.
 - [x] Facebook Page connect route accepts the actual Accounts UI `brandId` payload as well as `workspaceId`; code deployed in current READY production commit.
+- [x] Accounts lists workspace-wide social connections (legacy `brand_id` or `workspace_id`) and shows token health separately; token health is now saved server-side and uses workspace authorization (PR #32, production deployment `dpl_C8qFzW44rGYcPVWUEguUGS3zwtGX`).
 - [x] Duplicate scheduled publisher disabled and duplicate CI workflows made manual-only; CI consolidation PR #28 merged.
 
 ## B. Priority 0 — Finalize core product safely
@@ -32,7 +33,7 @@ This checklist is the operational source of truth for making the application tid
 - [ ] Verify changing the selected workspace reloads all workspace-owned lists and forms.
 - [~] Read-only SQL-session RLS probe as an active staff user with no workspace membership returned zero rows for another workspace across `brands`, `catalog_products`, `catalog_orders`, `qr_standees`, and `social_posts`. A `catalog_products` insert was rejected by RLS and no row persisted. Full two-browser-session PostgREST/API tests against Workspace A/B IDs remain pending.
 - [ ] Verify staff cannot reach owner/admin-only Settings or management endpoints.
-- [~] Migration inventory rechecked 2026-10-21: 72 applied records and 27 tracked SQL files. 21 names match (10 with exact version, 11 with timestamp mismatch), 6 tracked filenames lack an exact remote name, and 51 remote names lack a tracked file. This is a provenance/history mismatch, not proof of missing schema. Never replay or repair blindly; see [the reconciliation report](SUPABASE_MIGRATION_RECONCILIATION.md).
+- [~] Migration inventory rechecked 2026-10-21 after the account-credential hardening migration: 73 applied records and 28 tracked SQL files. 22 names match (10 with exact version, 12 with timestamp mismatch), 6 tracked filenames lack an exact remote name, and 51 remote names lack a tracked file. This is a provenance/history mismatch, not proof of missing schema. Never replay or repair blindly; see [the reconciliation report](SUPABASE_MIGRATION_RECONCILIATION.md).
 
 ### B2. Social content flow
 - [~] Fixed schema mismatch preventing `scheduled_posts.approval_status='draft'`: database CHECK now accepts `draft`, and Creative Studio's save-draft route sets it explicitly. Rollback-only DB insert passed and cron eligibility probe confirmed drafts are not publishable. Full browser create/edit/submit and approval cycle still pending.
@@ -120,7 +121,7 @@ Do not begin these connections until the rest of the core product audit is compl
 - [ ] Verify required Vercel environment variable names are present and non-empty without exposing values.
 - [ ] Configure `OPENAI_API_KEY` in Vercel Production if AI caption, image generation and Creative Studio edit features are in the intended release; the current environment inventory does not contain it, and generate/edit routes return 503 without it.
 - [ ] Confirm `CRON_SECRET` is configured for production only and that unauthenticated requests to cron endpoints are rejected.
-- [~] GitHub Actions scheduler `.github/workflows/production-scheduler.yml` is configured for every 5 minutes and calls the secured publishing/WhatsApp + CRM task-due workers. Activation remains pending two GitHub Action secrets and one repository variable; the scheduled job is gated off until setup is completed.
+- [x] GitHub Actions scheduler `.github/workflows/production-scheduler.yml` ran successfully with authenticated HTTP 200 results for both `/api/cron/publish` and `/api/cron/crm-task-due` on 2026-10-21. That run processed zero publishing jobs and inspected zero CRM tasks because no due jobs/workflows were queued; publishing outcomes still require queued test work.
 - [x] Production scheduler setup verified: GitHub Actions run `39551322300` returned HTTP 200 from `/api/cron/publish` and `/api/cron/crm-task-due`. The run observed zero jobs. Keep the Vercel bypass and cron secret protected; repeat this setup only if the project/environment is recreated.
 - [ ] Confirm public environment variables contain no service-role keys, app secrets, OAuth secrets or provider access tokens.
 - [ ] Enable Supabase Auth leaked-password protection in the dashboard.
