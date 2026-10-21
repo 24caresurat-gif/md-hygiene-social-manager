@@ -11,8 +11,9 @@ This checklist is the operational source of truth for making the application tid
 
 ## A. Current baseline
 
-- [x] Production deployment containing the latest application runtime code is READY at https://md-hygiene-social-manager.vercel.app (deployment `dpl_C8qFzW44rGYcPVWUEguUGS3zwtGX`, commit `39edae431aa40491d4c77aeb205997583b315f72`). This deployment includes the workspace-wide Accounts list and separate token-health status UI.
+- [x] Latest application runtime deployment is READY at https://md-hygiene-social-manager.vercel.app (deployment `dpl_J4BA85NuLsi8sd9XWRqtFYTJu6Uf`, commit `b360815ef36659db90218e7d9d68317a90b74dcd`). It includes credential-write lockdown, workspace-wide Accounts and Settings channel lists, separate token-health labels, expired-token reconnect state, and grouped/collapsible sidebar sections.
 - [x] Compact, independently scrollable sidebar is deployed and the latest production build is READY.
+- [x] Sidebar navigation is grouped into collapsible Main, Publishing, Business, CRM, Communication, Reviews and Settings sections (PR #37). Current-page group auto-expansion and role-filtered links are preserved.
 - [x] CRM execution history UI is present in main
 - [x] WhatsApp bot logs page and navigation are present in main
 - [x] Production Scheduler is configured and recent authenticated GitHub Actions runs invoked both `/api/cron/publish` and `/api/cron/crm-task-due` successfully. The inspected run processed zero posts/tasks because no due jobs were queued; this confirms invocation, not publishing outcomes.
@@ -23,7 +24,8 @@ This checklist is the operational source of truth for making the application tid
 - [x] Provider-token SELECT access removed from `anon`/`authenticated` roles for `social_accounts.access_token/refresh_token` and `whatsapp_connections.access_token`; direct `social_accounts` INSERT/UPDATE/DELETE/TRUNCATE privileges are also revoked. Post-migration privilege probes confirm that only server-side `service_role` reads/writes provider credentials.
 - [x] Direct Facebook/Instagram publish APIs now use shared immediate-publish authorization (manager requires both approval and publishing permissions); TypeScript/build CI passed on PR #25.
 - [x] Facebook Page connect route accepts the actual Accounts UI `brandId` payload as well as `workspaceId`; code deployed in current READY production commit.
-- [x] Accounts lists workspace-wide social connections (legacy `brand_id` or `workspace_id`) and shows token health separately; token health is now saved server-side and uses workspace authorization (PR #32, production deployment `dpl_C8qFzW44rGYcPVWUEguUGS3zwtGX`).
+- [x] Accounts lists workspace-wide social connections (legacy `brand_id` or `workspace_id`) and shows token health separately; token health is saved server-side and uses workspace authorization (PRs #32, #34, #35; final production deployment `dpl_J4BA85NuLsi8sd9XWRqtFYTJu6Uf`).
+- [x] Settings → Channel Connections loads workspace-wide safe metadata through `/api/social-accounts` without reading/returning provider tokens (PR #36, included in final production deployment).
 - [x] Duplicate scheduled publisher disabled and duplicate CI workflows made manual-only; CI consolidation PR #28 merged.
 
 ## B. Priority 0 — Finalize core product safely
@@ -133,7 +135,8 @@ Do not begin these connections until the rest of the core product audit is compl
 
 ## F. Priority 2 — UI and repository cleanup
 - [x] Make the sidebar more compact and add a dedicated scrollable navigation area; production deployment is READY.
-- [ ] Use grouped/collapsible navigation sections while preserving permission-based visibility.
+- [x] Add grouped/collapsible navigation sections while preserving permission-based visibility (PR #37, production deployment `dpl_J4BA85NuLsi8sd9XWRqtFYTJu6Uf`).
+- [ ] Visually test expanded/collapsed sidebar sections, active-page expansion and scrolling on a signed-in browser.
 - [ ] Test sidebar at short desktop heights, standard desktop, tablet and mobile; current CSS has an independently scrollable navigation area, but manual browser verification is still pending.
 - [ ] Test sidebar scrolling at short desktop heights, normal desktop, tablet and mobile.
 - [ ] Identify duplicate/empty/obsolete source files before removing any. Current review candidates include `app/api/meta/facebook/callback/route2.ts` and `app/api/meta/facebook/placeholder.txt`; verify references/history before deletion.
