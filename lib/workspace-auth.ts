@@ -66,3 +66,44 @@ export async function workspaceAccess(
     canManage: hasAccess && (globalAdmin || isOwner || ['owner', 'admin', 'manager'].includes(role.toLowerCase())),
   };
 }
+
+
+/**
+ * Shared policy for direct "Publish now" actions.
+ * Workspace owners/admins may publish immediately. Managers need both
+ * approval review and publishing privileges; other roles use the approval queue.
+ */
+export async function authorizeImmediatePublishing(
+  db: SupabaseClient,
+  userId: string,
+  workspaceId: string,
+): Promise<{ allowed: boolean; reason?: string }> {
+  const access = await workspaceAccess(db, userId, workspaceId);
+  if (!access?.hasAccess) {
+    return { allowed: false, reason: 'You do not have access to this workspace.' };
+  }
+
+  const role = String(access.role || '').toLowerCase();
+  if (access.globalAdmin || access.isOwner || ['owner', 'admin'].includes(role)) {
+    return { allowed: true };
+  }
+
+  if (role !== 'manager') {
+    return { allowed: false, reason: 'Immediate publishing is limited to workspace owners/admins or managers with approval and publishing permissions.' };
+  }
+
+  const { data: permissions, error } = await db
+    .from('workspace_member_permissions')
+    .select('module,can_approve,can_publish')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', userId)
+    .in('module', ['approval', 'publishing']);
+  if (error) throw error;
+
+  const canApprove = (permissions || []).some((p: any) => p.module === 'approval' && p.can_approve === true);
+  const canPublish = (permissions || []).some((p: any) => p.module === 'publishing' && p.can_publish === true);
+  if (!canApprove || !canPublish) {
+    return { allowed: false, reason: 'Managers need both approval.can_approve and publishing.can_publish to publish immediately.' };
+  }
+  return { allowed: true };
+}
