@@ -118,15 +118,16 @@ Do not begin these connections until the rest of the core product audit is compl
 
 ## E. Priority 1 — Production configuration and operations
 - [ ] Verify required Vercel environment variable names are present and non-empty without exposing values.
+- [ ] Configure `OPENAI_API_KEY` in Vercel Production if AI caption, image generation and Creative Studio edit features are in the intended release; the current environment inventory does not contain it, and generate/edit routes return 503 without it.
 - [ ] Confirm `CRON_SECRET` is configured for production only and that unauthenticated requests to cron endpoints are rejected.
 - [~] GitHub Actions scheduler `.github/workflows/production-scheduler.yml` is configured for every 5 minutes and calls the secured publishing/WhatsApp + CRM task-due workers. Activation remains pending two GitHub Action secrets and one repository variable; the scheduled job is gated off until setup is completed.
-- [ ] In Vercel Settings → Deployment Protection, create a dedicated Protection Bypass for Automation secret while keeping SSO enabled; add it to GitHub Actions as `VERCEL_AUTOMATION_BYPASS_SECRET`. Also add `CRON_SECRET` matching the production Vercel value. Set Actions repository variable `ENABLE_PRODUCTION_SCHEDULER=true`, run `Production Scheduler` manually, verify both endpoints return successful HTTP statuses, and confirm runtime logs/results.
+- [x] Production scheduler setup verified: GitHub Actions run `39551322300` returned HTTP 200 from `/api/cron/publish` and `/api/cron/crm-task-due`. The run observed zero jobs. Keep the Vercel bypass and cron secret protected; repeat this setup only if the project/environment is recreated.
 - [ ] Confirm public environment variables contain no service-role keys, app secrets, OAuth secrets or provider access tokens.
 - [ ] Enable Supabase Auth leaked-password protection in the dashboard.
 - [x] Restrict `admin_delete_workspace(uuid)` to `service_role` only; verified `anon=false`, `authenticated=false`, `service_role=true`. Current workspace deletion uses the secured `/api/brands/[id]` route, which checks owner/admin membership. Test that UI path during acceptance testing.
 - [x] Revoke `PUBLIC`, `anon`, and `authenticated` execution of the legacy `create_order_with_csr(jsonb,jsonb,text)` RPC; verified only `service_role` retains execute. Its referenced legacy `orders/products/coupons` tables are absent; current catalogue checkout uses the separate `catalog_*` flow. Confirm no external/legacy client depends on this RPC before final sign-off.
 - [~] Reviewed `can_access_workplace`, `has_workplace_permission`, and `is_admin` definitions and their use in RLS policies. A read-only guard probe under a distinct simulated `auth.uid()` passed: supplying another member's ID returned `false` for all three functions. Many workspace/catalogue/digital-card/approval RLS policies call these helpers, so authenticated EXECUTE must remain unless policies are redesigned together. Two real-user PostgREST cross-workspace read/write tests remain pending.
-- [ ] Review Supabase performance advisories observed at audit time: 30 unindexed foreign keys, 38 auth/RLS initialization-plan warnings, 17 multiple-permissive-policy warnings, and 76 unused-index notices. Prioritize actual query patterns and validate before making index/policy changes.
+- [ ] Review current Supabase performance advisories: 33 unindexed foreign keys, 38 auth/RLS initialization-plan warnings, 17 multiple-permissive-policy warnings, and 65 unused-index notices. Prioritize actual query patterns and validate before making index/policy changes.
 - [ ] Verify backup/recovery expectations for production data and uploaded media.
 
 ## F. Priority 2 — UI and repository cleanup
