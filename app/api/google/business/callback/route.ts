@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { exchangeGoogleCode, listGoogleAccounts } from '../../../../../lib/google-business';
 import { importGoogleAccount, saveGoogleConnection, saveGoogleSocialAccount } from '../../../../../lib/google-business-sync';
+import { adminDb, workspaceAccess } from '../../../../../lib/workspace-auth';
 
 function cookie(request:Request,name:string){
   const raw=request.headers.get('cookie')?.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`))?.[1]||'';
@@ -30,10 +31,9 @@ export async function GET(request:Request){
     const supabase=createClient(supabaseUrl,anonKey,{global:{headers:{Authorization:`Bearer ${authToken}`}}});
     const {data:userData,error:userError}=await supabase.auth.getUser(authToken);
     if(userError||!userData.user)throw new Error('Login session is invalid. Please reconnect while signed in.');
-    const member=await supabase.from('workplace_members').select('workspace_id,active')
-      .eq('workspace_id',workspaceId).eq('user_id',userData.user.id).eq('active',true).maybeSingle();
-    if(member.error)throw member.error;
-    if(!member.data)throw new Error('You no longer have access to this workspace.');
+    const access = await workspaceAccess(adminDb(), userData.user.id, workspaceId);
+    if (!access?.hasAccess) throw new Error('You no longer have access to this workspace.');
+    if (!access.canManage) throw new Error('Only workspace owners, admins or managers can connect Google Business.');
 
     const tokenData=await exchangeGoogleCode({code,clientId,clientSecret,redirectUri});
     const {data:brand}=await supabase.from('brands').select('id').eq('workspace_id',workspaceId).eq('user_id',userData.user.id).maybeSingle();
