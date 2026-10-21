@@ -11,7 +11,7 @@ This checklist is the operational source of truth for making the application tid
 
 ## A. Current baseline
 
-- [x] Production deployment is READY at https://md-hygiene-social-manager.vercel.app (latest code deployment `dpl_Bf6VCefoAVeRq7tyCrdx9VaJBh1i`, commit `56293078ec59f9e242e73f89edffec98373de3ec`; Vercel build completed and deployment aliases are assigned). Vercel's available fetch tool still could not pass deployment protection for unauthenticated HTTP smoke tests.
+- [x] Production deployment containing latest application runtime code is READY at https://md-hygiene-social-manager.vercel.app (deployment `dpl_3LEZKuX7BfEHodDVBQZcvBGXSBXX`, commit `899d85aa8eec1ecd865a0e88ab0da31a33926ec3`). Subsequent main commit `a1a6ba88366138143106e8d75e27c1a73c364807` only consolidates CI workflows and does not change the application runtime.
 - [x] Compact, independently scrollable sidebar is deployed and the latest production build is READY.
 - [x] CRM execution history UI is present in main
 - [x] WhatsApp bot logs page and navigation are present in main
@@ -20,6 +20,11 @@ This checklist is the operational source of truth for making the application tid
 - [ ] Run a real browser pass through key pages on desktop and mobile
 - [ ] Capture final test date, tester, workspace used and observed result
 
+- [x] Provider-token SELECT access removed from `anon`/`authenticated` roles for `social_accounts.access_token/refresh_token` and `whatsapp_connections.access_token`; service-role access remains. Privilege probe passed after migration `server_only_provider_tokens`.
+- [x] Direct Facebook/Instagram publish APIs now use shared immediate-publish authorization (manager requires both approval and publishing permissions); TypeScript/build CI passed on PR #25.
+- [x] Facebook Page connect route accepts the actual Accounts UI `brandId` payload as well as `workspaceId`; code deployed in current READY production commit.
+- [x] Duplicate scheduled publisher disabled and duplicate CI workflows made manual-only; CI consolidation PR #28 merged.
+
 ## B. Priority 0 — Finalize core product safely
 
 ### B1. User, workspace and permissions
@@ -27,7 +32,7 @@ This checklist is the operational source of truth for making the application tid
 - [ ] Verify changing the selected workspace reloads all workspace-owned lists and forms.
 - [~] Read-only SQL-session RLS probe as an active staff user with no workspace membership returned zero rows for another workspace across `brands`, `catalog_products`, `catalog_orders`, `qr_standees`, and `social_posts`. A `catalog_products` insert was rejected by RLS and no row persisted. Full two-browser-session PostgREST/API tests against Workspace A/B IDs remain pending.
 - [ ] Verify staff cannot reach owner/admin-only Settings or management endpoints.
-- [~] Migration reconciliation report updated: production history has 68 applied records vs 23 tracked SQL files; 17 exact-name matches (10 with exact versions), 7 name matches with timestamp mismatch, 5 tracked files without exact remote names, and 50 remote records without exact filename-stem matches. Restored the applied QR standee source and tracked applied checkout-transaction, atomic cart-increment, draft-state, and publish-retry claim migrations. This remains a source/history mismatch, not proof of missing schema. Follow [the reconciliation report](SUPABASE_MIGRATION_RECONCILIATION.md); preserve production history and do not replay or repair migrations blindly.
+- [~] Migration inventory rechecked 2026-10-21: 72 applied records and 27 tracked SQL files. 21 names match (10 with exact version, 11 with timestamp mismatch), 6 tracked filenames lack an exact remote name, and 51 remote names lack a tracked file. This is a provenance/history mismatch, not proof of missing schema. Never replay or repair blindly; see [the reconciliation report](SUPABASE_MIGRATION_RECONCILIATION.md).
 
 ### B2. Social content flow
 - [~] Fixed schema mismatch preventing `scheduled_posts.approval_status='draft'`: database CHECK now accepts `draft`, and Creative Studio's save-draft route sets it explicitly. Rollback-only DB insert passed and cron eligibility probe confirmed drafts are not publishable. Full browser create/edit/submit and approval cycle still pending.
