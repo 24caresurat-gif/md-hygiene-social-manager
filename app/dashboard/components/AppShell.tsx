@@ -38,6 +38,16 @@ const nav=[
   ['Settings','settings','/dashboard/settings','settings'],
 ] as const;
 
+function navGroupForLabel(label: string): string {
+  if (['Dashboard', 'Accounts'].includes(label)) return 'Main';
+  if (['Create Post', 'Creative Intelligence', 'Drafts', 'Calendar', 'Approvals', 'Publishing History', 'Analytics', 'Media Library'].includes(label)) return 'Publishing';
+  if (['Product Catalogue', 'Catalogue Orders', 'Digital Card', 'Digital Card Leads'].includes(label)) return 'Business';
+  if (['CRM', 'CRM Follow-ups', 'CRM Reports', 'CRM Automation'].includes(label)) return 'CRM';
+  if (label.startsWith('WhatsApp') || label === 'Product Suggestions') return 'Communication';
+  if (label === 'Google Business & Reviews') return 'Reviews';
+  return 'Settings';
+}
+
 function Icon({name,size=18}:{name:IconName;size?:number}){
   const common={width:size,height:size,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.8,strokeLinecap:'round' as const,strokeLinejoin:'round' as const,ariaHidden:true};
   switch(name){
@@ -60,7 +70,7 @@ function Icon({name,size=18}:{name:IconName;size?:number}){
 }
 
 export default function AppShell({children,title='Dashboard'}:{children:ReactNode;title?:string}){
-  const[open,setOpen]=useState(false),[profileOpen,setProfileOpen]=useState(false),[email,setEmail]=useState(''),[workspaces,setWorkspaces]=useState<Workspace[]|null>(null),[selected,setSelected]=useState(''),[access,setAccess]=useState<Access|null>(null),[accessLoading,setAccessLoading]=useState(false);
+  const[open,setOpen]=useState(false),[profileOpen,setProfileOpen]=useState(false),[email,setEmail]=useState(''),[workspaces,setWorkspaces]=useState<Workspace[]|null>(null),[selected,setSelected]=useState(''),[access,setAccess]=useState<Access|null>(null),[accessLoading,setAccessLoading]=useState(false),[expandedNavGroups,setExpandedNavGroups]=useState<Record<string,boolean>>({Main:true,Publishing:true,Business:false,CRM:false,Communication:false,Reviews:false,Settings:true});
 
   useEffect(()=>{(async()=>{
     const s=getSupabase();
@@ -98,6 +108,16 @@ export default function AppShell({children,title='Dashboard'}:{children:ReactNod
     return p?.can_view===true;
   }),[access]);
 
+  const navGroups=useMemo(()=>{
+    const labels=['Main','Publishing','Business','CRM','Communication','Reviews','Settings'];
+    return labels.map(label=>({label,items:visibleNav.filter(([itemLabel])=>navGroupForLabel(itemLabel)===label)})).filter(group=>group.items.length>0);
+  },[visibleNav]);
+
+  useEffect(()=>{
+    const current=nav.find(([label])=>label===title);
+    if(current){const group=navGroupForLabel(current[0]);setExpandedNavGroups(prev=>prev[group]?prev:{...prev,[group]:true});}
+  },[title]);
+
   useEffect(()=>{
     if(accessLoading||!access)return;
     const current=nav.find(([label])=>label===title);
@@ -113,7 +133,7 @@ export default function AppShell({children,title='Dashboard'}:{children:ReactNod
   if(!selected)return <main className="auth-page"><section className="auth-card" style={{maxWidth:560,textAlign:'center'}}><div className="brand">SOCIAL MEDIA MANAGER</div><h1>Workspace required</h1><p className="muted">Select a workspace first. This section only opens accounts and publishing for the selected workspace.</p><select aria-label="Select workspace" defaultValue="" onChange={e=>selectWorkspace(e.target.value)} style={{width:'100%',minHeight:48,border:'1.5px solid #087f7b',borderRadius:12,padding:'0 13px',background:'#fff',fontWeight:700,color:'#17202b'}}><option value="">Select a workspace…</option>{workspaces.map(w=><option key={w.id} value={w.id}>{w.name}</option>)}</select><button className="text-btn" style={{display:'block',margin:'14px auto 0'}} onClick={backToWorkspaces}>← Back to Workspaces</button><button className="text-btn" style={{display:'block',margin:'10px auto 0',color:'#b42318'}} onClick={signOut}>Logout</button></section></main>;
   const selectedWorkspace=workspaces.find(w=>w.id===selected);
   if(accessLoading||!access)return <main className="auth-page"><div className="muted">Loading workspace access…</div></main>;
-  return <main className="app-shell"><div className={`sidebar-backdrop ${open?'show':''}`} onClick={()=>setOpen(false)}/><aside className={`sidebar ${open?'mobile-open':''}`}><div className="logo-block"><div className="logo-mark">MD</div><div className="logo-title">MD<span>HYGIENE</span><small>SOCIAL MANAGER</small></div><button className="drawer-close" onClick={()=>setOpen(false)}><Icon name="chevron" size={18}/></button></div><nav>{visibleNav.map(([label,icon,href])=><button key={label} className={`nav-item ${title===label?'active':''}`} onClick={()=>{setOpen(false);setProfileOpen(false);location.href=href}}><b><Icon name={icon as IconName} size={17}/></b><span>{label}</span></button>)}</nav><div className="side-user"><div className="user-avatar">MD</div><div><strong>{access.role==='owner'?'Workspace Owner':access.role==='admin'?'Workspace Admin':access.role==='manager'?'Workspace Manager':'Employee'}</strong><small>{access.employee_id||email||'Account'}</small></div></div></aside><section className="main-shell"><header className="main-header"><button className="menu-btn" onClick={()=>setOpen(true)} aria-label="Open navigation"><Icon name="menu" size={18}/></button><strong>{title}</strong><div className="search-box"><Icon name="search" size={16}/><span>Search anything...</span><kbd>Ctrl K</kbd></div><div className="header-actions"><button aria-label="Notifications"><Icon name="bell" size={17}/></button><div style={{position:'relative'}}>
+  return <main className="app-shell"><div className={`sidebar-backdrop ${open?'show':''}`} onClick={()=>setOpen(false)}/><aside className={`sidebar ${open?'mobile-open':''}`}><div className="logo-block"><div className="logo-mark">MD</div><div className="logo-title">MD<span>HYGIENE</span><small>SOCIAL MANAGER</small></div><button className="drawer-close" onClick={()=>setOpen(false)}><Icon name="chevron" size={18}/></button></div><nav>{navGroups.map(group=><div className="nav-section" key={group.label}><button type="button" className="nav-section-toggle" aria-expanded={!!expandedNavGroups[group.label]} onClick={()=>setExpandedNavGroups(prev=>({...prev,[group.label]:!prev[group.label]}))}><span>{group.label}</span><Icon name="chevron" size={13}/></button>{expandedNavGroups[group.label]&&<div className="nav-section-items">{group.items.map(([label,icon,href])=><button key={label} className={`nav-item ${title===label?'active':''}`} onClick={()=>{setOpen(false);setProfileOpen(false);location.href=href}}><b><Icon name={icon as IconName} size={17}/></b><span>{label}</span></button>)}</div>}</div>)}</nav><div className="side-user"><div className="user-avatar">MD</div><div><strong>{access.role==='owner'?'Workspace Owner':access.role==='admin'?'Workspace Admin':access.role==='manager'?'Workspace Manager':'Employee'}</strong><small>{access.employee_id||email||'Account'}</small></div></div></aside><section className="main-shell"><header className="main-header"><button className="menu-btn" onClick={()=>setOpen(true)} aria-label="Open navigation"><Icon name="menu" size={18}/></button><strong>{title}</strong><div className="search-box"><Icon name="search" size={16}/><span>Search anything...</span><kbd>Ctrl K</kbd></div><div className="header-actions"><button aria-label="Notifications"><Icon name="bell" size={17}/></button><div style={{position:'relative'}}>
   <label className="workspace-switcher">
     <span className="workspace-switcher-logo">{selectedWorkspace?.logo_url?<img src={selectedWorkspace.logo_url} alt="" />:selectedWorkspace?.name?.slice(0,2).toUpperCase()||'WS'}</span>
     <span className="workspace-switcher-copy"><small>WORKSPACE</small><strong>{selectedWorkspace?.name||'Select workspace'}</strong></span>

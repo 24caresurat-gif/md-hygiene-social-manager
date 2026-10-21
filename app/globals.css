@@ -8,3 +8,5 @@
 /* Compact, scrollable workspace navigation */
 .sidebar nav::-webkit-scrollbar{width:5px}.sidebar nav::-webkit-scrollbar-thumb{background:#ccd8df;border-radius:999px}.sidebar nav::-webkit-scrollbar-track{background:transparent}
 @media(max-height:760px) and (min-width:761px){.sidebar{padding-top:10px;padding-bottom:8px}.logo-block{padding-bottom:9px}.nav-item{min-height:34px;padding-top:6px;padding-bottom:6px}.side-user{margin-top:5px;padding:6px}}
+
+.nav-section{display:grid;gap:2px;flex:0 0 auto}.nav-section-toggle{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 10px 6px;margin-top:4px;background:transparent;color:#8490a0;font-size:9px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;text-align:left;border-radius:7px}.nav-section-toggle:hover{background:#f5f8fa;color:#475569}.nav-section-toggle svg{transition:transform .15s ease}.nav-section-toggle[aria-expanded='false'] svg{transform:rotate(-90deg)}.nav-section-items{display:flex;flex-direction:column;gap:3px}.nav-section-items .nav-item{width:100%}
