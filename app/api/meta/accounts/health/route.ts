@@ -11,9 +11,16 @@ export async function GET(request: Request) {
     const brandId = url.searchParams.get('brandId') || '';
     const db = adminDb();
     let query = db.from('social_accounts')
-      .select('id,user_id,platform,name,brand_id,workspace_id,token_expires_at,token_status,token_error,access_token')
-      .eq('user_id', user.id);
-    if (brandId) query = query.eq('brand_id', brandId);
+      .select('id,user_id,platform,name,brand_id,workspace_id,status,token_expires_at,token_status,token_error,access_token');
+    if (brandId) {
+      const access = await workspaceAccess(db, user.id, brandId);
+      if (!access?.hasAccess) return NextResponse.json({ error: 'You do not have access to this workspace.' }, { status: 403 });
+      const privileged = Boolean(access.globalAdmin || access.isOwner || ['owner', 'admin'].includes(String(access.role || '').toLowerCase()));
+      if (!privileged) query = query.eq('user_id', user.id);
+      query = query.or(`workspace_id.eq.${brandId},brand_id.eq.${brandId}`);
+    } else {
+      query = query.eq('user_id', user.id);
+    }
     const { data: accounts, error } = await query.order('created_at', { ascending: false });
     if (error) throw error;
 
@@ -27,10 +34,13 @@ export async function GET(request: Request) {
       if ((account.platform === 'facebook' || account.platform === 'instagram') && account.access_token) {
         const info = await inspectMetaToken(account.access_token);
         const checkedAt = new Date().toISOString();
+        const connectionStatus = info.valid
+          ? (account.status === 'reconnect_required' ? 'connected' : account.status)
+          : 'reconnect_required';
         const update = await db.from('social_accounts').update({
           token_expires_at: info.expiresAt, token_checked_at: checkedAt,
-          token_status: info.status, token_error: info.error,
-        }).eq('id', account.id).eq('user_id', user.id);
+          token_status: info.status, token_error: info.error, status: connectionStatus,
+        }).eq('id', account.id);
         if (update.error) throw update.error;
         result.push({ id: account.id, platform: account.platform, name: account.name, brandId: account.brand_id, status: info.status, expiresAt: info.expiresAt, error: info.error });
       } else {
