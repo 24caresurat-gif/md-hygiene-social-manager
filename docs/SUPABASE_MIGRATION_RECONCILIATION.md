@@ -1,6 +1,6 @@
 # Supabase Migration Reconciliation
 
-**Audit date:** 2026-10-10  
+**Audit date:** 2026-10-21
 **Repository:** [24caresurat-gif/md-hygiene-social-manager](https://github.com/24caresurat-gif/md-hygiene-social-manager)  
 **Production Supabase project:** `uuofdbsnkazmfdqfflnq`
 
@@ -8,15 +8,15 @@
 
 | Measure | Count |
 |---|---:|
-| SQL files currently tracked in `supabase/migrations/` on `main` | 23 |
-| Applied migration records reported by Supabase | 68 |
-| Same migration name in both lists | 17 |
+| SQL files currently tracked in `supabase/migrations/` on `main` | 27 |
+| Applied migration records reported by Supabase | 72 |
+| Same migration name in both lists | 21 |
 | Same name **and** exact version/timestamp | 10 |
-| Same name but filename timestamp differs | 7 |
-| Tracked SQL files with no exact remote migration name | 5 |
-| Remote records with no exact tracked filename stem | 50 |
+| Same name but filename timestamp differs | 11 |
+| Tracked SQL files with no exact remote migration name | 6 |
+| Remote records with no exact tracked filename stem | 51 |
 
-**Interpretation:** this is a migration-source/history mismatch, not proof that the production schema is missing these changes. Some tracked SQL files overlap or consolidate work recorded under different remote migration names. Do not replay the tracked files on production, mass-mark migrations as applied, delete migration records, or run `supabase migration repair` without a reviewed mapping.
+**Interpretation (rechecked 2026-10-21):** this is a migration-source/history mismatch, not proof that the production schema is missing these changes. Recent CRM/token-security migrations have also been applied. Do not replay files or run migration repair solely to force timestamp/name counts to match. Some tracked SQL files overlap or consolidate work recorded under different remote migration names. Do not replay the tracked files on production, mass-mark migrations as applied, delete migration records, or run `supabase migration repair` without a reviewed mapping.
 
 ## Tracked files with a matching remote name
 
@@ -39,6 +39,10 @@
 | `20261010073105_revoke_anon_admin_delete_workspace.sql` | `20261010073105` | Exact version + name |
 | `20261010073158_revoke_public_legacy_csr_order_rpc.sql` | `20261010073158` | Exact version + name |
 | `20261010073358_restrict_admin_delete_workspace_rpc_to_server.sql` | `20261010073358` | Exact version + name |
+| `20261020123000_crm_follow_up_history.sql` | `20261020113357` | Name matches; filename timestamp differs. |
+| `20261020133000_crm_digital_card_intake_sync.sql` | `20261020121719` | Name matches; filename timestamp differs. |
+| `20261020143000_crm_catalog_order_sync.sql` | `20261020123836` | Name matches; filename timestamp differs. |
+| `20261021150000_server_only_provider_tokens.sql` | `20261021094908` | Name matches; filename timestamp differs; removes direct client SELECT access to provider tokens. |
 
 ## Tracked SQL files without an exact remote migration name
 

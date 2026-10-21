@@ -7,11 +7,12 @@
 
 ## Current verified deployment snapshot
 
-- Current production deployment: READY (`dpl_Bf6VCefoAVeRq7tyCrdx9VaJBh1i`)
-- Production code commit: `56293078ec59f9e242e73f89edffec98373de3ec` (`docs: replace Hobby cron schedule with GitHub scheduler`)
-- Vercel build completed and production aliases are assigned. Runtime-error scan for the hour after deployment reported no runtime errors.
-- The production GitHub Actions scheduler configuration is committed on `main`; it remains gated until the owner configures Vercel's automation-bypass secret, repository Action secrets, and `ENABLE_PRODUCTION_SCHEDULER=true` as described in [Cron Automation Setup](CRON_AUTOMATION_SETUP.md).
-- Tracked SQL migration inventory is documented in [SUPABASE_MIGRATION_RECONCILIATION.md](SUPABASE_MIGRATION_RECONCILIATION.md); remote migration history currently reports 68 applied records, and the repository tracks 23 migration SQL files. Preserve production migration history; do not replay tracked files blindly.
+- Current application-runtime deployment: READY (`dpl_3LEZKuX7BfEHodDVBQZcvBGXSBXX`), code commit `899d85aa8eec1ecd865a0e88ab0da31a33926ec3` (Facebook Page connect payload alignment).
+- Later main commit `a1a6ba88366138143106e8d75e27c1a73c364807` consolidates CI workflow definitions only; the latest application runtime remains the READY deployment above.
+- Provider-token database privileges were hardened and verified against the live Supabase role/column privileges.
+- Direct Meta publishing authorization was aligned with workspace role/permission rules, and the Facebook Page connect API accepts the existing UI payload.
+- The production GitHub Actions scheduler is configured and recent scheduled runs returned HTTP 200 from both the publishing and CRM task-due workers. The inspected run had zero due jobs; verify actual posts/tasks once real scheduled work exists. The duplicate legacy publisher has been made manual-only.
+- Tracked SQL migration inventory is documented in [SUPABASE_MIGRATION_RECONCILIATION.md](SUPABASE_MIGRATION_RECONCILIATION.md); the latest audit found 72 applied migration records and 27 tracked SQL files. Preserve production migration history; do not replay tracked files blindly.
 - This is not the same as end-to-end certification. Real-account OAuth/publishing, workspace-isolation tests, cron invocation, and full user flows remain in the finalization checklist. Vercel deployment protection blocked the available route smoke-test fetch, so do not treat route HTTP behavior as verified.
 
 ## Product modules and what they do
@@ -68,7 +69,7 @@
 - Workflow actions include task creation, lead stage changes, approved WhatsApp template sending, and product suggestions.
 - Reports show pipeline/stage outcomes and task/follow-up health.
 - Execution history: the Automation page includes recent workflow runs and result detail.
-- Production scheduling: `.github/workflows/production-scheduler.yml` is configured to call `/api/cron/publish` and `/api/cron/crm-task-due` every five minutes using GitHub Actions, because the linked Vercel team is on Hobby (whose native cron jobs run at most daily). Follow [Cron Automation Setup](CRON_AUTOMATION_SETUP.md) to add repository Action secrets `CRON_SECRET` and `VERCEL_AUTOMATION_BYPASS_SECRET`, create the Vercel bypass while keeping SSO enabled, then set Actions repository variable `ENABLE_PRODUCTION_SCHEDULER=true`. The schedule stays inert before that variable is enabled. Manually run and verify the workflow. `vercel.json` no longer registers a daily-only Vercel cron.
+- Production scheduling: `.github/workflows/production-scheduler.yml` is the single automatic scheduler; the duplicate `Scheduled Publishing` workflow is manual-only. The scheduler was recently invoked successfully by GitHub Actions and both protected workers returned HTTP 200. The observed run processed zero posts/tasks because no due jobs existed, so a successful worker invocation is not proof of a real social post publish. If the repo/environment is recreated, follow [Cron Automation Setup](CRON_AUTOMATION_SETUP.md) to configure the matching `CRON_SECRET`, `VERCEL_AUTOMATION_BYPASS_SECRET`, Vercel Automation Bypass and `ENABLE_PRODUCTION_SCHEDULER=true`. `vercel.json` no longer registers a daily-only Vercel cron.
 - `/api/cron/publish` processes due approved social posts and scheduled WhatsApp campaigns; it is also the campaign worker in this scheduler tick. The standalone `/api/cron/whatsapp-campaigns` endpoint is not invoked by the new workflow to avoid racing the same campaign queue.
 - The publishing and CRM cron handlers declare a 60-second maximum duration. Each endpoint validates `Authorization: Bearer $CRON_SECRET` and fails closed when the secret is absent. Do not expose the secret in browser code, logs, or commits.
 - Duplicate protection: production migration `20261010105454_crm_task_due_atomic_claim` adds unique partial index `crm_workflow_runs_task_due_once_idx` on `(workflow_id, entity_id)` for `entity_type='crm_task'`. The route inserts a `queued` execution claim before running workflow actions, then finalizes that row. A second concurrent claim for the same workflow/task pair is skipped instead of running actions twice.
