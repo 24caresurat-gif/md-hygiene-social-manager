@@ -7,8 +7,14 @@ type MetaPage={id:string;name:string;access_token?:string;username?:string};
 export async function POST(request:Request){
   const authorization=request.headers.get('authorization'),userAccessToken=authorization?.replace(/^Bearer\s+/i,''),store=await cookies(),metaUserToken=store.get('meta_fb_user_token')?.value;
   const body=await request.json().catch(()=>null) as {pageId?:string;brandId?:string;workspaceId?:string}|null;
-  const workspaceId=body?.workspaceId||'';
-  const brandId=store.get('workspace_brand_id')?.value||body?.brandId||'';
+  // Older Accounts UI sends brandId, while Settings integrations send workspaceId.
+  // Both refer to the same ID in the current workspace/brand architecture.
+  const workspaceId=String(body?.workspaceId||body?.brandId||'').trim();
+  const cookieBrandId=store.get('workspace_brand_id')?.value||'';
+  const brandId=String(body?.brandId||workspaceId||cookieBrandId).trim();
+  if(cookieBrandId&&brandId&&cookieBrandId!==brandId){
+    return NextResponse.json({error:'The selected workspace changed during Facebook connection. Please reconnect from Settings.'},{status:409});
+  }
   if(!userAccessToken||!metaUserToken)return NextResponse.json({error:'Your session has expired. Please reconnect Facebook.'},{status:401});
   if(!body?.pageId)return NextResponse.json({error:'Facebook Page is required.'},{status:400});
   if(!workspaceId)return NextResponse.json({error:'Workspace is required.'},{status:400});
