@@ -1,19 +1,16 @@
-name: Quality Audit
+name: Quality Audit (Deprecated Duplicate)
+
 on:
-  push:
-  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
 jobs:
-  typecheck-build:
+  deprecated:
     runs-on: ubuntu-latest
-    env:
-      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: audit-anon-key
-      SUPABASE_SERVICE_ROLE_KEY: audit-service-role-key
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: npm install
-      - run: npx tsc --noEmit
-      - run: npm run build
+      - name: Point to canonical Quality Audit
+        run: |
+          echo "::warning::This duplicate workflow is manual-only to reduce redundant builds."
+          echo "The canonical CI is the Quality Audit workflow from quality-audit.yml."
