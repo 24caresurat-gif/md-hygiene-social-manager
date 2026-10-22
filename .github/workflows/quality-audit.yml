@@ -25,6 +25,17 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install
+      # Resolve and audit dependencies on this repair branch; the generated lockfile
+      # will be committed only after the dependency tree and build are verified.
+      - run: npm install --package-lock-only --ignore-scripts --no-audit
+      - run: npm ci
+      - name: Verify dependency advisories
+        run: npm audit --audit-level=high
       - run: npx tsc --noEmit
       - run: npm run build
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: verified-package-lock
+          path: package-lock.json
+          if-no-files-found: error
