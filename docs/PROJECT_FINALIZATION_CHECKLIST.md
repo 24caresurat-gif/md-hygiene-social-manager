@@ -11,7 +11,7 @@ This checklist is the operational source of truth for making the application tid
 
 ## A. Current baseline
 
-- [x] Latest application runtime deployment is READY at https://md-hygiene-social-manager.vercel.app (deployment `dpl_HQ6PimM8U4pGtbREmUc2uGAnAyw9`, commit `888a3d9229c9d42e4ad958a09baf2d4a1884ff30`). It includes credential-write lockdown, workspace-wide Accounts and Settings channel lists, separate token-health labels, expired-token reconnect state, grouped/collapsible sidebar sections, and private-schema workspace RLS helpers.
+- [x] Latest application runtime deployment is READY at https://md-hygiene-social-manager.vercel.app (deployment `dpl_4sdJdPkLp2Jzv7wJ3dcvkhBvgwHB`, commit `f342a261da14b3812140ab6133b4aceabd037b82`). It includes provider-token write lockdown, workspace-wide Accounts and Settings channel lists, separate token-health labels, expired-token reconnect state, grouped/collapsible sidebar sections, private-schema workspace RLS helpers, and consolidated overlapping RLS policies.
 - [x] Compact, independently scrollable sidebar is deployed and the latest production build is READY.
 - [x] Sidebar navigation is grouped into collapsible Main, Publishing, Business, CRM, Communication, Reviews and Settings sections (PR #37). Current-page group auto-expansion and role-filtered links are preserved.
 - [x] CRM execution history UI is present in main
@@ -23,10 +23,11 @@ This checklist is the operational source of truth for making the application tid
 
 - [x] Provider-token SELECT access removed from `anon`/`authenticated` roles for `social_accounts.access_token/refresh_token` and `whatsapp_connections.access_token`; direct `social_accounts` INSERT/UPDATE/DELETE/TRUNCATE privileges are also revoked. Post-migration privilege probes confirm that only server-side `service_role` reads/writes provider credentials.
 - [x] RLS helpers `is_admin`, `can_access_workplace`, and `has_workplace_permission` moved from the API-exposed `public` schema to the non-exposed `private` schema with empty `search_path`; RLS read probes still returned zero rows for a synthetic unauthenticated user. Supabase Security Advisor no longer reports the three SECURITY DEFINER RPC findings.
+- [x] Consolidated 13 overlapping `FOR ALL` RLS policies into 39 command-specific `INSERT`/`UPDATE`/`DELETE` policies with the original `USING`/`WITH CHECK` predicates preserved. The multiple-permissive-policy warning cleared from Supabase Performance Advisor; no target `FOR ALL` policy remains. Live verification: 58 public tables, all 58 with RLS enabled, and both private workspace helper functions use an empty `search_path`.
 - [x] Direct Facebook/Instagram publish APIs now use shared immediate-publish authorization (manager requires both approval and publishing permissions); TypeScript/build CI passed on PR #25.
 - [x] Facebook Page connect route accepts the actual Accounts UI `brandId` payload as well as `workspaceId`; code deployed in current READY production commit.
-- [x] Accounts lists workspace-wide social connections (legacy `brand_id` or `workspace_id`) and shows token health separately; token health is saved server-side and uses workspace authorization (PRs #32, #34, #35; final production deployment `dpl_J4BA85NuLsi8sd9XWRqtFYTJu6Uf`).
-- [x] Settings → Channel Connections loads workspace-wide safe metadata through `/api/social-accounts` without reading/returning provider tokens (PR #36, included in final production deployment).
+- [x] Accounts lists workspace-wide social connections (legacy `brand_id` or `workspace_id`) and shows token health separately; token health is saved server-side and uses workspace authorization (PRs #32, #34, #35; latest production deployment `dpl_4sdJdPkLp2Jzv7wJ3dcvkhBvgwHB`).
+- [x] Settings → Channel Connections loads workspace-wide safe metadata through `/api/social-accounts` without reading/returning provider tokens (PR #36; current production code is READY in deployment `dpl_4sdJdPkLp2Jzv7wJ3dcvkhBvgwHB`).
 - [x] Duplicate scheduled publisher disabled and duplicate CI workflows made manual-only; CI consolidation PR #28 merged.
 
 ## B. Priority 0 — Finalize core product safely
@@ -36,7 +37,7 @@ This checklist is the operational source of truth for making the application tid
 - [ ] Verify changing the selected workspace reloads all workspace-owned lists and forms.
 - [~] Read-only SQL-session RLS probe as an active staff user with no workspace membership returned zero rows for another workspace across `brands`, `catalog_products`, `catalog_orders`, `qr_standees`, and `social_posts`. A `catalog_products` insert was rejected by RLS and no row persisted. Full two-browser-session PostgREST/API tests against Workspace A/B IDs remain pending.
 - [ ] Verify staff cannot reach owner/admin-only Settings or management endpoints.
-- [~] Migration inventory rechecked 2026-10-21 after the workspace-helper hardening migrations: 75 applied records and 30 tracked SQL files. 24 names match (10 with exact version, 14 with timestamp mismatch), 6 tracked filenames lack an exact remote name, and 51 remote names lack a tracked file. This is a provenance/history mismatch, not proof of missing schema. Never replay or repair blindly; see [the reconciliation report](SUPABASE_MIGRATION_RECONCILIATION.md).
+- [~] Migration inventory rechecked 2026-10-22 after the RLS policy consolidation: 78 applied records and 33 tracked SQL files. 27 names match (10 with exact version, 17 with timestamp mismatch), 6 tracked filenames lack an exact remote name, and 51 remote names lack a tracked file. This is a provenance/history mismatch, not proof of missing schema. Never replay or repair blindly; see [the reconciliation report](SUPABASE_MIGRATION_RECONCILIATION.md).
 
 ### B2. Social content flow
 - [~] Fixed schema mismatch preventing `scheduled_posts.approval_status='draft'`: database CHECK now accepts `draft`, and Creative Studio's save-draft route sets it explicitly. Rollback-only DB insert passed and cron eligibility probe confirmed drafts are not publishable. Full browser create/edit/submit and approval cycle still pending.
@@ -131,12 +132,12 @@ Do not begin these connections until the rest of the core product audit is compl
 - [x] Restrict `admin_delete_workspace(uuid)` to `service_role` only; verified `anon=false`, `authenticated=false`, `service_role=true`. Current workspace deletion uses the secured `/api/brands/[id]` route, which checks owner/admin membership. Test that UI path during acceptance testing.
 - [x] Revoke `PUBLIC`, `anon`, and `authenticated` execution of the legacy `create_order_with_csr(jsonb,jsonb,text)` RPC; verified only `service_role` retains execute. Its referenced legacy `orders/products/coupons` tables are absent; current catalogue checkout uses the separate `catalog_*` flow. Confirm no external/legacy client depends on this RPC before final sign-off.
 - [~] Reviewed `can_access_workplace`, `has_workplace_permission`, and `is_admin` definitions and their use in RLS policies. A read-only guard probe under a distinct simulated `auth.uid()` passed: supplying another member's ID returned `false` for all three functions. Many workspace/catalogue/digital-card/approval RLS policies call these helpers, so authenticated EXECUTE must remain unless policies are redesigned together. Two real-user PostgREST cross-workspace read/write tests remain pending.
-- [ ] Review current Supabase performance advisories: 33 unindexed foreign keys, 38 auth/RLS initialization-plan warnings, 17 multiple-permissive-policy warnings, and 65 unused-index notices. Prioritize actual query patterns and validate before making index/policy changes.
+- [x] Rechecked Supabase Performance Advisor after the 2026-10-22 RLS/index migrations: the `multiple_permissive_policies` warning is cleared and the unindexed-FK/RLS-auth-initplan migrations are tracked/applied. 98 unused-index suggestions remain INFO-level; do not drop indexes blindly before representative workload measurements.
 - [ ] Verify backup/recovery expectations for production data and uploaded media.
 
 ## F. Priority 2 — UI and repository cleanup
 - [x] Make the sidebar more compact and add a dedicated scrollable navigation area; production deployment is READY.
-- [x] Add grouped/collapsible navigation sections while preserving permission-based visibility (PR #37, production deployment `dpl_J4BA85NuLsi8sd9XWRqtFYTJu6Uf`).
+- [x] Add grouped/collapsible navigation sections while preserving permission-based visibility (PR #37; current production deployment `dpl_4sdJdPkLp2Jzv7wJ3dcvkhBvgwHB`).
 - [ ] Visually test expanded/collapsed sidebar sections, active-page expansion and scrolling on a signed-in browser.
 - [ ] Test sidebar at short desktop heights, standard desktop, tablet and mobile; current CSS has an independently scrollable navigation area, but manual browser verification is still pending.
 - [ ] Test sidebar scrolling at short desktop heights, normal desktop, tablet and mobile.
