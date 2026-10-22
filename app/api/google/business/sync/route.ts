@@ -30,6 +30,7 @@ export async function POST(request: Request) {
     const db = adminDb();
     const access = await workspaceAccess(db, userData.user.id, workspace);
     if (!access?.hasAccess) return NextResponse.json({ error: 'You do not have access to this workspace.' }, { status: 403 });
+    if (!access.canManage) return NextResponse.json({ error: 'Only workspace owners, admins or managers can sync Google Business data.' }, { status: 403 });
 
     const { data: socials, error: socialsError } = await db.from('social_accounts')
       .select('id,platform_account_id,access_token,token_expires_at,status,brand_id,workspace_id')
@@ -68,7 +69,7 @@ export async function POST(request: Request) {
       accounts = accounts.filter(a => String(a?.name || '') === String(social.platform_account_id || ''));
       for (const account of accounts) {
         const imported = await importGoogleAccount({
-          supabase: userClient, workspaceId: workspace, socialAccountId: String(social.id), account, accessToken,
+          workspaceId: workspace, socialAccountId: String(social.id), account, accessToken,
         });
         locations += imported.locations;
         reviews += imported.reviews;
