@@ -7,13 +7,14 @@
 
 ## Current verified deployment snapshot
 
-- Current application-runtime deployment: READY (`dpl_HQ6PimM8U4pGtbREmUc2uGAnAyw9`), code commit `888a3d9229c9d42e4ad958a09baf2d4a1884ff30`.
+- Current application-runtime deployment: READY (`dpl_4sdJdPkLp2Jzv7wJ3dcvkhBvgwHB`), code commit `f342a261da14b3812140ab6133b4aceabd037b82`.
 - Provider-token direct client reads/writes are revoked and verified in live Supabase privileges; Facebook/Instagram OAuth writes and disconnect operations use authorized server-side access.
 - Accounts and Settings both list workspace-wide connection metadata without sending provider tokens to the browser; Meta token health/reconnect state is saved server-side.
 - Sidebar navigation is grouped into collapsible sections while preserving role-filtered navigation and independent scrolling.
 - Workspace RLS helper functions now live in the non-exposed `private` schema with empty `search_path`; the helper-related SECURITY DEFINER warnings cleared from Supabase Security Advisor.
+- The latest RLS policy migration split 13 overlapping `FOR ALL` policies into 39 INSERT/UPDATE/DELETE policies while preserving predicates and existing SELECT policies. Supabase Performance Advisor no longer reports the multiple-permissive-policy warning; 98 unused-index entries remain informational and should not be dropped blindly.
 - The production GitHub Actions scheduler is configured and recent scheduled runs returned HTTP 200 from both the publishing and CRM task-due workers. The inspected run had zero due jobs; verify actual posts/tasks once real scheduled work exists. The duplicate legacy publisher has been made manual-only.
-- Tracked SQL migration inventory is documented in [SUPABASE_MIGRATION_RECONCILIATION.md](SUPABASE_MIGRATION_RECONCILIATION.md); the latest audit found 75 applied migration records and 30 tracked SQL files. Preserve production migration history; do not replay tracked files blindly.
+- Tracked SQL migration inventory is documented in [SUPABASE_MIGRATION_RECONCILIATION.md](SUPABASE_MIGRATION_RECONCILIATION.md); the latest audit found 78 applied migration records and 33 tracked SQL files. Preserve production migration history; do not replay tracked files blindly.
 - This is not the same as end-to-end certification. Real-account OAuth/publishing, workspace-isolation tests, cron invocation, and full user flows remain in the finalization checklist. Vercel deployment protection blocked the available route smoke-test fetch, so do not treat route HTTP behavior as verified.
 
 ## Product modules and what they do
