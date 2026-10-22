@@ -1,7 +1,7 @@
 # Final Production Audit
 
 ## Current status (2026-10-22)
-- Latest production deployment is READY: `dpl_4sdJdPkLp2Jzv7wJ3dcvkhBvgwHB`, commit `f342a261da14b3812140ab6133b4aceabd037b82`.
+- Latest production deployment is READY: `dpl_9fAjpdx9iY3YyHF4GcFWWmswGdHB`, commit `d672d6d9896113eccd74d28a3af423047e742e2d`.
 - Supabase snapshot: 58 public tables, all 58 with RLS enabled; 78 remote applied migration records and 33 SQL files tracked in GitHub.
 - Provider-token client reads/writes are restricted; connection OAuth/disconnect operations use server-side database access with workspace authorization.
 - Accounts and Settings expose workspace-wide connection metadata without returning provider tokens; token status/reconnect state is saved server-side.
@@ -10,6 +10,7 @@
 - Supabase Security Advisor's remaining warning is Leaked Password Protection disabled.
 - Vercel reported no grouped runtime errors in the last 24 hours at the time of this audit. Authenticated browser tests are still pending.
 - Sidebar navigation uses independent scrolling and collapsible groups, preserving permission-filtered links.
+- Dependency supply-chain warning was fixed: package override `sharp` updated to patched `0.35.5`; reproducible `package-lock.json` committed; `npm ci`, `npm audit --audit-level=high`, TypeScript and Next.js production build pass.
 - Catalogue order calculations, CRM link triggers and Digital Card CRM link triggers have rollback-only database tests; no temporary test records remain.
 
 ## Not yet 100% live-certified
