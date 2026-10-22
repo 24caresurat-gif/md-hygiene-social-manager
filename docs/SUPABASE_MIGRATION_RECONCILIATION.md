@@ -1,6 +1,6 @@
 # Supabase Migration Reconciliation
 
-**Audit date:** 2026-10-21
+**Audit date:** 2026-10-22
 **Repository:** [24caresurat-gif/md-hygiene-social-manager](https://github.com/24caresurat-gif/md-hygiene-social-manager)  
 **Production Supabase project:** `uuofdbsnkazmfdqfflnq`
 
@@ -8,15 +8,15 @@
 
 | Measure | Count |
 |---|---:|
-| SQL files currently tracked in `supabase/migrations/` on `main` | 30 |
-| Applied migration records reported by Supabase | 75 |
-| Same migration name in both lists | 24 |
+| SQL files currently tracked in `supabase/migrations/` on `main` | 33 |
+| Applied migration records reported by Supabase | 78 |
+| Same migration name in both lists | 27 |
 | Same name **and** exact version/timestamp | 10 |
-| Same name but filename timestamp differs | 14 |
+| Same name but filename timestamp differs | 17 |
 | Tracked SQL files with no exact remote migration name | 6 |
 | Remote records with no exact tracked filename stem | 51 |
 
-**Interpretation (rechecked 2026-10-21):** this is a migration-source/history mismatch, not proof that the production schema is missing these changes. Recent CRM, token-security and workspace-helper hardening migrations have also been applied. Do not replay files or run migration repair solely to force timestamp/name counts to match. Some tracked SQL files overlap or consolidate work recorded under different remote migration names. Do not replay the tracked files on production, mass-mark migrations as applied, delete migration records, or run `supabase migration repair` without a reviewed mapping.
+**Interpretation (rechecked 2026-10-22):** this is a migration-source/history mismatch, not proof that the production schema is missing these changes. Recent CRM, token-security, workspace-helper and overlapping-RLS-policy migrations have also been applied. Do not replay files or run migration repair solely to force timestamp/name counts to match. Some tracked SQL files overlap or consolidate work recorded under different remote migration names. Do not replay the tracked files on production, mass-mark migrations as applied, delete migration records, or run `supabase migration repair` without a reviewed mapping.
 
 ## Tracked files with a matching remote name
 
@@ -46,6 +46,9 @@
 | `20261021160000_secure_social_account_writes.sql` | `20261021102950` | Name matches; filename timestamp differs; revokes direct client mutations on social account credentials while preserving server-side writes. |
 | `20261021183000_harden_workspace_security_definers.sql` | `20261021122901` | Name matches; filename timestamp differs; applies an empty `search_path` to workspace authorization helpers. |
 | `20261021193000_move_workspace_helpers_private.sql` | `20261021123446` | Name matches; filename timestamp differs; moves RLS authorization helpers into the non-exposed `private` schema and preserves stored policy references. |
+| `20261021200000_add_missing_fk_indexes.sql` | `20261021124719` | Name matches; filename timestamp differs; adds foreign-key indexes flagged by the Supabase performance review. |
+| `20261021201000_optimize_rls_auth_initplans.sql` | `20261021124722` | Name matches; filename timestamp differs; wraps direct `auth.uid()` policy expressions in scalar SELECTs to improve RLS query planning. |
+| `20261022050000_consolidate_overlapping_rls_policies.sql` | `20261022045823` | Name matches; filename timestamp differs; splits 13 overlapping `FOR ALL` policies into INSERT/UPDATE/DELETE policies with existing predicates preserved and hardens private workspace helper search paths. |
 
 ## Tracked SQL files without an exact remote migration name
 
