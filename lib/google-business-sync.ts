@@ -46,7 +46,7 @@ export async function updateGoogleConnection(id:string,patch:any){
 }
 
 export async function saveGoogleSocialAccount(args:{
-  supabase:any; userId:string; workspaceId:string; brandId:string|null;
+  userId:string; workspaceId:string; brandId:string|null;
   account:any; tokenData:any;
 }) {
   const db=adminDb();
@@ -76,8 +76,12 @@ export async function saveGoogleSocialAccount(args:{
 }
 
 export async function importGoogleAccount(args:{
-  supabase:any; workspaceId:string; socialAccountId:string; account:any; accessToken:string;
+  workspaceId:string; socialAccountId:string; account:any; accessToken:string;
 }) {
+  // Called only after the OAuth callback authenticates the user and verifies
+  // workspace-management access. Keep import writes server-side rather than
+  // depending on browser-role table grants or RLS context.
+  const db=adminDb();
   const accountName=String(args.account?.name||'');
   const locations=await listGoogleLocations(args.accessToken,accountName);
   let reviewCount=0;
@@ -92,16 +96,16 @@ export async function importGoogleAccount(args:{
       category:location?.categories?.primaryCategory?.displayName||location?.categories?.primaryCategory?.categoryId||null,
       review_url:locationReviewUrl(location),profile_data:location||{},status:'connected',updated_at:new Date().toISOString()
     };
-    const existing=await args.supabase.from('google_business_profiles').select('id')
+    const existing=await db.from('google_business_profiles').select('id')
       .eq('workspace_id',args.workspaceId).eq('location_id',locationName).maybeSingle();
     if(existing.error) throw existing.error;
     let profileId=existing.data?.id;
     if(profileId){
-      const result=await args.supabase.from('google_business_profiles').update(profilePayload)
+      const result=await db.from('google_business_profiles').update(profilePayload)
         .eq('id',profileId).eq('workspace_id',args.workspaceId);
       if(result.error) throw result.error;
     }else{
-      const result=await args.supabase.from('google_business_profiles')
+      const result=await db.from('google_business_profiles')
         .insert({...profilePayload,created_at:new Date().toISOString()}).select('id').single();
       if(result.error) throw result.error;
       profileId=result.data.id;
@@ -118,15 +122,15 @@ export async function importGoogleAccount(args:{
         reply_text:reply?.comment||null,replied_at:reply?.updateTime||null,
         reply_status:reply?.comment?'replied':'not_replied',review_data:review||{},updated_at:new Date().toISOString()
       };
-      const old=await args.supabase.from('google_business_reviews').select('id')
+      const old=await db.from('google_business_reviews').select('id')
         .eq('workspace_id',args.workspaceId).eq('google_review_id',reviewName).maybeSingle();
       if(old.error) throw old.error;
       if(old.data?.id){
-        const result=await args.supabase.from('google_business_reviews').update(payload)
+        const result=await db.from('google_business_reviews').update(payload)
           .eq('id',old.data.id).eq('workspace_id',args.workspaceId);
         if(result.error) throw result.error;
       }else{
-        const result=await args.supabase.from('google_business_reviews')
+        const result=await db.from('google_business_reviews')
           .insert({...payload,created_at:new Date().toISOString()});
         if(result.error) throw result.error;
       }
