@@ -6,7 +6,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: quality-audit-${{ github.workflow }}-${{ github.ref }}
@@ -25,33 +25,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      # Resolve and audit dependencies on this repair branch; the generated lockfile
-      # will be committed only after the dependency tree and build are verified.
-      - run: npm install --package-lock-only --ignore-scripts --no-audit
       - run: npm ci
       - name: Verify dependency advisories
         run: npm audit --audit-level=high
       - run: npx tsc --noEmit
       - run: npm run build
-      - name: Commit generated lockfile to the dependency repair branch
-        if: github.event_name == 'pull_request' && github.head_ref == 'fix/dependency-pin-lockfile' && github.event.pull_request.head.repo.full_name == github.repository
-        env:
-          BRANCH: ${{ github.head_ref }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git fetch origin "$BRANCH"
-          git checkout -B "$BRANCH" "origin/$BRANCH"
-          git add package-lock.json
-          if git diff --cached --quiet; then
-            echo "Generated lockfile already matches the repair branch."
-            exit 0
-          fi
-          git commit -m "chore: lock audited npm dependencies"
-          git push origin "HEAD:$BRANCH"
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: verified-package-lock
-          path: package-lock.json
-          if-no-files-found: error
