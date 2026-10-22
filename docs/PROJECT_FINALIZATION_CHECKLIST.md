@@ -11,13 +11,13 @@ This checklist is the operational source of truth for making the application tid
 
 ## A. Current baseline
 
-- [x] Latest application runtime deployment is READY at https://md-hygiene-social-manager.vercel.app (deployment `dpl_4sdJdPkLp2Jzv7wJ3dcvkhBvgwHB`, commit `f342a261da14b3812140ab6133b4aceabd037b82`). It includes provider-token write lockdown, workspace-wide Accounts and Settings channel lists, separate token-health labels, expired-token reconnect state, grouped/collapsible sidebar sections, private-schema workspace RLS helpers, and consolidated overlapping RLS policies.
+- [x] Latest application runtime deployment is READY at https://md-hygiene-social-manager.vercel.app (deployment `dpl_9fAjpdx9iY3YyHF4GcFWWmswGdHB`, commit `d672d6d9896113eccd74d28a3af423047e742e2d`). It includes provider-token write lockdown, workspace-wide Accounts and Settings channel lists, separate token-health labels, expired-token reconnect state, grouped/collapsible sidebar sections, private-schema workspace RLS helpers, consolidated RLS policies, the Google Business server-side import fix, and patched dependency locking.
 - [x] Compact, independently scrollable sidebar is deployed and the latest production build is READY.
 - [x] Sidebar navigation is grouped into collapsible Main, Publishing, Business, CRM, Communication, Reviews and Settings sections (PR #37). Current-page group auto-expansion and role-filtered links are preserved.
 - [x] CRM execution history UI is present in main
 - [x] WhatsApp bot logs page and navigation are present in main
 - [x] Production Scheduler is configured and recent authenticated GitHub Actions runs invoked both `/api/cron/publish` and `/api/cron/crm-task-due` successfully. The inspected run processed zero posts/tasks because no due jobs were queued; this confirms invocation, not publishing outcomes.
-- [~] Vercel reports no grouped runtime errors in the last 24 hours as of 2026-10-21. Full runtime-error review after authenticated end-to-end browser/provider testing remains pending; unauthenticated route smoke tests are blocked by deployment protection, so READY/build status alone is not a runtime certification.
+- [~] Vercel runtime error scans on 2026-10-22 found no grouped errors in the last 24 hours (and no errors in the latest 1-hour window). Full runtime-error review after authenticated end-to-end browser/provider testing remains pending; unauthenticated route smoke tests are blocked by deployment protection, so READY/build status alone is not a runtime certification.
 - [ ] Run a real browser pass through key pages on desktop and mobile
 - [ ] Capture final test date, tester, workspace used and observed result
 
@@ -26,8 +26,10 @@ This checklist is the operational source of truth for making the application tid
 - [x] Consolidated 13 overlapping `FOR ALL` RLS policies into 39 command-specific `INSERT`/`UPDATE`/`DELETE` policies with the original `USING`/`WITH CHECK` predicates preserved. The multiple-permissive-policy warning cleared from Supabase Performance Advisor; no target `FOR ALL` policy remains. Live verification: 58 public tables, all 58 with RLS enabled, and both private workspace helper functions use an empty `search_path`.
 - [x] Direct Facebook/Instagram publish APIs now use shared immediate-publish authorization (manager requires both approval and publishing permissions); TypeScript/build CI passed on PR #25.
 - [x] Facebook Page connect route accepts the actual Accounts UI `brandId` payload as well as `workspaceId`; code deployed in current READY production commit.
-- [x] Accounts lists workspace-wide social connections (legacy `brand_id` or `workspace_id`) and shows token health separately; token health is saved server-side and uses workspace authorization (PRs #32, #34, #35; latest production deployment `dpl_4sdJdPkLp2Jzv7wJ3dcvkhBvgwHB`).
-- [x] Settings → Channel Connections loads workspace-wide safe metadata through `/api/social-accounts` without reading/returning provider tokens (PR #36; current production code is READY in deployment `dpl_4sdJdPkLp2Jzv7wJ3dcvkhBvgwHB`).
+- [x] Accounts lists workspace-wide social connections (legacy `brand_id` or `workspace_id`) and shows token health separately; token health is saved server-side and uses workspace authorization (PRs #32, #34, #35; latest production deployment `dpl_9fAjpdx9iY3YyHF4GcFWWmswGdHB`).
+- [x] Settings → Channel Connections loads workspace-wide safe metadata through `/api/social-accounts` without reading/returning provider tokens (PR #36; current production code is READY in deployment `dpl_9fAjpdx9iY3YyHF4GcFWWmswGdHB`).
+- [x] Google Business OAuth callback and sync write locations/reviews via server-only `adminDb()` after checking workspace `canManage` permission (PR #45). Live Google OAuth/import remains intentionally pending until the final provider phase.
+- [x] Dependency supply-chain check: `package-lock.json` is committed, locking Next.js `15.5.28` and patched Sharp `0.35.5`; Quality Audit uses `npm ci` plus `npm audit --audit-level=high` and passed on the latest main commit (PR #47).
 - [x] Duplicate scheduled publisher disabled and duplicate CI workflows made manual-only; CI consolidation PR #28 merged.
 
 ## B. Priority 0 — Finalize core product safely
