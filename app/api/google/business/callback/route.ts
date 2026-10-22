@@ -31,22 +31,24 @@ export async function GET(request:Request){
     const supabase=createClient(supabaseUrl,anonKey,{global:{headers:{Authorization:`Bearer ${authToken}`}}});
     const {data:userData,error:userError}=await supabase.auth.getUser(authToken);
     if(userError||!userData.user)throw new Error('Login session is invalid. Please reconnect while signed in.');
-    const access = await workspaceAccess(adminDb(), userData.user.id, workspaceId);
+    const db = adminDb();
+    const access = await workspaceAccess(db, userData.user.id, workspaceId);
     if (!access?.hasAccess) throw new Error('You no longer have access to this workspace.');
     if (!access.canManage) throw new Error('Only workspace owners, admins or managers can connect Google Business.');
 
     const tokenData=await exchangeGoogleCode({code,clientId,clientSecret,redirectUri});
-    const {data:brand}=await supabase.from('brands').select('id').eq('workspace_id',workspaceId).eq('user_id',userData.user.id).maybeSingle();
+    const {data:brand, error:brandError}=await db.from('brands').select('id').eq('workspace_id',workspaceId).eq('user_id',userData.user.id).maybeSingle();
+    if (brandError) throw brandError;
     const accounts=await listGoogleAccounts(tokenData.access_token);
     if(!accounts.length)throw new Error('Google connected, but no Business Profile accounts were returned for this Google user.');
 
     let locations=0,reviews=0;
     for(const account of accounts){
       const socialAccountId=await saveGoogleSocialAccount({
-        supabase,userId:userData.user.id,workspaceId,brandId:brand?.id||null,account,tokenData
+        userId:userData.user.id,workspaceId,brandId:brand?.id||null,account,tokenData
       });
       await saveGoogleConnection({socialAccountId,userId:userData.user.id,workspaceId,accountName:String(account?.name||''),tokenData});
-      const result=await importGoogleAccount({supabase,workspaceId,socialAccountId,account,accessToken:tokenData.access_token});
+      const result=await importGoogleAccount({workspaceId,socialAccountId,account,accessToken:tokenData.access_token});
       locations+=result.locations;reviews+=result.reviews;
     }
 
