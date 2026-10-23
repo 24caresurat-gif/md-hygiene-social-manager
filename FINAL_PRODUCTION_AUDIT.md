@@ -1,7 +1,7 @@
 # Final Production Audit
 
 ## Current status (2026-10-22)
-- Latest production deployment is READY: `dpl_9fAjpdx9iY3YyHF4GcFWWmswGdHB`, commit `d672d6d9896113eccd74d28a3af423047e742e2d`.
+- Latest production deployment is READY: `dpl_A46YvyGJ5NRZ5zofRWpZTfJZJbLe`, commit `3445ab1a094eddd506a16b271953332d39b552f3`.
 - Supabase snapshot: 58 public tables, all 58 with RLS enabled; 78 remote applied migration records and 33 SQL files tracked in GitHub.
 - Provider-token client reads/writes are restricted; connection OAuth/disconnect operations use server-side database access with workspace authorization.
 - Accounts and Settings expose workspace-wide connection metadata without returning provider tokens; token status/reconnect state is saved server-side.
