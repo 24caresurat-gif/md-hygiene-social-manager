@@ -1,14 +1,14 @@
 # Final Production Audit
 
 ## Current status (2026-10-22)
-- Latest production deployment is READY: `dpl_A46YvyGJ5NRZ5zofRWpZTfJZJbLe`, commit `3445ab1a094eddd506a16b271953332d39b552f3`.
+- Latest production deployment is READY: `dpl_CFw3x8SKhCjpwF6CHNJGvdbZSAPe`, commit `5e3237a42deea8778a14544d23c3a9f7f9beb4b2`.
 - Supabase snapshot: 58 public tables, all 58 with RLS enabled; 78 remote applied migration records and 33 SQL files tracked in GitHub.
 - Provider-token client reads/writes are restricted; connection OAuth/disconnect operations use server-side database access with workspace authorization.
 - Accounts and Settings expose workspace-wide connection metadata without returning provider tokens; token status/reconnect state is saved server-side.
 - RLS helper functions now reside in the non-exposed `private` schema with empty `search_path`; the related SECURITY DEFINER findings have cleared from Supabase Security Advisor.
 - The 2026-10-22 RLS cleanup split 13 overlapping `FOR ALL` policies into 39 INSERT/UPDATE/DELETE policies with original predicates preserved. Supabase Performance Advisor's multiple-permissive-policy warning is cleared; 98 unused-index findings are informational.
 - Supabase Security Advisor's remaining warning is Leaked Password Protection disabled.
-- Vercel reported no grouped runtime errors in the last 24 hours at the time of this audit. Authenticated browser tests are still pending.
+- Vercel's runtime error summary returned no grouped errors in the last 24 hours on 2026-10-23. Authenticated browser tests are still pending.
 - Sidebar navigation uses independent scrolling and collapsible groups, preserving permission-filtered links.
 - Dependency supply-chain warning was fixed: package override `sharp` updated to patched `0.35.5`; reproducible `package-lock.json` committed; `npm ci`, `npm audit --audit-level=high`, TypeScript and Next.js production build pass.
 - Catalogue order calculations, CRM link triggers and Digital Card CRM link triggers have rollback-only database tests; no temporary test records remain.
