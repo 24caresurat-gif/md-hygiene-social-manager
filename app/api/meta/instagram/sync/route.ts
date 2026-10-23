@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     }
 
     const { data: brand, error: brandError } = await db.from('brands')
-      .select('id').eq('workspace_id', workspaceId).limit(1).maybeSingle();
+      .select('id').eq('workspace_id', workspaceId).eq('user_id', user.user.id).limit(1).maybeSingle();
     if (brandError) throw brandError;
 
     let pageQuery = db.from('social_accounts')
