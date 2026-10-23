@@ -1,12 +1,13 @@
 # Code Complete / Live E2E Pending
 
-The current application source and database changes are deployed; latest production deployment `dpl_A46YvyGJ5NRZ5zofRWpZTfJZJbLe` (commit `3445ab1a094eddd506a16b271953332d39b552f3`) is READY, and GitHub/Vercel builds are passing. The project must **not** be described as 100% certified until the live acceptance checks below pass. The production database currently has no catalogue products/orders, no Digital Cards, no CRM tasks/workflows, no WhatsApp connection/templates/campaigns/bot flows, and no Google Business profiles/reviews, so those user journeys cannot yet be certified against real saved records.
+The current application source and database changes are deployed; latest production deployment `dpl_CFw3x8SKhCjpwF6CHNJGvdbZSAPe` (commit `5e3237a42deea8778a14544d23c3a9f7f9beb4b2`) is READY, and GitHub/Vercel builds are passing. The project must **not** be described as 100% certified until the live acceptance checks below pass. The production database currently has no catalogue products/orders, no Digital Cards, no CRM tasks/workflows, no WhatsApp connection/templates/campaigns/bot flows, and no Google Business profiles/reviews, so those user journeys cannot yet be certified against real saved records.
 
 ## Owner/operator steps still required
 
 - Add a valid `OPENAI_API_KEY` to Vercel Production to enable AI caption/image generation/edit endpoints. The variable is currently absent; these endpoints intentionally return HTTP 503 without it. Add `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` when the final Google Business integration phase begins; those credentials are also absent from the current Vercel environment inventory.
 - In Supabase Auth settings, enable leaked-password protection. The remaining Supabase Security Advisor warning is this setting; see [official Supabase password-security guidance](https://supabase.com/docs/guides/auth/password-security).
 - Complete signed-in browser tests with separate Workspace A/Workspace B users for Owner/Admin/Staff permissions, workspace switching and cross-workspace isolation.
+- Test Facebook and Instagram OAuth from Settings/Accounts using the real signed-in owner/admin account after Meta permissions are approved; verify cancellation/failure clears temporary cookies and that pages are workspace-bound.
 - Visually verify the new collapsible sidebar groups, active-page auto-expansion and scroll behavior on desktop/tablet/mobile.
 - Create a catalogue product and perform a public storefront cart/wishlist/coupon/checkout test; verify the order is workspace-scoped and linked to a CRM contact, lead and follow-up.
 - Publish a Digital Card, open it signed out, submit each public form once and verify CRM linking and authorized-only access.
