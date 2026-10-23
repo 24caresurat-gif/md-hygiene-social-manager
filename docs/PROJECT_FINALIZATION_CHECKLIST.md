@@ -11,7 +11,7 @@ This checklist is the operational source of truth for making the application tid
 
 ## A. Current baseline
 
-- [x] Latest application runtime deployment is READY at https://md-hygiene-social-manager.vercel.app (deployment `dpl_A46YvyGJ5NRZ5zofRWpZTfJZJbLe`, commit `3445ab1a094eddd506a16b271953332d39b552f3`). It includes provider-token write lockdown, workspace-wide Accounts and Settings channel lists, separate token-health labels, expired-token reconnect state, grouped/collapsible sidebar sections, private-schema workspace RLS helpers, consolidated RLS policies, Google Business server-side imports, preserved OAuth refresh tokens/expiry metadata, review-reply token fallback, and patched dependency locking.
+- [x] Latest application runtime deployment is READY at https://md-hygiene-social-manager.vercel.app (deployment `dpl_CFw3x8SKhCjpwF6CHNJGvdbZSAPe`, commit `5e3237a42deea8778a14544d23c3a9f7f9beb4b2`). It includes provider-token write lockdown, workspace-wide Accounts and Settings channel lists, separate token-health labels, expired-token reconnect state, grouped/collapsible sidebar sections, private-schema workspace RLS helpers, consolidated RLS policies, Google Business server-side imports, preserved OAuth refresh tokens/expiry metadata, review-reply token fallback, and patched dependency locking.
 - [x] Compact, independently scrollable sidebar is deployed and the latest production build is READY.
 - [x] Sidebar navigation is grouped into collapsible Main, Publishing, Business, CRM, Communication, Reviews and Settings sections (PR #37). Current-page group auto-expansion and role-filtered links are preserved.
 - [x] CRM execution history UI is present in main
@@ -26,9 +26,12 @@ This checklist is the operational source of truth for making the application tid
 - [x] Consolidated 13 overlapping `FOR ALL` RLS policies into 39 command-specific `INSERT`/`UPDATE`/`DELETE` policies with the original `USING`/`WITH CHECK` predicates preserved. The multiple-permissive-policy warning cleared from Supabase Performance Advisor; no target `FOR ALL` policy remains. Live verification: 58 public tables, all 58 with RLS enabled, and both private workspace helper functions use an empty `search_path`.
 - [x] Direct Facebook/Instagram publish APIs now use shared immediate-publish authorization (manager requires both approval and publishing permissions); TypeScript/build CI passed on PR #25.
 - [x] Facebook Page connect route accepts the actual Accounts UI `brandId` payload as well as `workspaceId`; code deployed in current READY production commit.
-- [x] Accounts lists workspace-wide social connections (legacy `brand_id` or `workspace_id`) and shows token health separately; token health is saved server-side and uses workspace authorization (PRs #32, #34, #35; current production deployment `dpl_A46YvyGJ5NRZ5zofRWpZTfJZJbLe`).
-- [x] Settings → Channel Connections loads workspace-wide safe metadata through `/api/social-accounts` without reading/returning provider tokens (PR #36; current production deployment `dpl_A46YvyGJ5NRZ5zofRWpZTfJZJbLe`).
-- [x] Google OAuth handling preserves the previous refresh token when Google omits a new `refresh_token`, stores `expires_in` as expiry metadata, and falls back to the workspace's protected `social_accounts` token for review replies (PR #49; production deployment `dpl_A46YvyGJ5NRZ5zofRWpZTfJZJbLe`).
+- [x] Accounts lists workspace-wide social connections (legacy `brand_id` or `workspace_id`) and shows token health separately; token health is saved server-side and uses workspace authorization (PRs #32, #34, #35; current production deployment `dpl_CFw3x8SKhCjpwF6CHNJGvdbZSAPe`).
+- [x] Settings → Channel Connections loads workspace-wide safe metadata through `/api/social-accounts` without reading/returning provider tokens (PR #36; current production deployment `dpl_CFw3x8SKhCjpwF6CHNJGvdbZSAPe`).
+- [x] Google OAuth handling preserves the previous refresh token when Google omits a new `refresh_token`, stores `expires_in` as expiry metadata, and falls back to the workspace's protected `social_accounts` token for review replies (PR #49; production deployment `dpl_CFw3x8SKhCjpwF6CHNJGvdbZSAPe`).
+- [x] Facebook OAuth start/callback and Page listing validate the signed-in workspace owner/admin, with stale temporary token cookies cleared on reconnect failures (PRs #51–#52).
+- [x] Instagram OAuth start/callback validates the signed-in workspace owner/admin before token exchange, resolves the true linked brand ID, saves both brand/workspace IDs, and clears temporary OAuth cookies (PR #54; production deployment `dpl_CFw3x8SKhCjpwF6CHNJGvdbZSAPe`).
+- [x] Settings System Readiness panel checks configuration-variable presence without revealing secret values and shows selected-workspace data counts for live-test readiness (PR #53; production deployment `dpl_CFw3x8SKhCjpwF6CHNJGvdbZSAPe`).
 - [x] Google Business OAuth callback and sync write locations/reviews via server-only `adminDb()` after checking workspace `canManage` permission (PR #45). Live Google OAuth/import remains intentionally pending until the final provider phase.
 - [x] Dependency supply-chain check: `package-lock.json` is committed, locking Next.js `15.5.28` and patched Sharp `0.35.5`; Quality Audit uses `npm ci` plus `npm audit --audit-level=high` and passed on the latest main commit (PR #47).
 - [x] Duplicate scheduled publisher disabled and duplicate CI workflows made manual-only; CI consolidation PR #28 merged.
@@ -140,9 +143,9 @@ Do not begin these connections until the rest of the core product audit is compl
 
 ## F. Priority 2 — UI and repository cleanup
 - [x] Make the sidebar more compact and add a dedicated scrollable navigation area; production deployment is READY.
-- [x] Add grouped/collapsible navigation sections while preserving permission-based visibility (PR #37; current production deployment `dpl_4sdJdPkLp2Jzv7wJ3dcvkhBvgwHB`).
+- [x] Add grouped/collapsible navigation sections while preserving permission-based visibility (PR #37; current production deployment `dpl_CFw3x8SKhCjpwF6CHNJGvdbZSAPe`).
 - [ ] Visually test expanded/collapsed sidebar sections, active-page expansion and scrolling on a signed-in browser.
-- [ ] Test sidebar at short desktop heights, standard desktop, tablet and mobile; current CSS has an independently scrollable navigation area, but manual browser verification is still pending.
+- [ ] Test sidebar at short desktop heights, standard desktop, tablet and mobile; current CSS has an independently scrollable navigation area and collapsible groups, but manual browser verification is still pending.
 - [ ] Test sidebar scrolling at short desktop heights, normal desktop, tablet and mobile.
 - [ ] Identify duplicate/empty/obsolete source files before removing any. Current review candidates include `app/api/meta/facebook/callback/route2.ts` and `app/api/meta/facebook/placeholder.txt`; verify references/history before deletion.
 - [ ] Align forms, table spacing, status badges, loading/empty/error states and mobile overflow.
