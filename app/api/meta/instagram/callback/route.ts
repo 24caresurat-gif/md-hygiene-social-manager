@@ -59,6 +59,7 @@ export async function GET(request: Request) {
     const { data: brand, error: brandError } = await db.from('brands')
       .select('id')
       .eq('workspace_id', workspaceId)
+      .eq('user_id', userData.user.id)
       .limit(1)
       .maybeSingle();
     if (brandError) throw brandError;
@@ -127,19 +128,22 @@ export async function GET(request: Request) {
     };
 
     let existingQuery = db.from('social_accounts').select('id')
-      .eq('user_id', userData.user.id)
       .eq('platform', 'instagram')
       .eq('platform_account_id', String(profileData.id))
       .eq('workspace_id', workspaceId);
     if (brand?.id) {
       existingQuery = db.from('social_accounts').select('id')
-        .eq('user_id', userData.user.id)
         .eq('platform', 'instagram')
         .eq('platform_account_id', String(profileData.id))
         .or(`workspace_id.eq.${workspaceId},brand_id.eq.${brand.id}`);
     }
-    const { data: existing, error: existingError } = await existingQuery.maybeSingle();
+    const { data: existing, error: existingError } = await existingQuery
+      .select('id,brand_id')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
     if (existingError) throw existingError;
+    if (existing && !brand?.id) payload.brand_id = existing.brand_id || null;
 
     const result = existing
       ? await db.from('social_accounts').update(payload).eq('id', existing.id)

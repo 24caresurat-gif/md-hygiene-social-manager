@@ -19,19 +19,30 @@ export async function POST(request: Request) {
     const { data: user, error: userError } = await userClient.auth.getUser(bearer);
     if (userError || !user.user) return NextResponse.json({ error: 'Invalid session.' }, { status: 401 });
 
-    const brandId = String(body.brandId || '').trim();
-    if (!brandId) return NextResponse.json({ error: 'Select a workspace before connecting Instagram.' }, { status: 400 });
+    const workspaceId = String(body.brandId || '').trim();
+    if (!workspaceId) return NextResponse.json({ error: 'Select a workspace before connecting Instagram.' }, { status: 400 });
     const db = adminDb();
-    const access = await workspaceAccess(db, user.user.id, brandId);
+    const access = await workspaceAccess(db, user.user.id, workspaceId);
     if (!access?.hasAccess) return NextResponse.json({ error: 'You do not have access to this workspace.' }, { status: 403 });
     if (!(access.globalAdmin || access.isOwner || ['owner', 'admin'].includes(String(access.role || '').toLowerCase()))) {
       return NextResponse.json({ error: 'Only Workspace Owner or Admin can sync connected social accounts.' }, { status: 403 });
     }
 
-    const { data: pages, error: pagesError } = await db.from('social_accounts')
+    const { data: brand, error: brandError } = await db.from('brands')
+      .select('id').eq('workspace_id', workspaceId).eq('user_id', user.user.id).limit(1).maybeSingle();
+    if (brandError) throw brandError;
+
+    let pageQuery = db.from('social_accounts')
       .select('id,name,platform_account_id,access_token,brand_id,workspace_id')
       .eq('platform', 'facebook').eq('status', 'connected')
-      .or(`workspace_id.eq.${brandId},brand_id.eq.${brandId}`);
+      .eq('workspace_id', workspaceId);
+    if (brand?.id) {
+      pageQuery = db.from('social_accounts')
+        .select('id,name,platform_account_id,access_token,brand_id,workspace_id')
+        .eq('platform', 'facebook').eq('status', 'connected')
+        .or(`workspace_id.eq.${workspaceId},brand_id.eq.${brand.id}`);
+    }
+    const { data: pages, error: pagesError } = await pageQuery;
     if (pagesError) throw pagesError;
 
     let connected = 0;
@@ -53,16 +64,23 @@ export async function POST(request: Request) {
       const ig = data?.instagram_business_account as InstagramProfile | undefined;
       if (!ig?.id) { skipped.push(`${page.name}: no Instagram Business account linked`); continue; }
 
-      const { data: existing, error: existingError } = await db.from('social_accounts').select('id')
+      let existingQuery = db.from('social_accounts').select('id')
         .eq('platform', 'instagram').eq('platform_account_id', ig.id)
-        .or(`workspace_id.eq.${brandId},brand_id.eq.${brandId}`)
+        .eq('workspace_id', workspaceId);
+      if (brand?.id) {
+        existingQuery = db.from('social_accounts').select('id')
+          .eq('platform', 'instagram').eq('platform_account_id', ig.id)
+          .or(`workspace_id.eq.${workspaceId},brand_id.eq.${brand.id}`);
+      }
+      const { data: existing, error: existingError } = await existingQuery
+        .select('id,brand_id')
         .order('created_at', { ascending: false }).limit(1).maybeSingle();
       if (existingError) throw existingError;
       const payload = {
         platform: 'instagram',
         name: ig.name || ig.username || page.name, handle: ig.username || null,
         platform_account_id: ig.id, access_token: page.access_token, status: 'connected',
-        brand_id: brandId, workspace_id: brandId, updated_at: checkedAt,
+        brand_id: brand?.id || existing?.brand_id || null, workspace_id: workspaceId, updated_at: checkedAt,
         token_expires_at: tokenInfo.expiresAt, token_checked_at: checkedAt,
         token_last_refreshed_at: checkedAt, token_status: tokenInfo.status, token_error: null,
       };
