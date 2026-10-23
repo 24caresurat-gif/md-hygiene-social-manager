@@ -59,6 +59,7 @@ export async function GET(request: Request) {
     const { data: brand, error: brandError } = await db.from('brands')
       .select('id')
       .eq('workspace_id', workspaceId)
+      .eq('user_id', userData.user.id)
       .limit(1)
       .maybeSingle();
     if (brandError) throw brandError;
