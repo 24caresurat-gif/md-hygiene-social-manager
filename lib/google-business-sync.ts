@@ -18,8 +18,25 @@ export async function saveGoogleConnection(args:{
   socialAccountId:string; userId:string; workspaceId:string; accountName:string; tokenData:any;
 }){
   const db=adminDb();
-  const now=new Date().toISOString();
-  const payload={social_account_id:args.socialAccountId,user_id:args.userId,workspace_id:args.workspaceId,account_name:args.accountName,access_token:null,refresh_token:args.tokenData.refresh_token||null,token_expires_at:null,token_checked_at:now,token_last_refreshed_at:now,token_status:'active',token_error:null,updated_at:now};
+  const now=new Date();
+  const nowIso=now.toISOString();
+  const {data:existing,error:existingError}=await db.from('google_business_connections')
+    .select('id,refresh_token,token_expires_at')
+    .eq('social_account_id',args.socialAccountId)
+    .maybeSingle();
+  if(existingError)throw existingError;
+
+  // Google may omit refresh_token on a subsequent authorization. Preserve the
+  // previously stored refresh token rather than overwriting it with null.
+  const incomingRefreshToken=typeof args.tokenData.refresh_token==='string'
+    ? args.tokenData.refresh_token.trim()
+    : '';
+  const refreshToken=incomingRefreshToken||existing?.refresh_token||null;
+  const expiresIn=Number(args.tokenData.expires_in||0);
+  const expiresAt=Number.isFinite(expiresIn)&&expiresIn>0
+    ? new Date(now.getTime()+expiresIn*1000).toISOString()
+    : existing?.token_expires_at||null;
+  const payload={social_account_id:args.socialAccountId,user_id:args.userId,workspace_id:args.workspaceId,account_name:args.accountName,access_token:null,refresh_token:refreshToken,token_expires_at:expiresAt,token_checked_at:nowIso,token_last_refreshed_at:incomingRefreshToken?nowIso:undefined,token_status:'active',token_error:null,updated_at:nowIso};
   const result=await db.from('google_business_connections').upsert(payload,{onConflict:'social_account_id'}).select('id').single();
   if(result.error)throw result.error;
   return result.data.id as string;
