@@ -7,8 +7,10 @@
 
 ## Current verified deployment snapshot
 
-- Current application-runtime deployment: READY (`dpl_A46YvyGJ5NRZ5zofRWpZTfJZJbLe`), code commit `3445ab1a094eddd506a16b271953332d39b552f3`.
+- Current application-runtime deployment: READY (`dpl_CFw3x8SKhCjpwF6CHNJGvdbZSAPe`), code commit `5e3237a42deea8778a14544d23c3a9f7f9beb4b2`.
 - Provider-token direct client reads/writes are revoked and verified in live Supabase privileges; Facebook/Instagram OAuth writes and disconnect operations use authorized server-side access.
+- Facebook and Instagram OAuth start/callback enforce signed-in workspace Owner/Admin access; Instagram saves the correct linked brand/workspace IDs and clears temporary OAuth cookies.
+- Settings now contains a System Readiness panel which reports key presence only (not secret values) and counts the current workspace’s records to guide live testing.
 - Accounts and Settings both list workspace-wide connection metadata without sending provider tokens to the browser; Meta token health/reconnect state is saved server-side.
 - Sidebar navigation is grouped into collapsible sections while preserving role-filtered navigation and independent scrolling.
 - Dependency security/reproducibility: `package-lock.json` is committed; Next.js is locked to `15.5.28` and Sharp to patched `0.35.5`. The latest main quality run passed `npm ci`, `npm audit --audit-level=high`, TypeScript and the production build.
