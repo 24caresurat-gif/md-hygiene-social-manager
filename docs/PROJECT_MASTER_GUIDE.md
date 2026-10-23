@@ -7,12 +7,13 @@
 
 ## Current verified deployment snapshot
 
-- Current application-runtime deployment: READY (`dpl_9fAjpdx9iY3YyHF4GcFWWmswGdHB`), code commit `d672d6d9896113eccd74d28a3af423047e742e2d`.
+- Current application-runtime deployment: READY (`dpl_A46YvyGJ5NRZ5zofRWpZTfJZJbLe`), code commit `3445ab1a094eddd506a16b271953332d39b552f3`.
 - Provider-token direct client reads/writes are revoked and verified in live Supabase privileges; Facebook/Instagram OAuth writes and disconnect operations use authorized server-side access.
 - Accounts and Settings both list workspace-wide connection metadata without sending provider tokens to the browser; Meta token health/reconnect state is saved server-side.
 - Sidebar navigation is grouped into collapsible sections while preserving role-filtered navigation and independent scrolling.
 - Dependency security/reproducibility: `package-lock.json` is committed; Next.js is locked to `15.5.28` and Sharp to patched `0.35.5`. The latest main quality run passed `npm ci`, `npm audit --audit-level=high`, TypeScript and the production build.
 - Google Business location/review imports use server-only database writes after workspace management authorization; live OAuth/import/reply checks remain pending for the final provider phase.
+- Google Business OAuth refresh-token preservation and reply-token fallback are deployed (PR #49); actual OAuth, location import and reply tests remain pending for the final provider phase.
 - Workspace RLS helper functions now live in the non-exposed `private` schema with empty `search_path`; the helper-related SECURITY DEFINER warnings cleared from Supabase Security Advisor.
 - The latest RLS policy migration split 13 overlapping `FOR ALL` policies into 39 INSERT/UPDATE/DELETE policies while preserving predicates and existing SELECT policies. Supabase Performance Advisor no longer reports the multiple-permissive-policy warning; 98 unused-index entries remain informational and should not be dropped blindly.
 - The production GitHub Actions scheduler is configured and recent scheduled runs returned HTTP 200 from both the publishing and CRM task-due workers. The inspected run had zero due jobs; verify actual posts/tasks once real scheduled work exists. The duplicate legacy publisher has been made manual-only.
