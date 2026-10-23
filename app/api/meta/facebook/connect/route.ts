@@ -8,17 +8,16 @@ type MetaPage={id:string;name:string;access_token?:string;username?:string};
 export async function POST(request:Request){
   const authorization=request.headers.get('authorization'),userAccessToken=authorization?.replace(/^Bearer\s+/i,''),store=await cookies(),metaUserToken=store.get('meta_fb_user_token')?.value;
   const body=await request.json().catch(()=>null) as {pageId?:string;brandId?:string;workspaceId?:string}|null;
-  // Older Accounts UI sends brandId, while Settings integrations send workspaceId.
-  // Both refer to the same ID in the current workspace/brand architecture.
+  // The older Accounts UI names its workspace argument `brandId`; it is a workspace ID, not `brands.id`.
   const workspaceId=String(body?.workspaceId||body?.brandId||'').trim();
   const cookieBrandId=store.get('workspace_brand_id')?.value||'';
-  const brandId=String(body?.brandId||workspaceId||cookieBrandId).trim();
-  if(cookieBrandId&&brandId&&cookieBrandId!==brandId){
+  const requestedWorkspaceId=workspaceId;
+  if(cookieBrandId&&requestedWorkspaceId&&cookieBrandId!==requestedWorkspaceId){
     return NextResponse.json({error:'The selected workspace changed during Facebook connection. Please reconnect from Settings.'},{status:409});
   }
   if(!userAccessToken||!metaUserToken)return NextResponse.json({error:'Your session has expired. Please reconnect Facebook.'},{status:401});
   if(!body?.pageId)return NextResponse.json({error:'Facebook Page is required.'},{status:400});
-  if(!workspaceId)return NextResponse.json({error:'Workspace is required.'},{status:400});
+  if(!requestedWorkspaceId)return NextResponse.json({error:'Workspace is required.'},{status:400});
 
   const supabaseUrl=process.env.NEXT_PUBLIC_SUPABASE_URL,anonKey=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if(!supabaseUrl||!anonKey)return NextResponse.json({error:'Supabase configuration is missing.'},{status:500});
@@ -28,7 +27,7 @@ export async function POST(request:Request){
     const{data:userData,error:userError}=await supabase.auth.getUser(userAccessToken);
     if(userError||!userData.user)throw new Error('Supabase login session is invalid.');
     const db=adminDb();
-    const access=await workspaceAccess(db,userData.user.id,workspaceId);
+    const access=await workspaceAccess(db,userData.user.id,requestedWorkspaceId);
     const privileged=Boolean(access&&(access.globalAdmin||access.isOwner||['owner','admin'].includes(String(access.role||'').toLowerCase())));
     if(!access?.hasAccess||!privileged)return NextResponse.json({error:'Only Workspace Owner or Admin can connect social accounts.'},{status:403});
 
@@ -41,12 +40,19 @@ export async function POST(request:Request){
     const verified=await verify.json();
     if(!verify.ok||verified.error||verified.id!==page.id)throw new Error(verified.error?.message||'Selected Facebook Page token is invalid. Please reconnect Facebook.');
 
+    const { data: brand, error: brandError } = await db.from('brands')
+      .select('id')
+      .eq('workspace_id', requestedWorkspaceId)
+      .limit(1)
+      .maybeSingle();
+    if (brandError) throw brandError;
+
     const now=new Date().toISOString();
     const{error:insertError}=await db.from('social_accounts').upsert({
-      user_id:userData.user.id,workspace_id:workspaceId,platform:'facebook',name:page.name,handle:page.username||null,platform_account_id:page.id,
-      access_token:page.access_token,status:'connected',brand_id:brandId||null,updated_at:now,
+      user_id:userData.user.id,workspace_id:requestedWorkspaceId,platform:'facebook',name:page.name,handle:page.username||null,platform_account_id:page.id,
+      access_token:page.access_token,status:'connected',brand_id:brand?.id||null,updated_at:now,
       token_expires_at:null,token_checked_at:now,token_last_refreshed_at:now,token_status:'active',token_error:null,
-    },{onConflict:'user_id,platform,platform_account_id'});
+    },{onConflict:'workspace_id,platform,platform_account_id'});
     if(insertError)throw new Error(insertError.message);
 
     const response=NextResponse.json({connected:true,page:{id:page.id,name:page.name,handle:page.username||null},token:{status:'active',expiresAt:null}});
