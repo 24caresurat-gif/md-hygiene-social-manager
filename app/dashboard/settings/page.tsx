@@ -7,6 +7,8 @@ import WhatsAppConnect from './WhatsAppConnect';
 
 type Member = { id: string; user_id: string; employee_id: string; role: string; active: boolean; profiles?: { full_name?: string } | null };
 type Connection = { id: string; platform: string; name: string; handle: string | null; status: string; token_status?: string | null; token_expires_at?: string | null; token_error?: string | null };
+type ReadinessCheck = { id: string; label: string; status: string; missing: string[]; detail: string };
+type ReadinessFlow = { id: string; label: string; status: string; count: number | null; detail: string };
 
 export default function SettingsPage() {
   const [id, setId] = useState('');
@@ -16,6 +18,10 @@ export default function SettingsPage() {
   const [msg, setMsg] = useState('');
   const [members, setMembers] = useState<Member[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
+  const [readinessChecks, setReadinessChecks] = useState<ReadinessCheck[]>([]);
+  const [readinessFlows, setReadinessFlows] = useState<ReadinessFlow[]>([]);
+  const [readinessBusy, setReadinessBusy] = useState(false);
+  const [readinessMsg, setReadinessMsg] = useState('');
   const [connectionBusy, setConnectionBusy] = useState('');
   const [connectionMsg, setConnectionMsg] = useState('');
   const [teamMsg, setTeamMsg] = useState('');
@@ -37,6 +43,26 @@ export default function SettingsPage() {
     const session = (await getSupabase().auth.getSession()).data.session;
     if (!session) throw new Error('Session expired');
     return session.access_token;
+  }
+
+  async function loadReadiness(workspaceId: string) {
+    setReadinessBusy(true);
+    setReadinessMsg('');
+    try {
+      const token = await sessionToken();
+      const response = await fetch('/api/system/readiness?workspaceId=' + encodeURIComponent(workspaceId), {
+        headers: { Authorization: 'Bearer ' + token },
+        cache: 'no-store',
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data?.error || 'Unable to load system readiness.');
+      setReadinessChecks((data.checks || []) as ReadinessCheck[]);
+      setReadinessFlows((data.flows || []) as ReadinessFlow[]);
+    } catch (error) {
+      setReadinessMsg(error instanceof Error ? error.message : 'Unable to load system readiness.');
+    } finally {
+      setReadinessBusy(false);
+    }
   }
 
   async function loadConnections(workspaceId: string) {
@@ -184,6 +210,7 @@ export default function SettingsPage() {
       await loadConnections(saved);
       await loadMembers(saved);
       await loadReviewSettings(saved);
+      void loadReadiness(saved);
     };
     void run();
     const onWorkspace = (event: Event) => { const next = (event as CustomEvent<{ workspaceId?: string }>).detail?.workspaceId || ''; if (next && next !== id) location.reload(); };
@@ -259,7 +286,7 @@ export default function SettingsPage() {
       .notice{margin-top:12px;padding:10px 12px;border:1px solid #d7ebe8;background:#f3fbfa;color:#1e5e59;border-radius:10px;font-size:11px;font-weight:750}
       .account-row{display:flex;align-items:center;justify-content:space-between;gap:14px}.account-email{font-size:12px;font-weight:850}
       .review-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}.review-grid .wide{grid-column:1/-1}.check-row{display:flex;gap:16px;flex-wrap:wrap;align-items:center}.check-row label{display:flex;gap:7px;align-items:center;font-size:11px;font-weight:850}.hint{padding:12px;border:1px solid #d7ebe8;background:#f3fbfa;color:#1e5e59;border-radius:10px;font-size:10px;line-height:1.55}.review-card-title{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.review-card-title h2{margin:0 0 5px;font-size:18px}.range{width:100%}
-      .connection-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:18px}.connection-card{border:1px solid #e3eaed;border-radius:16px;padding:16px;background:#fafcfc;display:grid;gap:13px}.connection-icon{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:#eef5f6;color:#17202b;font-size:19px;font-weight:950}.connection-copy{display:grid;gap:12px}.connection-title{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.connection-title h3{margin:0;font-size:15px}.connection-title p{margin:4px 0 0;color:#77838d;font-size:10px;line-height:1.5}.connection-status{padding:5px 8px;border-radius:999px;background:#eef1f3;color:#6f7b84;font-size:9px;font-weight:900;white-space:nowrap}.connection-status.connected{background:#edf9f1;color:#087443}.connected-account{display:grid;gap:3px;padding:10px 11px;border:1px solid #e5eaed;border-radius:11px;background:#fff}.connected-account strong{font-size:10px;color:#2a3640;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.connected-account span{font-size:9px;color:#7a8790;line-height:1.45}.empty-connection{border-style:dashed}.connection-actions{display:flex;gap:7px;flex-wrap:wrap}.connection-actions .btn{flex:1}
+      .connection-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:18px}.connection-card{border:1px solid #e3eaed;border-radius:16px;padding:16px;background:#fafcfc;display:grid;gap:13px}.connection-icon{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:#eef5f6;color:#17202b;font-size:19px;font-weight:950}.connection-copy{display:grid;gap:12px}.connection-title{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.connection-title h3{margin:0;font-size:15px}.connection-title p{margin:4px 0 0;color:#77838d;font-size:10px;line-height:1.5}.connection-status{padding:5px 8px;border-radius:999px;background:#eef1f3;color:#6f7b84;font-size:9px;font-weight:900;white-space:nowrap}.connection-status.connected{background:#edf9f1;color:#087443}.connected-account{display:grid;gap:3px;padding:10px 11px;border:1px solid #e5eaed;border-radius:11px;background:#fff}.connected-account strong{font-size:10px;color:#2a3640;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.connected-account span{font-size:9px;color:#7a8790;line-height:1.45}.empty-connection{border-style:dashed}.connection-actions{display:flex;gap:7px;flex-wrap:wrap}.connection-actions .btn{flex:1}.readiness-panel{grid-column:1/-1}.readiness-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}.readiness-item{display:grid;gap:7px;min-width:0;border:1px solid #e3eaed;border-radius:12px;background:#fff;padding:12px}.readiness-item p{margin:0;font-size:10px;color:#77838d;line-height:1.5;overflow-wrap:anywhere}.readiness-meta{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}.readiness-meta strong{font-size:11px;line-height:1.4}.readiness-meta .connection-status{flex:0 0 auto}.readiness-missing{color:#b42318!important;font-weight:800}.readiness-count{font-weight:800}.connection-status.manual,.connection-status.needs_setup,.connection-status.needs_data,.connection-status.needs_connection,.connection-status.check_needed{background:#fff6e6;color:#9a5b00}.connection-status.needs_test{background:#edf4ff;color:#215cb9}@media(max-width:780px){.readiness-grid{grid-template-columns:1fr}.readiness-meta{align-items:flex-start;flex-direction:column}}
       @media(max-width:980px){.connection-grid{grid-template-columns:1fr}.connection-title{align-items:flex-start}}
       @media(max-width:780px){.workspace-settings-shell{padding:20px 15px 36px}.settings-top{flex-direction:column}.team-grid{grid-template-columns:1fr}.team-grid .full{grid-column:auto}.member-row,.account-row{align-items:flex-start;flex-direction:column}.member-actions{justify-content:flex-start}}
     `}</style>
@@ -294,6 +321,43 @@ export default function SettingsPage() {
           {connectionMsg && <div className="notice">{connectionMsg}</div>}
         </section>
 
+
+        <section className="panel readiness-panel" id="readiness">
+          <div className="review-card-title">
+            <div>
+              <span className="eyebrow">SYSTEM READINESS</span>
+              <h2 style={{ marginTop: 6 }}>Preflight &amp; live-test checklist</h2>
+              <p className="muted">This panel checks configuration presence only; it never shows secret values. A configured key does not prove provider approval or successful live publishing.</p>
+            </div>
+            <button className="btn" disabled={readinessBusy || !id} onClick={() => void loadReadiness(id)}>{readinessBusy ? 'Checking…' : 'Refresh status'}</button>
+          </div>
+          {readinessMsg && <div className="notice">{readinessMsg}</div>}
+          <div className="readiness-grid">
+            {readinessChecks.map(item => <article className="readiness-item" key={item.id}>
+              <div className="readiness-meta">
+                <strong>{item.label}</strong>
+                <span className={'connection-status ' + (item.status === 'ready' ? 'connected' : item.status)}>{item.status === 'ready' ? 'Configured' : item.status === 'manual' ? 'Manual action' : 'Needs setup'}</span>
+              </div>
+              <p>{item.detail}</p>
+              {!!item.missing.length && <p className="readiness-missing">Missing: {item.missing.join(', ')}</p>}
+            </article>)}
+          </div>
+          <h3 style={{ margin: '18px 0 0', fontSize: 14 }}>Workspace live-test data</h3>
+          <p className="muted">These counts are from this selected workspace only. No demo products, cards, tasks, or provider records are created automatically.</p>
+          <div className="readiness-grid">
+            {readinessFlows.map(item => <article className="readiness-item" key={item.id}>
+              <div className="readiness-meta">
+                <strong>{item.label}</strong>
+                <span className={'connection-status ' + (item.status === 'needs_test' ? 'needs_test' : item.status)}>{item.status.replace(/_/g, ' ')}</span>
+              </div>
+              <p>{item.detail}</p>
+              <p className="readiness-count">Workspace records: {item.count === null ? 'not available' : item.count}</p>
+            </article>)}
+          </div>
+          <p className="muted" style={{ marginTop: 14 }}>
+            Manual security step: enable <a href="https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection" target="_blank" rel="noreferrer">Leaked Password Protection in Supabase Auth</a>.
+          </p>
+        </section>
 
         <section className="panel" id="review-ai">
           <div className="review-card-title"><div><span className="eyebrow">REVIEW PROTECTION &amp; AI</span><h2 style={{ marginTop: 6 }}>Negative Review Protection</h2><p className="muted">Low-rating feedback can be routed into the private feedback workflow while customers still retain a clear option to share their experience publicly on Google.</p></div></div>
