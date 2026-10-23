@@ -73,13 +73,14 @@ export async function POST(request: Request) {
           .or(`workspace_id.eq.${workspaceId},brand_id.eq.${brand.id}`);
       }
       const { data: existing, error: existingError } = await existingQuery
+        .select('id,brand_id')
         .order('created_at', { ascending: false }).limit(1).maybeSingle();
       if (existingError) throw existingError;
       const payload = {
         platform: 'instagram',
         name: ig.name || ig.username || page.name, handle: ig.username || null,
         platform_account_id: ig.id, access_token: page.access_token, status: 'connected',
-        brand_id: brand?.id || null, workspace_id: workspaceId, updated_at: checkedAt,
+        brand_id: brand?.id || existing?.brand_id || null, workspace_id: workspaceId, updated_at: checkedAt,
         token_expires_at: tokenInfo.expiresAt, token_checked_at: checkedAt,
         token_last_refreshed_at: checkedAt, token_status: tokenInfo.status, token_error: null,
       };
