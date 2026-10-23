@@ -57,11 +57,19 @@ export default function SettingsPage() {
   async function startConnection(platform: 'facebook' | 'instagram' | 'google_business') {
     setConnectionBusy(platform); setConnectionMsg('');
     try {
+      const token = await sessionToken();
       if (platform === 'facebook') {
-        window.location.href = '/api/meta/facebook/login?brandId=' + encodeURIComponent(id);
+        const r = await fetch('/api/meta/facebook/login', {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ workspaceId: id }),
+          cache: 'no-store',
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok || !d.url) throw new Error(d?.error || 'Facebook connection is not configured.');
+        window.location.href = d.url;
         return;
       }
-      const token = await sessionToken();
       if (platform === 'instagram') {
         const r = await fetch('/api/meta/instagram/login?brandId=' + encodeURIComponent(id), { headers: { Authorization: 'Bearer ' + token }, cache: 'no-store' });
         const d = await r.json().catch(() => ({}));
