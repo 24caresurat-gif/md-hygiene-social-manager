@@ -1,6 +1,6 @@
 # Code Complete / Live E2E Pending
 
-The current application source and database changes are deployed; latest production deployment `dpl_9fAjpdx9iY3YyHF4GcFWWmswGdHB` (commit `d672d6d9896113eccd74d28a3af423047e742e2d`) is READY, and GitHub/Vercel builds are passing. The project must **not** be described as 100% certified until the live acceptance checks below pass. The production database currently has no catalogue products/orders, no Digital Cards, no CRM tasks/workflows, no WhatsApp connection/templates/campaigns/bot flows, and no Google Business profiles/reviews, so those user journeys cannot yet be certified against real saved records.
+The current application source and database changes are deployed; latest production deployment `dpl_A46YvyGJ5NRZ5zofRWpZTfJZJbLe` (commit `3445ab1a094eddd506a16b271953332d39b552f3`) is READY, and GitHub/Vercel builds are passing. The project must **not** be described as 100% certified until the live acceptance checks below pass. The production database currently has no catalogue products/orders, no Digital Cards, no CRM tasks/workflows, no WhatsApp connection/templates/campaigns/bot flows, and no Google Business profiles/reviews, so those user journeys cannot yet be certified against real saved records.
 
 ## Owner/operator steps still required
 
@@ -14,6 +14,7 @@ The current application source and database changes are deployed; latest product
 - Complete the Google public review request flow with a real token and check that a public Google review option remains available.
 - Run an authenticated browser pass on desktop/mobile and inspect runtime logs after the tests.
 - Complete the external provider phase last: Facebook and Instagram OAuth + real post test; Meta App Review/scopes as needed; WhatsApp Embedded Signup, signed webhook, template send/receive, bot/campaign/CRM tests; Google Business OAuth, location/review import and permitted reply tests.
+- Verify Google refresh token preservation and expiry handling through a real reauthorization without manually overwriting the connection; then test location/review import and an authorized reply.
 
 ## Previously verified in code/database (not a substitute for the steps above)
 
