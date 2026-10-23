@@ -47,11 +47,18 @@ export async function POST(request:Request){
       .limit(1)
       .maybeSingle();
     if (brandError) throw brandError;
+    const { data: existingAccount, error: existingError } = await db.from('social_accounts')
+      .select('id,brand_id')
+      .eq('workspace_id', requestedWorkspaceId)
+      .eq('platform', 'facebook')
+      .eq('platform_account_id', page.id)
+      .maybeSingle();
+    if (existingError) throw existingError;
 
     const now=new Date().toISOString();
     const{error:insertError}=await db.from('social_accounts').upsert({
       user_id:userData.user.id,workspace_id:requestedWorkspaceId,platform:'facebook',name:page.name,handle:page.username||null,platform_account_id:page.id,
-      access_token:page.access_token,status:'connected',brand_id:brand?.id||null,updated_at:now,
+      access_token:page.access_token,status:'connected',brand_id:brand?.id||existingAccount?.brand_id||null,updated_at:now,
       token_expires_at:null,token_checked_at:now,token_last_refreshed_at:now,token_status:'active',token_error:null,
     },{onConflict:'workspace_id,platform,platform_account_id'});
     if(insertError)throw new Error(insertError.message);
