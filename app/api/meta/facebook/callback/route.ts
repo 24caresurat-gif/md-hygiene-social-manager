@@ -15,7 +15,13 @@ function clearOAuthCookies(response: NextResponse) {
 }
 
 function failure(origin: string, message: string) {
-  return clearOAuthCookies(NextResponse.redirect(new URL('/dashboard/accounts?error=' + encodeURIComponent(message), origin)));
+  const response = clearOAuthCookies(NextResponse.redirect(new URL('/dashboard/accounts?error=' + encodeURIComponent(message), origin)));
+  const clearOptions = { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax' as const, path: '/', maxAge: 0 };
+  // On a failed/cancelled OAuth attempt, never keep an old Meta token paired
+  // with the workspace chosen for the new attempt.
+  response.cookies.set('meta_fb_user_token', '', clearOptions);
+  response.cookies.set('workspace_brand_id', '', clearOptions);
+  return response;
 }
 
 export async function GET(request: Request) {

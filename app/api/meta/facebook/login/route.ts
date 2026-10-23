@@ -38,6 +38,9 @@ export async function POST(request: Request) {
 
     const response = NextResponse.json({ url: oauth.toString() });
     const cookieOptions = { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax' as const, path: '/', maxAge: 600 };
+    // The Page-discovery token is temporary to the last OAuth session. Clear it
+    // before changing the workspace binding so a cancelled re-connect cannot reuse it.
+    response.cookies.set('meta_fb_user_token', '', { ...cookieOptions, maxAge: 0 });
     response.cookies.set('meta_oauth_state', state, cookieOptions);
     response.cookies.set('workspace_brand_id', workspaceId, cookieOptions);
     response.cookies.set('meta_fb_oauth_auth_token', token, cookieOptions);
