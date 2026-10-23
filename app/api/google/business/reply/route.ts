@@ -34,26 +34,45 @@ export async function POST(request: Request) {
       .maybeSingle();
     if (profileError) throw profileError;
 
-    const connection = await getGoogleConnectionBySocialAccount(String(profile?.social_account_id || ''));
+    const socialAccountId=String(profile?.social_account_id||'');
+    const connection = await getGoogleConnectionBySocialAccount(socialAccountId);
     if (!connection) return NextResponse.json({ error: 'Google connection not found.' }, { status: 404 });
+    const {data:socialToken,error:socialTokenError}=await db.from('social_accounts')
+      .select('id,access_token,token_expires_at')
+      .eq('id',socialAccountId)
+      .eq('workspace_id',review.workspace_id)
+      .eq('platform','google_business')
+      .maybeSingle();
+    if(socialTokenError)throw socialTokenError;
 
-    let accessToken = String(connection.access_token || '');
-    if (connection.refresh_token && (!connection.token_expires_at || new Date(connection.token_expires_at).getTime() <= Date.now() + 60000)) {
+    let accessToken = String(connection.access_token || socialToken?.access_token || '');
+    const tokenExpiresAt=connection.token_expires_at||socialToken?.token_expires_at||null;
+    if (connection.refresh_token && (!tokenExpiresAt || new Date(tokenExpiresAt).getTime() <= Date.now() + 60000)) {
       const clientId = process.env.GOOGLE_CLIENT_ID;
       const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
       if (!clientId || !clientSecret) return NextResponse.json({ error: 'Google OAuth credentials are not configured.' }, { status: 500 });
 
       const refreshed = await refreshGoogleToken({ refreshToken: connection.refresh_token, clientId, clientSecret });
       accessToken = refreshed.access_token;
+      const refreshedAt=new Date().toISOString();
       const expiresAt = refreshed.expires_in ? new Date(Date.now() + Number(refreshed.expires_in) * 1000).toISOString() : null;
       await updateGoogleConnection(String(connection.id), {
         access_token: accessToken,
         token_expires_at: expiresAt,
-        token_checked_at: new Date().toISOString(),
-        token_last_refreshed_at: new Date().toISOString(),
+        token_checked_at: refreshedAt,
+        token_last_refreshed_at: refreshedAt,
         token_status: 'active',
         token_error: null,
       });
+      const {error:socialRefreshError}=await db.from('social_accounts').update({
+        access_token:accessToken,
+        token_expires_at:expiresAt,
+        token_checked_at:refreshedAt,
+        token_last_refreshed_at:refreshedAt,
+        token_status:'active',
+        token_error:null,
+      }).eq('id',socialAccountId).eq('workspace_id',review.workspace_id);
+      if(socialRefreshError)throw socialRefreshError;
     }
     if (!accessToken) return NextResponse.json({ error: 'Google access token is missing.' }, { status: 409 });
 
