@@ -138,10 +138,12 @@ export async function GET(request: Request) {
         .or(`workspace_id.eq.${workspaceId},brand_id.eq.${brand.id}`);
     }
     const { data: existing, error: existingError } = await existingQuery
+      .select('id,brand_id')
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
     if (existingError) throw existingError;
+    if (existing && !brand?.id) payload.brand_id = existing.brand_id || null;
 
     const result = existing
       ? await db.from('social_accounts').update(payload).eq('id', existing.id)
