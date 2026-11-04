@@ -1,5 +1,6 @@
 'use client';
 import {useEffect,useMemo,useState,type ReactNode} from 'react';
+import {usePathname} from 'next/navigation';
 import {getSupabase} from '../../../lib/supabase-browser';
 
 type Workspace={id:string;name:string;logo_url?:string|null};
@@ -7,45 +8,56 @@ type Permission={module:string;can_view:boolean;can_create:boolean;can_edit:bool
 type Access={role:string;employee_id?:string|null;permissions:Permission[];is_owner_or_admin:boolean};
 type IconName='dashboard'|'accounts'|'create'|'creative'|'drafts'|'calendar'|'approval'|'history'|'analytics'|'media'|'settings'|'search'|'bell'|'menu'|'chevron';
 
-const nav=[
-  ['Dashboard','dashboard','/dashboard','dashboard'],
-  ['Accounts','accounts','/dashboard/accounts','social_accounts'],
-  ['Create Post','create','/dashboard/publish','content'],
-  ['Creative Intelligence','creative','/dashboard/creative-insights','creative'],
-  ['Drafts','drafts','/dashboard/drafts','drafts'],
-  ['Calendar','calendar','/dashboard/calendar','calendar'],
-  ['Approvals','approval','/dashboard/admin/approvals','approval'],
-  ['Publishing History','history','/dashboard/history','publishing'],
-  ['Analytics','analytics','/dashboard/analytics','analytics'],
-  ['Media Library','media','/dashboard/media','content'],
-  ['Product Catalogue','accounts','/dashboard/catalog','catalog'],
-  ['Catalogue Orders','accounts','/dashboard/catalog/orders','catalog'],
-  ['Digital Card','accounts','/dashboard/digital-card','digital_card'],
-  ['Digital Card Leads','accounts','/dashboard/digital-card/leads','digital_card'],
-  ['CRM','accounts','/dashboard/crm','crm'],
-  ['CRM Follow-ups','accounts','/dashboard/crm/follow-ups','crm'],
-  ['CRM Reports','analytics','/dashboard/crm/reports','crm'],
-  ['CRM Automation','accounts','/dashboard/crm/automation','crm'],
-  ['Google Business & Reviews','accounts','/dashboard/gmb','gmb'],
-  ['WhatsApp Inbox','accounts','/dashboard/whatsapp','whatsapp'],
-  ['WhatsApp Bot Automation','accounts','/dashboard/whatsapp/bot','whatsapp'],
-  ['WhatsApp Bot Logs','analytics','/dashboard/whatsapp/bot-logs','whatsapp'],
-  ['WhatsApp Buttons','accounts','/dashboard/whatsapp/buttons','whatsapp'],
-  ['Product Suggestions','accounts','/dashboard/whatsapp/product-suggestions','whatsapp'],
-  ['WhatsApp Contacts','accounts','/dashboard/whatsapp-contacts','whatsapp'],
-  ['WhatsApp Templates','accounts','/dashboard/whatsapp/templates','whatsapp'],
-  ['WhatsApp Campaigns','accounts','/dashboard/whatsapp/campaigns','whatsapp'],
-  ['Settings','settings','/dashboard/settings','settings'],
-] as const;
+type NavItem={label:string;icon:IconName;href:string;module:string;title:string};
 
-function navGroupForLabel(label: string): string {
-  if (['Dashboard', 'Accounts'].includes(label)) return 'Main';
-  if (['Create Post', 'Creative Intelligence', 'Drafts', 'Calendar', 'Approvals', 'Publishing History', 'Analytics', 'Media Library'].includes(label)) return 'Publishing';
-  if (['Product Catalogue', 'Catalogue Orders', 'Digital Card', 'Digital Card Leads'].includes(label)) return 'Business';
-  if (['CRM', 'CRM Follow-ups', 'CRM Reports', 'CRM Automation'].includes(label)) return 'CRM';
-  if (label.startsWith('WhatsApp') || label === 'Product Suggestions') return 'Communication';
-  if (label === 'Google Business & Reviews') return 'Reviews';
-  return 'Settings';
+const nav:NavItem[]=[
+  {label:'Home',icon:'dashboard',href:'/dashboard',module:'dashboard',title:'Home'},
+  {label:'Google Business',icon:'accounts',href:'/dashboard/gmb',module:'gmb',title:'Google Business'},
+  {label:'Reviews',icon:'approval',href:'/dashboard/gmb/reviews',module:'gmb',title:'Reviews'},
+  {label:'Website',icon:'creative',href:'/dashboard/digital-card',module:'digital_card',title:'Website'},
+  {label:'Catalogue',icon:'media',href:'/dashboard/catalog',module:'catalog',title:'Catalogue'},
+  {label:'WhatsApp CRM',icon:'accounts',href:'/dashboard/whatsapp',module:'whatsapp',title:'WhatsApp CRM'},
+  {label:'Orders & POS',icon:'history',href:'/dashboard/catalog/orders',module:'catalog',title:'Orders & POS'},
+  {label:'Loyalty',icon:'approval',href:'/dashboard/loyalty',module:'catalog',title:'Loyalty'},
+  {label:'Smart QR',icon:'accounts',href:'/dashboard/smart-qr',module:'gmb',title:'Smart QR'},
+  {label:'Analytics',icon:'analytics',href:'/dashboard/analytics',module:'analytics',title:'Analytics'},
+];
+
+const hiddenRouteModules:Record<string,string>={
+  'Accounts':'social_accounts',
+  'Create Post':'content',
+  'Creative Intelligence':'creative',
+  'Drafts':'drafts',
+  'Calendar':'calendar',
+  'Approvals':'approval',
+  'Publishing History':'publishing',
+  'Media Library':'content',
+  'Digital Card Leads':'digital_card',
+  'CRM':'crm',
+  'CRM Follow-ups':'crm',
+  'CRM Reports':'crm',
+  'CRM Automation':'crm',
+  'Google Business & Reviews':'gmb',
+  'GMB Features':'gmb',
+  'WhatsApp Inbox':'whatsapp',
+  'WhatsApp Bot Automation':'whatsapp',
+  'WhatsApp Bot Logs':'whatsapp',
+  'WhatsApp Buttons':'whatsapp',
+  'Product Suggestions':'whatsapp',
+  'WhatsApp Contacts':'whatsapp',
+  'WhatsApp Templates':'whatsapp',
+  'WhatsApp Campaigns':'whatsapp',
+  'Settings':'settings',
+};
+
+function isNavActive(item:NavItem,pathname:string){
+  if(item.label==='Google Business'){
+    return pathname==='/dashboard/gmb'||(pathname.startsWith('/dashboard/gmb/')&&!pathname.startsWith('/dashboard/gmb/reviews'));
+  }
+  if(item.label==='Reviews')return pathname.startsWith('/dashboard/gmb/reviews');
+  if(item.label==='Website')return pathname.startsWith('/dashboard/digital-card');
+  if(item.label==='WhatsApp CRM')return pathname.startsWith('/dashboard/whatsapp')||pathname==='/dashboard/whatsapp-contacts';
+  return pathname===item.href;
 }
 
 function Icon({name,size=18}:{name:IconName;size?:number}){
@@ -70,7 +82,8 @@ function Icon({name,size=18}:{name:IconName;size?:number}){
 }
 
 export default function AppShell({children,title='Dashboard'}:{children:ReactNode;title?:string}){
-  const[open,setOpen]=useState(false),[profileOpen,setProfileOpen]=useState(false),[email,setEmail]=useState(''),[workspaces,setWorkspaces]=useState<Workspace[]|null>(null),[selected,setSelected]=useState(''),[access,setAccess]=useState<Access|null>(null),[accessLoading,setAccessLoading]=useState(false),[expandedNavGroups,setExpandedNavGroups]=useState<Record<string,boolean>>({Main:true,Publishing:true,Business:false,CRM:false,Communication:false,Reviews:false,Settings:true});
+  const pathname=usePathname();
+  const[open,setOpen]=useState(false),[profileOpen,setProfileOpen]=useState(false),[email,setEmail]=useState(''),[workspaces,setWorkspaces]=useState<Workspace[]|null>(null),[selected,setSelected]=useState(''),[access,setAccess]=useState<Access|null>(null),[accessLoading,setAccessLoading]=useState(false);
 
   useEffect(()=>{(async()=>{
     const s=getSupabase();
@@ -101,27 +114,20 @@ export default function AppShell({children,title='Dashboard'}:{children:ReactNod
     }finally{setAccessLoading(false)}
   })()},[selected]);
 
-  const visibleNav=useMemo(()=>nav.filter(([, , ,module])=>{
+  const visibleNav=useMemo(()=>nav.filter(item=>{
     if(access?.is_owner_or_admin)return true;
-    if(module==='settings')return false;
-    const p=access?.permissions.find(x=>x.module===module);
-    return p?.can_view===true;
+    const permission=access?.permissions.find(x=>x.module===item.module);
+    return permission?.can_view===true;
   }),[access]);
-
-  const navGroups=useMemo(()=>{
-    const labels=['Main','Publishing','Business','CRM','Communication','Reviews','Settings'];
-    return labels.map(label=>({label,items:visibleNav.filter(([itemLabel])=>navGroupForLabel(itemLabel)===label)})).filter(group=>group.items.length>0);
-  },[visibleNav]);
-
-  useEffect(()=>{
-    const current=nav.find(([label])=>label===title);
-    if(current){const group=navGroupForLabel(current[0]);setExpandedNavGroups(prev=>prev[group]?prev:{...prev,[group]:true});}
-  },[title]);
 
   useEffect(()=>{
     if(accessLoading||!access)return;
-    const current=nav.find(([label])=>label===title);
-    if(current){const module=current[3];const allowed=access.is_owner_or_admin||access.permissions.some(p=>p.module===module&&p.can_view);if(!allowed)location.href='/dashboard';}
+    const module=nav.find(item=>item.title===title)?.module||hiddenRouteModules[title];
+    if(!module)return;
+    const allowed=module==='settings'
+      ? access.is_owner_or_admin
+      : access.is_owner_or_admin||access.permissions.some(permission=>permission.module===module&&permission.can_view);
+    if(!allowed)location.href='/dashboard';
   },[access,accessLoading,title]);
 
   async function signOut(){setProfileOpen(false);await getSupabase().auth.signOut();try{localStorage.removeItem('mdsm:selectedWorkspaceId')}catch{}location.href='/login'}
@@ -133,14 +139,14 @@ export default function AppShell({children,title='Dashboard'}:{children:ReactNod
   if(!selected)return <main className="auth-page"><section className="auth-card" style={{maxWidth:560,textAlign:'center'}}><div className="brand">SOCIAL MEDIA MANAGER</div><h1>Workspace required</h1><p className="muted">Select a workspace first. This section only opens accounts and publishing for the selected workspace.</p><select aria-label="Select workspace" defaultValue="" onChange={e=>selectWorkspace(e.target.value)} style={{width:'100%',minHeight:48,border:'1.5px solid #087f7b',borderRadius:12,padding:'0 13px',background:'#fff',fontWeight:700,color:'#17202b'}}><option value="">Select a workspace…</option>{workspaces.map(w=><option key={w.id} value={w.id}>{w.name}</option>)}</select><button className="text-btn" style={{display:'block',margin:'14px auto 0'}} onClick={backToWorkspaces}>← Back to Workspaces</button><button className="text-btn" style={{display:'block',margin:'10px auto 0',color:'#b42318'}} onClick={signOut}>Logout</button></section></main>;
   const selectedWorkspace=workspaces.find(w=>w.id===selected);
   if(accessLoading||!access)return <main className="auth-page"><div className="muted">Loading workspace access…</div></main>;
-  return <main className="app-shell"><div className={`sidebar-backdrop ${open?'show':''}`} onClick={()=>setOpen(false)}/><aside className={`sidebar ${open?'mobile-open':''}`}><div className="logo-block"><div className="logo-mark">MD</div><div className="logo-title">MD<span>HYGIENE</span><small>SOCIAL MANAGER</small></div><button className="drawer-close" onClick={()=>setOpen(false)}><Icon name="chevron" size={18}/></button></div><nav>{navGroups.map(group=><div className="nav-section" key={group.label}><button type="button" className="nav-section-toggle" aria-expanded={!!expandedNavGroups[group.label]} onClick={()=>setExpandedNavGroups(prev=>({...prev,[group.label]:!prev[group.label]}))}><span>{group.label}</span><Icon name="chevron" size={13}/></button>{expandedNavGroups[group.label]&&<div className="nav-section-items">{group.items.map(([label,icon,href])=><button key={label} className={`nav-item ${title===label?'active':''}`} onClick={()=>{setOpen(false);setProfileOpen(false);location.href=href}}><b><Icon name={icon as IconName} size={17}/></b><span>{label}</span></button>)}</div>}</div>)}</nav><div className="side-user"><div className="user-avatar">MD</div><div><strong>{access.role==='owner'?'Workspace Owner':access.role==='admin'?'Workspace Admin':access.role==='manager'?'Workspace Manager':'Employee'}</strong><small>{access.employee_id||email||'Account'}</small></div></div></aside><section className="main-shell"><header className="main-header"><button className="menu-btn" onClick={()=>setOpen(true)} aria-label="Open navigation"><Icon name="menu" size={18}/></button><strong>{title}</strong><div className="search-box"><Icon name="search" size={16}/><span>Search anything...</span><kbd>Ctrl K</kbd></div><div className="header-actions"><button aria-label="Notifications"><Icon name="bell" size={17}/></button><div style={{position:'relative'}}>
+  return <main className="app-shell"><div className={`sidebar-backdrop ${open?'show':''}`} onClick={()=>setOpen(false)}/><aside className={`sidebar ${open?'mobile-open':''}`}><div className="logo-block"><div className="logo-mark">MD</div><div className="logo-title">MD<span>HYGIENE</span><small>SOCIAL MANAGER</small></div><button className="drawer-close" onClick={()=>setOpen(false)}><Icon name="chevron" size={18}/></button></div><nav aria-label="Main navigation">{visibleNav.map(item=><button key={item.label} className={`nav-item ${isNavActive(item,pathname)?'active':''}`} aria-current={isNavActive(item,pathname)?'page':undefined} onClick={()=>{setOpen(false);setProfileOpen(false);location.href=item.href}}><b><Icon name={item.icon} size={17}/></b><span>{item.label}</span></button>)}</nav><div className="side-user"><div className="user-avatar">MD</div><div><strong>{access.role==='owner'?'Workspace Owner':access.role==='admin'?'Workspace Admin':access.role==='manager'?'Workspace Manager':'Employee'}</strong><small>{access.employee_id||email||'Account'}</small></div></div></aside><section className="main-shell"><header className="main-header"><button className="menu-btn" onClick={()=>setOpen(true)} aria-label="Open navigation"><Icon name="menu" size={18}/></button><strong>{title}</strong><div className="search-box"><Icon name="search" size={16}/><span>Search anything...</span><kbd>Ctrl K</kbd></div><div className="header-actions"><button aria-label="Notifications"><Icon name="bell" size={17}/></button><div style={{position:'relative'}}>
   <label className="workspace-switcher">
     <span className="workspace-switcher-logo">{selectedWorkspace?.logo_url?<img src={selectedWorkspace.logo_url} alt="" />:selectedWorkspace?.name?.slice(0,2).toUpperCase()||'WS'}</span>
     <span className="workspace-switcher-copy"><small>WORKSPACE</small><strong>{selectedWorkspace?.name||'Select workspace'}</strong></span>
     <Icon name="chevron" size={14}/>
     <select aria-label="Switch workspace" value={selected} onChange={e=>selectWorkspace(e.target.value)} className="workspace-native-select">{workspaces.map(w=><option key={w.id} value={w.id}>{w.name}</option>)}</select>
   </label>
-</div><div style={{position:'relative'}}><button className="header-profile" onClick={()=>setProfileOpen(v=>!v)} aria-expanded={profileOpen}><div className="mini-logo">{selectedWorkspace?.logo_url?<img src={selectedWorkspace.logo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover',borderRadius:10}}/>:'WS'}</div><strong>{access.role==='owner'?'Owner':access.role==='admin'?'Admin':access.role==='manager'?'Manager':'Employee'} <Icon name="chevron" size={14}/></strong></button>{profileOpen&&<div style={{position:'absolute',right:0,top:46,width:210,padding:8,border:'1px solid #e1e6eb',borderRadius:12,background:'#fff',boxShadow:'0 18px 40px rgba(15,23,42,.14)',zIndex:60}}><div style={{padding:'8px 10px 10px',fontSize:11,color:'#667085',fontWeight:650,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{email||access.employee_id||'Account'}</div><button onClick={()=>{setProfileOpen(false);location.href='/dashboard/brands'}} style={{width:'100%',border:0,borderRadius:9,padding:'10px 12px',background:'#f0faf9',color:'#087f7b',fontWeight:850,cursor:'pointer',textAlign:'left'}}>Manage Workspaces</button><button onClick={signOut} style={{width:'100%',border:0,borderRadius:9,padding:'10px 12px',background:'#fff1f0',color:'#b42318',fontWeight:800,cursor:'pointer',textAlign:'left',marginTop:5}}>Logout</button><button onClick={backToWorkspaces} style={{width:'100%',border:0,borderRadius:9,padding:'10px 12px',background:'#f7f9fb',color:'#17202b',fontWeight:800,cursor:'pointer',textAlign:'left',marginTop:5}}>Workspace Home</button></div>}</div></div></header><style jsx>{`
+</div><div style={{position:'relative'}}><button className="header-profile" onClick={()=>setProfileOpen(v=>!v)} aria-expanded={profileOpen}><div className="mini-logo">{selectedWorkspace?.logo_url?<img src={selectedWorkspace.logo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover',borderRadius:10}}/>:'WS'}</div><strong>{access.role==='owner'?'Owner':access.role==='admin'?'Admin':access.role==='manager'?'Manager':'Employee'} <Icon name="chevron" size={14}/></strong></button>{profileOpen&&<div style={{position:'absolute',right:0,top:46,width:210,padding:8,border:'1px solid #e1e6eb',borderRadius:12,background:'#fff',boxShadow:'0 18px 40px rgba(15,23,42,.14)',zIndex:60}}><div style={{padding:'8px 10px 10px',fontSize:11,color:'#667085',fontWeight:650,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{email||access.employee_id||'Account'}</div><button onClick={()=>{setProfileOpen(false);location.href='/dashboard/brands'}} style={{width:'100%',border:0,borderRadius:9,padding:'10px 12px',background:'#f0faf9',color:'#087f7b',fontWeight:850,cursor:'pointer',textAlign:'left'}}>Manage Workspaces</button>{access.is_owner_or_admin&&<button onClick={()=>{setProfileOpen(false);location.href='/dashboard/settings'}} style={{width:'100%',border:0,borderRadius:9,padding:'10px 12px',background:'#f7f9fb',color:'#17202b',fontWeight:800,cursor:'pointer',textAlign:'left',marginTop:5}}>Settings</button>}<button onClick={signOut} style={{width:'100%',border:0,borderRadius:9,padding:'10px 12px',background:'#fff1f0',color:'#b42318',fontWeight:800,cursor:'pointer',textAlign:'left',marginTop:5}}>Logout</button><button onClick={backToWorkspaces} style={{width:'100%',border:0,borderRadius:9,padding:'10px 12px',background:'#f7f9fb',color:'#17202b',fontWeight:800,cursor:'pointer',textAlign:'left',marginTop:5}}>Workspace Home</button></div>}</div></div></header><style jsx>{`
 .workspace-switcher{position:relative;display:flex;align-items:center;gap:8px;min-width:205px;max-width:250px;padding:5px 9px 5px 6px;border:1px solid #dfe5eb;border-radius:12px;background:#fff;cursor:pointer;box-shadow:0 3px 12px rgba(15,23,42,.04)}
 .workspace-switcher-logo{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;overflow:hidden;background:linear-gradient(145deg,#0d8f8a,#0b6f70);color:#fff;font-size:9px;font-weight:950;flex:0 0 34px}
 .workspace-switcher-logo img{width:100%;height:100%;object-fit:cover}
