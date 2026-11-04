@@ -23,6 +23,10 @@
   --ui-radius-xl:20px;
   --ui-shadow-sm:0 1px 2px rgba(16,24,40,.04),0 4px 12px rgba(16,24,40,.035);
   --ui-shadow-md:0 12px 30px rgba(16,24,40,.06);
+  --ui-primary-deep:#0b6968;
+  --ui-control-height:40px;
+  --ui-content-max:1480px;
+  --ui-shadow-elevated:0 22px 64px rgba(16,24,40,.12);
   --ui-focus:0 0 0 3px rgba(8,127,123,.12);
 }
 
