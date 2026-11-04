@@ -3,7 +3,7 @@
 'use client';
 
 import {useMemo} from 'react';
-import qrcode from './vendor/qrcode-generator.mjs';
+import qrcode from '../../../lib/vendor/qrcode-generator.mjs';
 
 export default function QRCodeImage({value,alt,size=190}:{value:string;alt:string;size?:number}){
  const source=useMemo(()=>{
