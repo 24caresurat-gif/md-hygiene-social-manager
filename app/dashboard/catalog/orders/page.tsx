@@ -8,6 +8,7 @@ type Product={id:string;name:string;sku:string|null;price:number|string;stock_qu
 type CartLine={product:Product;quantity:number};
 type OrderItem={id:string;product_name:string;quantity:number;unit_price:number|string;line_total:number|string;sku:string|null};
 type Order={id:string;order_number:string;customer_name:string;customer_email:string|null;customer_phone:string|null;subtotal:number|string;discount:number|string;total:number|string;coupon_code:string|null;status:string;payment_status:string;order_channel?:string;order_type?:string;table_label?:string|null;notes:string|null;created_at:string;items:OrderItem[]};
+type PosTable={id:string;table_number:string;qr_token:string;active:boolean};
 type Receipt={orderNumber:string;customerName:string;customerPhone:string;items:{name:string;quantity:number;unitPrice:number;lineTotal:number}[];total:number;paymentStatus:string;orderType:string;tableLabel:string;createdAt:string};
 
 const money=(value:number|string|null|undefined)=>'₹'+Number(value||0).toFixed(2);
@@ -17,8 +18,11 @@ export default function OrdersPOSPage(){
  const[workspaceId,setWorkspaceId]=useState('');
  const[products,setProducts]=useState<Product[]>([]);
  const[orders,setOrders]=useState<Order[]>([]);
+ const[posTables,setPosTables]=useState<PosTable[]>([]);
+ const[tableNumberInput,setTableNumberInput]=useState('');
+ const[tablesError,setTablesError]=useState('');
  const[cart,setCart]=useState<CartLine[]>([]);
- const[tab,setTab]=useState<'billing'|'orders'|'kitchen'>('billing');
+ const[tab,setTab]=useState<'billing'|'orders'|'kitchen'|'tables'>('billing');
  const[query,setQuery]=useState('');
  const[orderFilter,setOrderFilter]=useState('all');
  const[orderType,setOrderType]=useState('counter');
@@ -44,18 +48,21 @@ export default function OrdersPOSPage(){
   setLoading(true);setError('');
   try{
    const token=await accessToken();
-   const [ordersResponse,catalogResponse]=await Promise.all([
+   const [ordersResponse,catalogResponse,tablesResponse]=await Promise.all([
     fetch('/api/catalog/orders?workspaceId='+encodeURIComponent(id),{headers:{Authorization:'Bearer '+token},cache:'no-store'}),
-    fetch('/api/catalog?workspaceId='+encodeURIComponent(id),{headers:{Authorization:'Bearer '+token},cache:'no-store'})
+    fetch('/api/catalog?workspaceId='+encodeURIComponent(id),{headers:{Authorization:'Bearer '+token},cache:'no-store'}),
+    fetch('/api/pos/tables?workspaceId='+encodeURIComponent(id),{headers:{Authorization:'Bearer '+token},cache:'no-store'})
    ]);
-   const [ordersData,catalogData]=await Promise.all([
-    ordersResponse.json().catch(()=>({})),catalogResponse.json().catch(()=>({}))
+   const [ordersData,catalogData,tablesData]=await Promise.all([
+    ordersResponse.json().catch(()=>({})),catalogResponse.json().catch(()=>({})),tablesResponse.json().catch(()=>({}))
    ]);
    if(!ordersResponse.ok)throw Error(ordersData.error||'Unable to load orders.');
    if(!catalogResponse.ok)throw Error(catalogData.error||'Unable to load catalogue products.');
    setOrders((ordersData.orders||[]) as Order[]);
    setProducts((catalogData.products||[]).filter((product:Product)=>product.active) as Product[]);
    setCanManage(Boolean(catalogData.access?.canManage));
+   setPosTables(tablesResponse.ok?(tablesData.tables||[]) as PosTable[]:[]);
+   setTablesError(tablesResponse.ok?'':String(tablesData.error||'Table QR setup is waiting for the POS migration.'));
   }catch(e){setError(e instanceof Error?e.message:'Unable to load POS data.')}
   finally{setLoading(false)}
  }
@@ -125,6 +132,32 @@ export default function OrdersPOSPage(){
    setTab('orders');await load(workspaceId);
   }catch(e){setError(e instanceof Error?e.message:'Unable to create POS bill.')}
   finally{setBusy('')}
+ }
+ async function createTable(){
+  if(!canManage||!tableNumberInput.trim())return;
+  setBusy('table');setError('');setTablesError('');
+  try{
+   const token=await accessToken();
+   const response=await fetch('/api/pos/tables',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({workspaceId,tableNumber:tableNumberInput.trim()})});
+   const data=await response.json().catch(()=>({}));
+   if(!response.ok)throw Error(data.error||'Unable to create table QR.');
+   setTableNumberInput('');setNotice('Table '+data.table.table_number+' and its QR link are ready.');
+   await load(workspaceId);
+  }catch(e){setTablesError(e instanceof Error?e.message:'Unable to create table QR.')}finally{setBusy('')}
+ }
+ async function toggleTable(table:PosTable){
+  setBusy('table:'+table.id);setTablesError('');
+  try{
+   const token=await accessToken();
+   const response=await fetch('/api/pos/tables',{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({workspaceId,id:table.id,active:!table.active})});
+   const data=await response.json().catch(()=>({}));
+   if(!response.ok)throw Error(data.error||'Unable to update table.');
+   await load(workspaceId);
+  }catch(e){setTablesError(e instanceof Error?e.message:'Unable to update table.')}finally{setBusy('')}
+ }
+ async function copyTableLink(table:PosTable){
+  const url=location.origin+'/table/'+table.qr_token;
+  try{await navigator.clipboard.writeText(url);setNotice('Table QR link copied.')}catch{setNotice(url)}
  }
  async function updateOrder(id:string,patch:Record<string,string>){
   setBusy(id);setError('');setNotice('');
@@ -196,7 +229,7 @@ export default function OrdersPOSPage(){
    }
   `}</style>
   <div className="pos">
-   <div className="page-head"><div><div className="eyebrow">POINT OF SALE</div><h1>Orders & POS</h1><p>Create counter bills, manage restaurant orders and track kitchen preparation.</p></div><div className="tabs"><button className={'tab '+(tab==='billing'?'active':'')} onClick={()=>setTab('billing')}>＋ New Bill</button><button className={'tab '+(tab==='orders'?'active':'')} onClick={()=>setTab('orders')}>All Orders</button><button className={'tab '+(tab==='kitchen'?'active':'')} onClick={()=>setTab('kitchen')}>Kitchen Display</button></div></div>
+   <div className="page-head"><div><div className="eyebrow">POINT OF SALE</div><h1>Orders & POS</h1><p>Create counter bills, manage restaurant orders and track kitchen preparation.</p></div><div className="tabs"><button className={'tab '+(tab==='billing'?'active':'')} onClick={()=>setTab('billing')}>＋ New Bill</button><button className={'tab '+(tab==='orders'?'active':'')} onClick={()=>setTab('orders')}>All Orders</button><button className={'tab '+(tab==='kitchen'?'active':'')} onClick={()=>setTab('kitchen')}>Kitchen Display</button><button className={'tab '+(tab==='tables'?'active':'')} onClick={()=>setTab('tables')}>Tables & QR</button></div></div>
    {notice&&<div className="notice">{notice}</div>}{error&&<div className="error" role="alert">{error}</div>}
    {lastReceipt&&<div className="panel panel-pad no-print" style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap'}}><div><strong>Last bill: {lastReceipt.orderNumber}</strong><div style={{fontSize:10,color:'var(--ui-muted)',marginTop:3}}>Total {money(lastReceipt.total)} · {lastReceipt.paymentStatus}</div></div><button className="btn btn-soft" onClick={()=>window.print()}>Print receipt</button></div>}
    <div className="metrics">
@@ -228,7 +261,13 @@ export default function OrdersPOSPage(){
     </aside>
    </div>}
 
-   {tab!=='billing'&&<section className="panel">
+   {tab==='tables'&&<section className="panel panel-pad" style={{display:'grid',gap:14}}>
+    <div className="page-head"><div><div className="eyebrow">RESTAURANT SETUP</div><h2 style={{margin:'4px 0'}}>Tables & QR codes</h2><p>Create one QR for each table. Customers scan it to open this business menu and send orders directly to the kitchen queue.</p></div></div>
+    {tablesError&&<div className="error">{tablesError}</div>}
+    {canManage&&<div style={{display:'flex',gap:9,flexWrap:'wrap',alignItems:'center'}}><input value={tableNumberInput} onChange={e=>setTableNumberInput(e.target.value)} placeholder="Table number (e.g. Table 01)" maxLength={40} style={{minWidth:220,flex:'1 1 220px',border:'1px solid var(--ui-border-strong)',borderRadius:9,padding:10}}/><button className="btn btn-primary" disabled={busy==='table'||!tableNumberInput.trim()} onClick={()=>void createTable()}>{busy==='table'?'Creating…':'＋ Add Table'}</button></div>}
+    {!posTables.length?<div className="empty">{loading?'Loading tables…':'No restaurant tables yet. Add your first table to create its QR menu.'}</div>:<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:12}}>{posTables.map(table=>{const url=typeof window!=='undefined'?location.origin+'/table/'+table.qr_token:'';const image='https://api.qrserver.com/v1/create-qr-code/?size=190x190&margin=8&data='+encodeURIComponent(url);return <article className="panel" key={table.id} style={{padding:14,display:'grid',gap:10}}><div style={{display:'flex',justifyContent:'space-between',gap:8,alignItems:'center'}}><strong>{table.table_number}</strong><span className={'pill '+(table.active?'green':'orange')}>{table.active?'Active':'Paused'}</span></div><div style={{display:'grid',placeItems:'center',padding:9,border:'1px solid var(--ui-border)',borderRadius:10}}>{url&&<img src={image} alt={'QR for '+table.table_number} width="170" height="170" style={{maxWidth:'100%',height:'auto'}}/>}</div><div className="order-actions"><button className="btn btn-soft" onClick={()=>void copyTableLink(table)}>Copy QR Link</button><a className="btn btn-soft" href={url} target="_blank" rel="noreferrer">Test Menu</a>{canManage&&<button className="btn btn-soft" disabled={busy==='table:'+table.id} onClick={()=>void toggleTable(table)}>{table.active?'Pause':'Activate'}</button>}</div></article>})}</div>}
+   </section>}
+   {tab!=='billing'&&tab!=='tables'&&<section className="panel">
     <div className="panel-head" style={{flexWrap:'wrap'}}><div><div className="eyebrow">{tab==='kitchen'?'KITCHEN DISPLAY':'ORDER MANAGEMENT'}</div><h2>{tab==='kitchen'?'Active kitchen orders':'All workspace orders'}</h2><p>{tab==='kitchen'?'Move dine-in and takeaway orders through preparation and service.':'Online catalogue orders and in-store POS bills are shown together.'}</p></div>{tab==='orders'&&<select aria-label="Filter orders" value={orderFilter} onChange={e=>setOrderFilter(e.target.value)} style={{border:'1px solid var(--ui-border)',borderRadius:9,padding:8}}><option value="all">All orders</option><option value="pos">POS bills</option><option value="online">Online orders</option>{statusOptions.map(status=><option key={status} value={status}>{status}</option>)}</select>}</div>
     {loading?<div className="empty">Loading orders…</div>:(tab==='kitchen'?kitchenOrders:filteredOrders).length===0?<div className="empty">{tab==='kitchen'?'No active POS orders are waiting for the kitchen.':'No orders found for this filter.'}</div>:(tab==='kitchen'?kitchenOrders:filteredOrders).map(order=><article className="order-row" key={order.id}>
      <div className="order-head"><div><strong>{order.order_number} · {order.customer_name||'Walk-in Customer'}</strong><small>{new Date(order.created_at).toLocaleString()} · {order.customer_phone||order.customer_email||'No contact'}</small></div><span className={'pill '+(['ready','served','delivered'].includes(order.status)?'green':order.status==='cancelled'?'orange':'')}>{order.status}</span><span className="pill">{order.order_channel==='pos'?'POS':'Online'}</span><strong>{money(order.total)}</strong></div>
