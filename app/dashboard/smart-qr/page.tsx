@@ -2,12 +2,12 @@
 
 import {useEffect,useState} from 'react';
 import AppShell from '../components/AppShell';
+import QRCodeImage from '../components/QRCodeImage';
 import {getSupabase} from '../../../lib/supabase-browser';
 
 type Profile={id:string;business_name:string;review_url:string|null};
 type Form={id:string;name:string;active:boolean};
 type Standee={id:string;label:string|null;profile_id:string|null;form_id:string|null;scan_count:number;created_at:string};
-const qr=(url:string)=>'https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=8&data='+encodeURIComponent(url);
 
 export default function SmartQRPage(){
  const[workspace,setWorkspace]=useState(''),[profiles,setProfiles]=useState<Profile[]>([]),[forms,setForms]=useState<Form[]>([]),[rows,setRows]=useState<Standee[]>([]);
@@ -61,7 +61,7 @@ export default function SmartQRPage(){
    <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}><button className="btn btn-primary" disabled={!canManage||busy||!profiles.length||!activeForms.length} onClick={()=>void create()}>{busy?'Creating…':'＋ Create Smart QR'}</button><span style={{fontSize:10,color:'var(--ui-muted)'}}>{canManage?'Workspace managers can create QR codes.':'View-only access.'}</span></div>
   </section>
   <section><div className="page-head"><div><div className="eyebrow">YOUR QR CODES</div><h2 style={{margin:'4px 0'}}>Saved review QR codes</h2></div><span className="count-badge">{rows.length} total</span></div>
-   {loading?<div className="panel empty-state">Loading QR codes…</div>:!rows.length?<div className="panel empty-state">No QR codes yet. Create one above.</div>:<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(230px,1fr))',gap:14}}>{rows.map(x=>{const url=typeof window!=='undefined'?location.origin+'/standee/'+x.id:'';return <article className="panel" key={x.id} style={{padding:16,display:'grid',gap:10}}><div><strong>{x.label||'Review QR'}</strong><div style={{fontSize:10,color:'var(--ui-muted)',marginTop:4}}>{profiles.find(p=>p.id===x.profile_id)?.business_name||'Business location'} · {forms.find(f=>f.id===x.form_id)?.name||'Feedback form'}</div></div><div style={{display:'grid',placeItems:'center',border:'1px solid var(--ui-border)',borderRadius:12,padding:10}}>{url&&<img src={qr(url)} alt={'QR code for '+(x.label||'Google review')} width="190" height="190" style={{maxWidth:'100%',height:'auto'}}/>}</div><div style={{fontSize:10,color:'var(--ui-muted)'}}>Recorded scans: <strong>{x.scan_count||0}</strong><br/>Created {new Date(x.created_at).toLocaleDateString()}</div><div style={{display:'flex',gap:8,flexWrap:'wrap'}}><button className="btn btn-soft" onClick={()=>void copy(x)}>Copy Link</button><a className="btn btn-soft" href={url} target="_blank" rel="noreferrer">Test QR Link</a></div></article>})}</div>}
+   {loading?<div className="panel empty-state">Loading QR codes…</div>:!rows.length?<div className="panel empty-state">No QR codes yet. Create one above.</div>:<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(230px,1fr))',gap:14}}>{rows.map(x=>{const url=typeof window!=='undefined'?location.origin+'/standee/'+x.id:'';return <article className="panel" key={x.id} style={{padding:16,display:'grid',gap:10}}><div><strong>{x.label||'Review QR'}</strong><div style={{fontSize:10,color:'var(--ui-muted)',marginTop:4}}>{profiles.find(p=>p.id===x.profile_id)?.business_name||'Business location'} · {forms.find(f=>f.id===x.form_id)?.name||'Feedback form'}</div></div><div style={{display:'grid',placeItems:'center',border:'1px solid var(--ui-border)',borderRadius:12,padding:10}}>{url&&<QRCodeImage value={url} alt={'QR code for '+(x.label||'Google review')} size={190}/>}</div><div style={{fontSize:10,color:'var(--ui-muted)'}}>Recorded scans: <strong>{x.scan_count||0}</strong><br/>Created {new Date(x.created_at).toLocaleDateString()}</div><div style={{display:'flex',gap:8,flexWrap:'wrap'}}><button className="btn btn-soft" onClick={()=>void copy(x)}>Copy Link</button><a className="btn btn-soft" href={url} target="_blank" rel="noreferrer">Test QR Link</a></div></article>})}</div>}
   </section><p style={{fontSize:10,color:'var(--ui-muted)'}}>Test each QR link before printing. Scan totals update when customers open the public QR route.</p>
  </div></AppShell>;
 }
