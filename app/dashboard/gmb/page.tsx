@@ -131,7 +131,7 @@ export default function GmbPage(){
 
   function open(path:string){location.href=path}
 
-  return <AppShell title='Google Business & Reviews'>
+  return <AppShell title='Google Business'>
     <style>{css}</style>
     <div className='gmb-shell'>
       <div className='gmb-topbar'>
