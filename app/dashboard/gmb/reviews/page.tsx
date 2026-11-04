@@ -222,7 +222,7 @@ export default function ReviewManagementPage() {
   }));
 
   return (
-    <AppShell title='Google Business & Reviews'>
+    <AppShell title='Reviews'>
       <style>{css}</style>
       <div className='reviews-page'>
         <div className='hero'>
