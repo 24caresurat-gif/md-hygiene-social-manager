@@ -137,7 +137,7 @@ export default function OrdersPOSPage(){
   finally{setBusy('')}
  }
  const categoryName=(product:Product)=>Array.isArray(product.catalog_categories)?product.catalog_categories[0]?.name:product.catalog_categories?.name;
- const stepStatus=(status:string)=>status==='pending'?'preparing':status==='preparing'?'ready':status==='ready'?'served':'served';
+ const stepStatus=(status:string)=>['pending','confirmed','processing'].includes(status)?'preparing':status==='preparing'?'ready':'served';
 
  return <AppShell title="Orders & POS">
   <style>{`
@@ -198,6 +198,7 @@ export default function OrdersPOSPage(){
   <div className="pos">
    <div className="page-head"><div><div className="eyebrow">POINT OF SALE</div><h1>Orders & POS</h1><p>Create counter bills, manage restaurant orders and track kitchen preparation.</p></div><div className="tabs"><button className={'tab '+(tab==='billing'?'active':'')} onClick={()=>setTab('billing')}>＋ New Bill</button><button className={'tab '+(tab==='orders'?'active':'')} onClick={()=>setTab('orders')}>All Orders</button><button className={'tab '+(tab==='kitchen'?'active':'')} onClick={()=>setTab('kitchen')}>Kitchen Display</button></div></div>
    {notice&&<div className="notice">{notice}</div>}{error&&<div className="error" role="alert">{error}</div>}
+   {lastReceipt&&<div className="panel panel-pad no-print" style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap'}}><div><strong>Last bill: {lastReceipt.orderNumber}</strong><div style={{fontSize:10,color:'var(--ui-muted)',marginTop:3}}>Total {money(lastReceipt.total)} · {lastReceipt.paymentStatus}</div></div><button className="btn btn-soft" onClick={()=>window.print()}>Print receipt</button></div>}
    <div className="metrics">
     <article className="panel metric"><span>POS Orders Today</span><strong>{loading?'—':todayOrders.length}</strong></article>
     <article className="panel metric"><span>Paid Sales Today</span><strong>{loading?'—':money(todaySales)}</strong></article>
