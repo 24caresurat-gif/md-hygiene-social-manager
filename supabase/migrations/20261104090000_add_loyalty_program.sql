@@ -96,9 +96,9 @@ drop policy if exists loyalty_transactions_member_select on public.loyalty_trans
 create policy loyalty_transactions_member_select on public.loyalty_transactions
   for select to authenticated using (private.is_workspace_member(workspace_id));
 
-grant select, insert, update, delete on public.loyalty_programs to authenticated;
-grant select, insert, update, delete on public.loyalty_members to authenticated;
-grant select on public.loyalty_transactions to authenticated;
+grant select, insert, update, delete on public.loyalty_programs to authenticated, service_role;
+grant select, insert, update, delete on public.loyalty_members to authenticated, service_role;
+grant select on public.loyalty_transactions to authenticated, service_role;
 
 create or replace function public.loyalty_apply_stamp(
   p_workspace_id uuid,
@@ -107,7 +107,7 @@ create or replace function public.loyalty_apply_stamp(
 )
 returns jsonb
 language plpgsql
-security definer
+security invoker
 set search_path = ''
 as $function$
 declare
@@ -166,7 +166,7 @@ create or replace function public.loyalty_redeem_reward(
 )
 returns jsonb
 language plpgsql
-security definer
+security invoker
 set search_path = ''
 as $function$
 declare
