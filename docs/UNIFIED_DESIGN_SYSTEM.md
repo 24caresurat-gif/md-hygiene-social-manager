@@ -10,7 +10,7 @@ Use one coherent, responsive design language across the entire application: Logi
 
 ## Application shell
 
-- A compact, independently scrollable left navigation with grouped modules and a clear selected state.
+- A compact, independently scrollable left navigation with exactly ten flat core modules in the reference order; no grouped extras in the main menu.
 - A consistent top bar with page title, workspace context, search/actions and account menu.
 - A shared content canvas with a predictable page heading, description, primary action and responsive content width.
 - Workspace identity and user controls remain visually consistent on every authenticated page.
@@ -20,17 +20,18 @@ Use one coherent, responsive design language across the entire application: Logi
 
 Align navigation to the same business-first structure as the reference while preserving the existing product routes and permissions:
 
-1. Home / Dashboard
-2. Google Business and Reviews
-3. Website / Digital Card
-4. Catalogue and Menu
-5. WhatsApp CRM and Communication
-6. Orders and POS (show only routes/features that are implemented)
-7. Loyalty (show only when implemented)
-8. Smart QR (show only when implemented)
-9. Social Publishing: Create Post, Creative Studio, Drafts, Calendar, Approvals, History and Media
+1. Home
+2. Google Business
+3. Reviews
+4. Website
+5. Catalogue
+6. WhatsApp CRM
+7. Orders & POS
+8. Loyalty
+9. Smart QR
 10. Analytics
-11. Workspace Settings and Connections
+
+Settings and provider connections remain accessible from the account menu, not as an additional main-navigation module. Existing extra publishing and CRM sub-tools remain in the repository for later reactivation but are hidden from the primary navigation for this first-look build.
 
 No menu item should imply that a feature is live when it is only planned. Keep Facebook, Instagram and Google connection setup in Settings as already agreed.
 
