@@ -57,7 +57,9 @@ export async function POST(request:Request){
       p_order_type:orderType,
       p_table_label:tableLabel||null,
       p_payment_status:paymentStatus,
-      p_notes:String(body.notes||'').trim().slice(0,1000)||null
+      p_notes:String(body.notes||'').trim().slice(0,1000)||null,
+      p_order_channel:'pos',
+      p_pos_table_id:null
     });
     if(error){
       const status=error.code==='P0001'?409:500;
