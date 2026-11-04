@@ -1,8 +1,38 @@
 -- Additive POS support. Existing online catalogue checkout stays unchanged.
+create table if not exists public.pos_tables (
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
+  table_number text not null,
+  qr_token uuid not null default gen_random_uuid(),
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint pos_tables_number_not_empty check (char_length(btrim(table_number)) between 1 and 40),
+  constraint pos_tables_workspace_table_unique unique (workspace_id, table_number),
+  constraint pos_tables_qr_token_unique unique (qr_token)
+);
+
+alter table public.pos_tables enable row level security;
+drop policy if exists pos_tables_member_select on public.pos_tables;
+create policy pos_tables_member_select on public.pos_tables
+  for select to authenticated using (private.is_workspace_member(workspace_id));
+drop policy if exists pos_tables_manager_insert on public.pos_tables;
+create policy pos_tables_manager_insert on public.pos_tables
+  for insert to authenticated with check (private.is_workspace_manager(workspace_id));
+drop policy if exists pos_tables_manager_update on public.pos_tables;
+create policy pos_tables_manager_update on public.pos_tables
+  for update to authenticated using (private.is_workspace_manager(workspace_id))
+  with check (private.is_workspace_manager(workspace_id));
+drop policy if exists pos_tables_manager_delete on public.pos_tables;
+create policy pos_tables_manager_delete on public.pos_tables
+  for delete to authenticated using (private.is_workspace_manager(workspace_id));
+grant select, insert, update, delete on public.pos_tables to authenticated, service_role;
+
 alter table public.catalog_orders
   add column if not exists order_channel text not null default 'online',
   add column if not exists order_type text not null default 'delivery',
-  add column if not exists table_label text;
+  add column if not exists table_label text,
+  add column if not exists pos_table_id uuid references public.pos_tables(id) on delete set null;
 
 alter table public.catalog_orders drop constraint if exists catalog_orders_order_channel_check;
 alter table public.catalog_orders add constraint catalog_orders_order_channel_check
@@ -26,7 +56,9 @@ create or replace function public.create_pos_order_transaction(
   p_order_type text default 'counter',
   p_table_label text default null,
   p_payment_status text default 'pending',
-  p_notes text default null
+  p_notes text default null,
+  p_order_channel text default 'pos',
+  p_pos_table_id uuid default null
 ) returns jsonb
 language plpgsql
 security invoker
@@ -39,6 +71,7 @@ declare
   v_processed integer := 0;
   v_total numeric(12,2) := 0;
   v_customer text;
+  v_table_number text;
 begin
   if p_workspace_id is null or nullif(pg_catalog.btrim(coalesce(p_order_number,'')),'') is null then
     raise exception using errcode='P0001',message='Workspace and order number are required.';
@@ -57,6 +90,21 @@ begin
   end if;
   if p_order_type not in ('counter','dine_in','takeaway') then
     raise exception using errcode='P0001',message='Choose counter, dine-in or takeaway.';
+  end if;
+  if p_order_channel not in ('pos','table_qr') then
+    raise exception using errcode='P0001',message='Unsupported POS order channel.';
+  end if;
+  if p_order_channel='table_qr' then
+    if p_order_type<>'dine_in' or p_pos_table_id is null then
+      raise exception using errcode='P0001',message='A valid restaurant table is required for QR orders.';
+    end if;
+    select table_number into v_table_number
+      from public.pos_tables
+     where id=p_pos_table_id and workspace_id=p_workspace_id and active=true
+     for share;
+    if not found then
+      raise exception using errcode='P0001',message='This table QR is inactive or unavailable.';
+    end if;
   end if;
   if p_order_type='dine_in' and nullif(pg_catalog.btrim(coalesce(p_table_label,'')),'') is null then
     raise exception using errcode='P0001',message='Enter a table number for dine-in orders.';
@@ -94,14 +142,15 @@ begin
 
   insert into public.catalog_orders(
     workspace_id,order_number,customer_name,customer_phone,subtotal,discount,total,
-    status,payment_status,shipping_address,notes,order_channel,order_type,table_label
+    status,payment_status,shipping_address,notes,order_channel,order_type,table_label,pos_table_id
   ) values (
     p_workspace_id,pg_catalog.left(pg_catalog.btrim(p_order_number),80),v_customer,
     nullif(pg_catalog.left(pg_catalog.btrim(coalesce(p_customer_phone,'')),40),''),
     v_total,0,v_total,'pending',p_payment_status,'{}'::jsonb,
     nullif(pg_catalog.left(pg_catalog.btrim(coalesce(p_notes,'')),1000),''),
-    'pos',p_order_type,
-    case when p_order_type='dine_in' then pg_catalog.left(pg_catalog.btrim(p_table_label),40) else null end
+    p_order_channel,p_order_type,
+    case when p_order_type='dine_in' then pg_catalog.left(pg_catalog.btrim(coalesce(v_table_number,p_table_label)),40) else null end,
+    p_pos_table_id
   ) returning * into v_order;
 
   for v_item in
@@ -123,14 +172,14 @@ begin
 
   return pg_catalog.jsonb_build_object(
     'id',v_order.id,'order_number',v_order.order_number,'order_channel',v_order.order_channel,
-    'order_type',v_order.order_type,'table_label',v_order.table_label,'customer_name',v_order.customer_name,
+    'order_type',v_order.order_type,'table_label',v_order.table_label,'pos_table_id',v_order.pos_table_id,'customer_name',v_order.customer_name,
     'subtotal',v_order.subtotal,'total',v_order.total,'status',v_order.status,
     'payment_status',v_order.payment_status,'created_at',v_order.created_at
   );
 end;
 $function$;
 
-revoke all on function public.create_pos_order_transaction(uuid,text,jsonb,text,text,text,text,text,text) from public,anon,authenticated;
-grant execute on function public.create_pos_order_transaction(uuid,text,jsonb,text,text,text,text,text,text) to service_role;
+revoke all on function public.create_pos_order_transaction(uuid,text,jsonb,text,text,text,text,text,text,text,uuid) from public,anon,authenticated;
+grant execute on function public.create_pos_order_transaction(uuid,text,jsonb,text,text,text,text,text,text,text,uuid) to service_role;
 grant select,update on public.catalog_products to service_role;
 grant insert on public.catalog_orders,public.catalog_order_items to service_role;
