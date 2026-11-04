@@ -111,7 +111,7 @@ export default function WhatsAppInboxPage(){
     finally{setSending(false)}
   }
 
-  return <AppShell title="WhatsApp Inbox"><div className="wa-inbox"><style jsx>{styles}</style>
+  return <AppShell title="WhatsApp CRM"><div className="wa-inbox"><style jsx>{styles}</style>
     <header className="head"><div><div className="eyebrow">WHATSAPP • SHARED INBOX</div><h1>WhatsApp Inbox</h1><p className="sub">Workspace conversations, message status and template replies in one place.</p></div><div className="actions"><button className="btn" onClick={()=>void refresh()}>↻ Refresh</button><button className="btn primary" onClick={()=>location.href='/dashboard/settings#connections'}>Connection Settings</button></div></header>
     {notice&&<div className="notice">{notice}</div>}
     {loading?<div className="empty"><strong>Loading WhatsApp Inbox…</strong></div>:<div className="layout">
