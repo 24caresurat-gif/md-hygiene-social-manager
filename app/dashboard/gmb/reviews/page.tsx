@@ -56,6 +56,7 @@ const css = `
 .field{display:grid;gap:5px}
 .field span{font-size:9px;font-weight:900;color:#667085;text-transform:uppercase;letter-spacing:.08em}
 .input,.select{width:100%;border:1px solid #dbe4e8;border-radius:10px;background:#fff;padding:10px 11px;font-size:11px}
+.summary4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
 .metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
 .metric{padding:15px}
 .metric span{display:block;font-size:9px;font-weight:900;color:#667085;text-transform:uppercase;letter-spacing:.08em}
@@ -248,7 +249,7 @@ export default function ReviewManagementPage() {
       item.reply_text || '',
     ]);
     const csv = [headers, ...rows].map(row => row.map(value => '"' + String(value).replace(/"/g,'""') + '"').join(',')).join('\r\n');
-    const blob = new Blob(['\\uFEFF', csv], { type: 'text/csv;charset=utf-8' });
+    const blob = new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
