@@ -25,6 +25,7 @@ const nav:NavItem[]=[
 
 const hiddenRouteModules:Record<string,string>={
   'Dashboard':'dashboard',
+  'Reviews':'gmb',
   'Posts':'content',
   'Social Media':'social_accounts',
   'Billing management':'catalog',
@@ -56,7 +57,7 @@ const hiddenRouteModules:Record<string,string>={
 
 function isNavActive(item:NavItem,pathname:string){
   if(item.label==='GMB Overview'){
-    return pathname==='/dashboard/gmb'||(pathname.startsWith('/dashboard/gmb/')&&!pathname.startsWith('/dashboard/gmb/reviews'));
+    return pathname==='/dashboard/gmb'||pathname.startsWith('/dashboard/gmb/');
   }
   if(item.label==='Reviews')return pathname.startsWith('/dashboard/gmb/reviews');
   if(item.label==='Smart Website')return pathname.startsWith('/dashboard/digital-card');
