@@ -11,19 +11,23 @@ type IconName='dashboard'|'accounts'|'create'|'creative'|'drafts'|'calendar'|'ap
 type NavItem={label:string;icon:IconName;href:string;module:string;title:string};
 
 const nav:NavItem[]=[
-  {label:'Home',icon:'dashboard',href:'/dashboard',module:'dashboard',title:'Home'},
-  {label:'Google Business',icon:'accounts',href:'/dashboard/gmb',module:'gmb',title:'Google Business'},
-  {label:'Reviews',icon:'approval',href:'/dashboard/gmb/reviews',module:'gmb',title:'Reviews'},
-  {label:'Website',icon:'creative',href:'/dashboard/digital-card',module:'digital_card',title:'Website'},
-  {label:'Catalogue',icon:'media',href:'/dashboard/catalog',module:'catalog',title:'Catalogue'},
-  {label:'WhatsApp CRM',icon:'accounts',href:'/dashboard/whatsapp',module:'whatsapp',title:'WhatsApp CRM'},
-  {label:'Orders & POS',icon:'history',href:'/dashboard/catalog/orders',module:'catalog',title:'Orders & POS'},
-  {label:'Loyalty',icon:'approval',href:'/dashboard/loyalty',module:'catalog',title:'Loyalty'},
-  {label:'Smart QR',icon:'accounts',href:'/dashboard/smart-qr',module:'gmb',title:'Smart QR'},
-  {label:'Analytics',icon:'analytics',href:'/dashboard/analytics',module:'analytics',title:'Analytics'},
+  {label:'GMB Overview',icon:'accounts',href:'/dashboard/gmb',module:'gmb',title:'Google Business'},
+  {label:'Posts',icon:'create',href:'/dashboard/publish',module:'content',title:'Create Post'},
+  {label:'Dashboard',icon:'dashboard',href:'/dashboard',module:'dashboard',title:'Dashboard'},
+  {label:'Smart Website',icon:'creative',href:'/dashboard/digital-card',module:'digital_card',title:'Website'},
+  {label:'Social Media',icon:'media',href:'/dashboard/accounts',module:'social_accounts',title:'Accounts'},
+  {label:'Product Catalogue',icon:'media',href:'/dashboard/catalog',module:'catalog',title:'Catalogue'},
+  {label:'Loyalty program',icon:'approval',href:'/dashboard/loyalty',module:'catalog',title:'Loyalty'},
+  {label:'Billing management',icon:'history',href:'/dashboard/catalog/orders',module:'catalog',title:'Orders & POS'},
+  {label:'CRM',icon:'accounts',href:'/dashboard/crm',module:'crm',title:'CRM'},
+  {label:'Settings',icon:'settings',href:'/dashboard/settings',module:'settings',title:'Settings'},
 ];
 
 const hiddenRouteModules:Record<string,string>={
+  'Dashboard':'dashboard',
+  'Posts':'content',
+  'Social Media':'social_accounts',
+  'Billing management':'catalog',
   'Accounts':'social_accounts',
   'Create Post':'content',
   'Creative Intelligence':'creative',
@@ -51,11 +55,12 @@ const hiddenRouteModules:Record<string,string>={
 };
 
 function isNavActive(item:NavItem,pathname:string){
-  if(item.label==='Google Business'){
+  if(item.label==='GMB Overview'){
     return pathname==='/dashboard/gmb'||(pathname.startsWith('/dashboard/gmb/')&&!pathname.startsWith('/dashboard/gmb/reviews'));
   }
   if(item.label==='Reviews')return pathname.startsWith('/dashboard/gmb/reviews');
-  if(item.label==='Website')return pathname.startsWith('/dashboard/digital-card');
+  if(item.label==='Smart Website')return pathname.startsWith('/dashboard/digital-card');
+  if(item.label==='Social Media')return pathname.startsWith('/dashboard/accounts');
   if(item.label==='WhatsApp CRM')return pathname.startsWith('/dashboard/whatsapp')||pathname==='/dashboard/whatsapp-contacts';
   return pathname===item.href;
 }
