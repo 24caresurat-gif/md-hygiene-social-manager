@@ -30,10 +30,25 @@ type Metrics = {
   threeStar: number;
   twoStar: number;
   oneStar: number;
+  recent7Days: number;
 };
 
 const css = `
 .reviews-page{display:grid;gap:16px}
+.tabbar{display:flex;gap:4px;overflow-x:auto;background:#fff;border:1px solid #e1e8ec;border-radius:12px;padding:4px}
+.tabbar .tab{white-space:nowrap;flex:0 0 auto;padding:10px 13px;border:0;border-radius:9px;background:transparent;color:#667085;font-size:10px;font-weight:900;cursor:pointer}
+.tabbar .tab.active{background:#eef5ff;color:#2166d1}
+.ai-panel{padding:0;overflow:hidden}
+.ai-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:17px 18px}
+.ai-head h2{margin:4px 0;font-size:16px}
+.ai-head p{margin:4px 0 0;color:#7d8992;font-size:10px}
+.ai-item{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 18px;border-top:1px solid #edf0f3}
+.ai-copy{display:flex;align-items:center;gap:10px;min-width:0}
+.ai-icon{width:32px;height:32px;display:grid;place-items:center;border-radius:9px;background:#eef5ff;color:#2166d1;font-weight:950;flex:0 0 32px}
+.ai-copy strong{display:block;font-size:11px}
+.ai-copy small{display:block;font-size:9px;color:#84909a;margin-top:3px}
+.btn-danger{color:#b42318;background:#fff1f0;border-color:#ffd6d9}
+.existing-reply{margin-top:10px;padding:11px 12px;border:1px solid #d8eee1;background:#f4fbf6;border-radius:10px;color:#315d42;font-size:10px;line-height:1.55;white-space:pre-wrap}
 .hero{display:flex;justify-content:space-between;gap:18px;align-items:flex-end;flex-wrap:wrap}
 .hero h1{margin:5px 0 0}
 .hero p{margin:5px 0 0;max-width:760px}
@@ -215,6 +230,33 @@ export default function ReviewManagementPage() {
     }
   }
 
+  function clearFilters() {
+    const next = { search: '', rating: 'all', replyStatus: 'all', profileId: 'all' };
+    setSearch(''); setRating('all'); setReplyStatus('all'); setProfileId('all'); setApplied(next);
+    if (workspaceId) void load(workspaceId, next);
+  }
+
+  function exportReviews() {
+    const headers = ['Reviewer','Business','Rating','Review','Review date','Reply status','Published reply'];
+    const rows = reviews.map(item => [
+      item.reviewer_name || '',
+      item.business_name || '',
+      item.rating ?? '',
+      item.comment || '',
+      item.review_time || '',
+      item.reply_status || '',
+      item.reply_text || '',
+    ]);
+    const csv = [headers, ...rows].map(row => row.map(value => '"' + String(value).replace(/"/g,'""') + '"').join(',')).join('\r\n');
+    const blob = new Blob(['\\uFEFF', csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = 'google-reviews-' + new Date().toISOString().slice(0,10) + '.csv';
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
   const total = metrics?.total || 0;
   const stars = [5, 4, 3, 2, 1].map(n => ({
     n,
@@ -234,6 +276,8 @@ export default function ReviewManagementPage() {
           <div className='actions'>
             <button className='btn' onClick={() => location.href = '/dashboard/gmb'}>← Google Business</button>
             <button className='btn btn-soft' onClick={() => location.href = '/dashboard/gmb/images'}>Review Image Generator</button>
+            <button className='btn' disabled={loading || !workspaceId} onClick={() => void load(workspaceId, applied)}>{loading ? 'Refreshing…' : '↻ Refresh'}</button>
+            <button className='btn' disabled={loading || reviews.length===0} onClick={exportReviews}>Export CSV</button>
           </div>
         </div>
 
@@ -250,7 +294,7 @@ export default function ReviewManagementPage() {
         </div>
 
         <section className='panel ai-panel'>
-          <div className='ai-head'><div><div className='eyebrow'>AI REVIEW SUGGESTIONS</div><h2>AI Review Suggestions</h2><p>AI drafts stay workspace-scoped and are only published after a permitted user confirms them.</p></div><button className='ai-switch' aria-label='AI enabled'><i/></button></div>
+          <div className='ai-head'><div><div className='eyebrow'>AI REVIEW SUGGESTIONS</div><h2>AI Review Suggestions</h2><p>AI drafts stay workspace-scoped and are only published after a permitted user confirms them.</p></div><button className='btn btn-soft' onClick={() => location.href='/dashboard/settings#review-ai'}>AI Settings →</button></div>
           <div className='ai-item'><div className='ai-copy'><div className='ai-icon'>✦</div><div><strong>AI Auto Reply</strong><small>{metrics?.needsReply ? metrics.needsReply + ' review(s) need response' : 'No pending replies'}</small></div></div><button className='btn btn-soft' onClick={() => location.href='/dashboard/gmb/ai'}>Open AI</button></div>
           <div className='ai-item'><div className='ai-copy'><div className='ai-icon'>▣</div><div><strong>AI Form</strong><small>Customer feedback workflow is available.</small></div></div><button className='btn' onClick={() => location.href='/dashboard/gmb/forms'}>Open Form</button></div>
           <div className='ai-item'><div className='ai-copy'><div className='ai-icon'>≡</div><div><strong>Predefined / Keyword Guidance</strong><small>Use approved workspace keywords when they fit naturally.</small></div></div><button className='btn' onClick={() => location.href='/dashboard/gmb/keywords'}>Keywords</button></div>
@@ -259,7 +303,7 @@ export default function ReviewManagementPage() {
         <div className='summary4'>
           <article className='panel metric'><span>TOTAL REVIEWS</span><strong>{loading ? '—' : total}</strong><small>All imported reviews</small></article>
           <article className='panel metric'><span>AVERAGE RATING</span><strong>{loading ? '—' : metrics?.averageRating ?? '—'}</strong><small>Overall imported rating</small></article>
-          <article className='panel metric'><span>RECENT REVIEWS</span><strong>{loading ? '—' : Math.min(total,10)}</strong><small>Latest review set</small></article>
+          <article className='panel metric'><span>RECENT REVIEWS</span><strong>{loading ? '—' : metrics?.recent7Days ?? 0}</strong><small>Last 7 days</small></article>
           <article className='panel metric'><span>PENDING REPLIES</span><strong>{loading ? '—' : metrics?.needsReply ?? 0}</strong><small>Need response</small></article>
         </div>
 
@@ -273,16 +317,19 @@ export default function ReviewManagementPage() {
             <label className='field'><span>Rating</span><select className='select' value={rating} onChange={e => setRating(e.target.value)}><option value='all'>All ratings</option><option value='5'>5 stars</option><option value='4'>4 stars</option><option value='3'>3 stars</option><option value='2'>2 stars</option><option value='1'>1 star</option></select></label>
             <label className='field'><span>Reply status</span><select className='select' value={replyStatus} onChange={e => setReplyStatus(e.target.value)}><option value='all'>All statuses</option><option value='not_replied'>Needs reply</option><option value='replied'>Replied</option></select></label>
             <label className='field'><span>Business location</span><select className='select' value={profileId} onChange={e => setProfileId(e.target.value)}><option value='all'>All locations</option>{profiles.map(p => <option value={p.id} key={p.id}>{p.business_name}</option>)}</select></label>
-            <button className='btn btn-primary' onClick={applyFilters} disabled={loading}>Apply</button>
+            <div className='actions' style={{marginTop:0}}>
+              <button className='btn btn-primary' onClick={applyFilters} disabled={loading}>Apply</button>
+              <button className='btn' onClick={clearFilters} disabled={loading}>Clear</button>
+            </div>
           </div>
         </section>
 
         <div className='metrics'>
-          <article className='panel metric'><span>Total imported</span><strong>{loading ? '—' : total}</strong><small>Current imported review set</small></article>
-          <article className='panel metric'><span>Average rating</span><strong>{loading ? '—' : metrics?.averageRating ?? '—'}</strong><small>Across imported ratings</small></article>
-          <article className='panel metric'><span>Needs reply</span><strong>{loading ? '—' : metrics?.needsReply ?? 0}</strong><small>Pending responses</small></article>
+          <article className='panel metric'><span>Replied</span><strong>{loading ? '—' : metrics?.replied ?? 0}</strong><small>Replies saved</small></article>
           <article className='panel metric'><span>Response rate</span><strong>{loading ? '—' : (metrics?.responseRate ?? 0) + '%'}</strong><small>Reviews with replies</small></article>
-          <article className='panel metric'><span>5-star</span><strong>{loading ? '—' : metrics?.fiveStar ?? 0}</strong><small>Positive rating count</small></article>
+          <article className='panel metric'><span>5-star</span><strong>{loading ? '—' : metrics?.fiveStar ?? 0}</strong><small>Highest ratings</small></article>
+          <article className='panel metric'><span>4-star</span><strong>{loading ? '—' : metrics?.fourStar ?? 0}</strong><small>Positive ratings</small></article>
+          <article className='panel metric'><span>1–2 star</span><strong>{loading ? '—' : (metrics?.oneStar ?? 0)+(metrics?.twoStar ?? 0)}</strong><small>Needs careful follow-up</small></article>
         </div>
 
         <section className='panel'>
@@ -310,11 +357,12 @@ export default function ReviewManagementPage() {
 
               {canManage && <div className='actions'>
                 <button className='btn btn-soft' disabled={busy !== ''} onClick={() => void generate(item.id)}>{busy === 'ai:' + item.id ? 'Generating…' : '✦ Suggest Reply'}</button>
+                <button className='btn' disabled={busy !== ''} onClick={() => {setEditing(item.id);setReply(item.reply_text||'');}}> {item.reply_text ? 'Edit Reply' : 'Write Reply'} </button>
                 {item.suggestion && <button className='btn' onClick={() => useSuggestion(item)}>Use AI Draft</button>}
-                {item.reply_text && <button className='btn' onClick={() => { setEditing(item.id); setReply(item.reply_text || ''); }}>Edit Reply</button>}
                 {item.reply_text && <button className='btn btn-danger' disabled={busy !== ''} onClick={() => void saveReply(item.id, true)}>Delete Reply</button>}
               </div>}
 
+              {item.reply_text && <div className='existing-reply'><strong>Published reply:</strong> {item.reply_text}</div>}
               {item.suggestion && <div className='suggestion'><strong>{item.suggestion.model || 'AI draft'}:</strong> {item.suggestion.content}</div>}
 
               {editing === item.id && canManage && <div className='replybox'>
