@@ -69,6 +69,11 @@ export async function GET(request: Request) {
     const all = reviews || [];
     const total = all.length;
     const replied = all.filter((r) => r.reply_status === 'replied').length;
+    const recentCutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const recent7Days = all.filter((r) => {
+      const timestamp = r.review_time ? new Date(r.review_time).getTime() : NaN;
+      return Number.isFinite(timestamp) && timestamp >= recentCutoff;
+    }).length;
     const ratingValues = all.map((r) => Number(r.rating || 0)).filter((n) => n >= 1 && n <= 5);
     const averageRating = ratingValues.length ? Math.round((ratingValues.reduce((a, b) => a + b, 0) / ratingValues.length) * 100) / 100 : null;
 
@@ -86,6 +91,7 @@ export async function GET(request: Request) {
         replied,
         needsReply: Math.max(total - replied, 0),
         responseRate: total ? Math.round((replied / total) * 100) : 0,
+        recent7Days,
         averageRating,
         fiveStar: all.filter((r) => Number(r.rating) === 5).length,
         fourStar: all.filter((r) => Number(r.rating) === 4).length,

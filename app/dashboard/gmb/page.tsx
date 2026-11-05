@@ -2,12 +2,15 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import AppShell from '../components/AppShell';
+import QRCodeImage from '../components/QRCodeImage';
 import { getSupabase } from '../../../lib/supabase-browser';
 
 type Location = {
   id: string;
   business_name: string;
   location_id: string;
+  social_account_id?: string | null;
+  account_id?: string | null;
   address: string | null;
   phone: string | null;
   website: string | null;
@@ -26,6 +29,8 @@ type Review = {
   reply_status: string;
   business_name: string | null;
 };
+
+type Connection = { id: string; social_account_id: string; account_name: string | null; token_status: string | null; token_error: string | null };
 
 type ReviewSettings = {
   ai_enabled: boolean;
@@ -48,7 +53,7 @@ const css = `
 .google-mark{width:56px;height:56px;border-radius:16px;background:#fff;border:1px solid #e1e8ec;display:grid;place-items:center;font-size:30px;font-weight:950;color:#4285f4}
 .profile-title{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.profile-title h2{margin:0;font-size:17px}.connected{padding:5px 8px;border-radius:999px;background:#edf9f1;color:#087443;font-size:8px;font-weight:950}
 .profile-sub{margin:4px 0 0;color:#7b8792;font-size:10px}.detail-list{display:grid;gap:5px;margin-top:14px;padding-top:12px;border-top:1px solid #edf0f3}.detail{display:flex;gap:9px;color:#667085;font-size:10px}.detail b{width:18px;color:#087f7b}.detail span{color:#3a4650;overflow-wrap:anywhere}
-.qr-box{display:grid;place-items:center;align-content:center;gap:8px;border-left:1px solid #edf0f3;padding-left:16px}.qr{width:100px;height:100px;border:1px solid #e3e8ec;border-radius:11px;display:grid;place-items:center;background:repeating-linear-gradient(45deg,#111 0 2px,#fff 2px 5px);color:#fff;font-weight:950;text-shadow:0 0 2px #000}.qr-label{font-size:8px;text-align:center;color:#7b8792}
+.qr-box{display:grid;place-items:center;align-content:center;gap:8px;border-left:1px solid #edf0f3;padding-left:16px}.qr{width:112px;height:112px;border:1px solid #e3e8ec;border-radius:11px;display:grid;place-items:center;background:#fff;padding:5px}.qr-label{font-size:8px;text-align:center;color:#7b8792}
 .action-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}.btn{border:1px solid #dce5e9;border-radius:10px;padding:9px 11px;background:#fff;color:#34424b;font-size:9px;font-weight:900;cursor:pointer}.btn-primary{background:#2168c9;color:#fff;border-color:#2168c9}.btn-soft{background:#eef5ff;color:#2166d1}.btn-green{background:#edf9f4;color:#087f5c;border-color:#d0efe1}
 .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:11px}.metric{padding:15px}.metric span{display:block;font-size:9px;letter-spacing:.08em;text-transform:uppercase;font-weight:950;color:#667085}.metric strong{display:block;font-size:25px;margin-top:7px}.metric small{display:block;font-size:9px;color:#88939c;margin-top:3px}.metric.blue{background:#f6f9ff;border-color:#d9e5fb}.metric.green{background:#f5fcf7;border-color:#d7efdc}.metric.purple{background:#fbf7ff;border-color:#eadcff}.metric.orange{background:#fff9f1;border-color:#f3dfc0}
 .section{overflow:hidden}.section-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:17px 18px}.section-head h2{margin:4px 0 0;font-size:16px}.section-head p{margin:4px 0 0;color:#7d8992;font-size:10px}
@@ -73,8 +78,10 @@ const tabs = [
 export default function GmbPage(){
   const [workspaceId,setWorkspaceId]=useState('');
   const [locations,setLocations]=useState<Location[]>([]);
+  const [connections,setConnections]=useState<Connection[]>([]);
   const [reviews,setReviews]=useState<Review[]>([]);
   const [settings,setSettings]=useState<ReviewSettings|null>(null);
+  const [selectedAccount,setSelectedAccount]=useState('all');
   const [selectedLocation,setSelectedLocation]=useState('all');
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState('');
@@ -90,11 +97,24 @@ export default function GmbPage(){
     setLoading(true);setError('');
     try{
       const t=await token();
-      const response=await fetch('/api/google/business/reviews?'+new URLSearchParams({workspaceId:id,replyStatus:'all',rating:'0',profileId:'all'}).toString(),{headers:{Authorization:'Bearer '+t},cache:'no-store'});
-      const data=await response.json().catch(()=>({}));
-      if(!response.ok)throw new Error(data?.error||'Unable to load Google Business data.');
-      setLocations((data.profiles||[]) as Location[]);
-      setReviews((data.reviews||[]) as Review[]);
+      const headers={Authorization:'Bearer '+t};
+      const [managementResponse,reviewsResponse]=await Promise.all([
+        fetch('/api/google/business/management?workspaceId='+encodeURIComponent(id),{headers,cache:'no-store'}),
+        fetch('/api/google/business/reviews?'+new URLSearchParams({workspaceId:id,replyStatus:'all',rating:'0',profileId:'all'}).toString(),{headers,cache:'no-store'}),
+      ]);
+      const management=await managementResponse.json().catch(()=>({}));
+      const reviewData=await reviewsResponse.json().catch(()=>({}));
+      if(!managementResponse.ok)throw new Error(management?.error||'Unable to load Google Business locations.');
+      if(!reviewsResponse.ok)throw new Error(reviewData?.error||'Unable to load Google reviews.');
+      const nextConnections=(management.connections||[]) as Connection[];
+      const nextLocations=(management.locations||[]) as Location[];
+      setConnections(nextConnections);
+      setLocations(nextLocations);
+      setReviews((reviewData.reviews||[]) as Review[]);
+      const firstAccount=nextConnections[0];
+      const firstLocation=nextLocations.find(x=>firstAccount&&x.social_account_id===firstAccount.social_account_id)||nextLocations[0];
+      setSelectedAccount(firstAccount?.id||'all');
+      setSelectedLocation(firstLocation?.id||'all');
       try{
         const s=await fetch('/api/workspace-review-settings?workspace_id='+encodeURIComponent(id),{headers:{Authorization:'Bearer '+t},cache:'no-store'});
         const d=await s.json().catch(()=>({}));
@@ -120,18 +140,30 @@ export default function GmbPage(){
     return()=>window.removeEventListener('mdsm:workspace-changed',onWorkspace);
   },[]);
 
-  const currentLocation=useMemo(()=>selectedLocation==='all'?locations[0]||null:locations.find(x=>x.id===selectedLocation)||locations[0]||null,[locations,selectedLocation]);
-  const filteredReviews=useMemo(()=>selectedLocation==='all'?reviews:reviews.filter(x=>(x as any).profile_id===selectedLocation),[reviews,selectedLocation]);
+  const accountLocations=useMemo(()=>{
+    if(selectedAccount==='all')return locations;
+    const account=connections.find(x=>x.id===selectedAccount);
+    return locations.filter(x=>account&&x.social_account_id===account.social_account_id);
+  },[connections,locations,selectedAccount]);
+  const currentLocation=useMemo(()=>selectedLocation==='all'?accountLocations[0]||null:accountLocations.find(x=>x.id===selectedLocation)||accountLocations[0]||null,[accountLocations,selectedLocation]);
+  const filteredReviews=useMemo(()=>{
+    const ids=new Set(accountLocations.map(x=>x.id));
+    const accountReviews=reviews.filter(x=>ids.has((x as any).profile_id));
+    return selectedLocation==='all'?accountReviews:accountReviews.filter(x=>(x as any).profile_id===selectedLocation);
+  },[accountLocations,reviews,selectedLocation]);
   const ratings=filteredReviews.map(x=>Number(x.rating||0)).filter(x=>x>=1&&x<=5);
   const avg=ratings.length?ratings.reduce((a,b)=>a+b,0)/ratings.length:null;
-  const recent=filteredReviews.slice().sort((a,b)=>new Date(b.review_time||0).getTime()-new Date(a.review_time||0).getTime()).slice(0,6);
+  const sortedReviews=filteredReviews.slice().sort((a,b)=>new Date(b.review_time||0).getTime()-new Date(a.review_time||0).getTime());
+  const recent=sortedReviews.slice(0,6);
+  const sevenDaysAgo=Date.now()-7*24*60*60*1000;
+  const recentSevenDays=filteredReviews.filter(x=>x.review_time&&new Date(x.review_time).getTime()>=sevenDaysAgo).length;
   const pending=filteredReviews.filter(x=>x.reply_status!=='replied').length;
   const aiEnabled=settings?.ai_enabled!==false;
   const connected=locations.length>0;
 
   function open(path:string){location.href=path}
 
-  return <AppShell title='Google Business & Reviews'>
+  return <AppShell title='Google Business'>
     <style>{css}</style>
     <div className='gmb-shell'>
       <div className='gmb-topbar'>
@@ -140,8 +172,8 @@ export default function GmbPage(){
           <h1>Google Business Profile</h1>
           <p>Manage workspace-scoped business locations, reviews, posts and reputation tools from one place.</p>
         </div>
-        <label className='selector'><span>Business Account</span><select value={currentLocation?.id||''} onChange={e=>setSelectedLocation(e.target.value)} disabled={!locations.length}><option value=''>{locations.length?'Select business':'Not connected'}</option>{locations.map(x=><option key={x.id} value={x.id}>{x.business_name}</option>)}</select></label>
-        <label className='selector'><span>Business Location</span><select value={selectedLocation} onChange={e=>setSelectedLocation(e.target.value)} disabled={!locations.length}><option value='all'>All locations</option>{locations.map(x=><option key={x.id} value={x.id}>{x.business_name}</option>)}</select></label>
+        <label className='selector'><span>Business Account</span><select value={selectedAccount} onChange={e=>{setSelectedAccount(e.target.value);const account=connections.find(x=>x.id===e.target.value);const first=locations.find(x=>e.target.value==='all'||(account&&x.social_account_id===account.social_account_id));setSelectedLocation(first?.id||'all')}} disabled={!connections.length}><option value='all'>{connections.length?'All accounts':'Not connected'}</option>{connections.map(x=><option key={x.id} value={x.id}>{x.account_name||'Google Business account'}</option>)}</select></label>
+        <label className='selector'><span>Business Location</span><select value={selectedLocation} onChange={e=>setSelectedLocation(e.target.value)} disabled={!accountLocations.length}><option value='all'>All locations</option>{accountLocations.map(x=><option key={x.id} value={x.id}>{x.business_name}</option>)}</select></label>
       </div>
 
       {error&&<div className='error'>{error}</div>}
@@ -150,13 +182,13 @@ export default function GmbPage(){
       <div className='tabs'>{tabs.map(([label,href])=><button key={label} className={'tab '+(label==='Overview'?'active':'')} onClick={()=>open(href)}>{label}</button>)}</div>
 
       <section className='panel profile-card'>
-        {currentLocation?<><div><div className='profile-main'><div className='google-mark'>G</div><div><div className='profile-title'><h2>{currentLocation.business_name}</h2><span className='connected'>✓ {currentLocation.status||'Connected'}</span></div><p className='profile-sub'>{currentLocation.category||'Google Business Profile location'}</p><div className='detail-list'><div className='detail'><b>⌖</b><span>{currentLocation.address||'Address unavailable'}</span></div><div className='detail'><b>☎</b><span>{currentLocation.phone||'Phone unavailable'}</span></div>{currentLocation.website&&<div className='detail'><b>◎</b><span>{currentLocation.website}</span></div>}</div><div className='action-row'><button className='btn' onClick={()=>open('/dashboard/gmb/management')}>Edit Business Profile</button>{currentLocation.review_url&&<a className='btn btn-soft' href={currentLocation.review_url} target='_blank' rel='noreferrer'>Share Review Link</a>}<button className='btn btn-green' onClick={()=>open('/dashboard/gmb/requests')}>Create Review Request</button></div></div></div></div><div className='qr-box'>{currentLocation.review_url?<><div className='qr' aria-hidden='true'>QR</div><div className='qr-label'>Public review link ready</div></>:<div className='qr-label'>Review QR appears after Google location sync.</div>}</div></>:<><div className='empty' style={{gridColumn:'1/-1'}}><strong>Google Business Profile is not connected yet.</strong>Connect Google from Settings when you are ready. No placeholder locations or reviews are shown.</div></>}
+        {currentLocation?<><div><div className='profile-main'><div className='google-mark'>G</div><div><div className='profile-title'><h2>{currentLocation.business_name}</h2><span className='connected'>✓ {currentLocation.status||'Connected'}</span></div><p className='profile-sub'>{currentLocation.category||'Google Business Profile location'}</p><div className='detail-list'><div className='detail'><b>⌖</b><span>{currentLocation.address||'Address unavailable'}</span></div><div className='detail'><b>☎</b><span>{currentLocation.phone||'Phone unavailable'}</span></div>{currentLocation.website&&<div className='detail'><b>◎</b><span>{currentLocation.website}</span></div>}</div><div className='action-row'><button className='btn' onClick={()=>open('/dashboard/gmb/management')}>Edit Business Profile</button>{currentLocation.review_url&&<a className='btn btn-soft' href={currentLocation.review_url} target='_blank' rel='noreferrer'>Share Review Link</a>}<button className='btn btn-green' onClick={()=>open('/dashboard/gmb/requests')}>Create Review Request</button></div></div></div></div><div className='qr-box'>{currentLocation.review_url?<div className='qr'><QRCodeImage value={currentLocation.review_url} alt={'Review QR code for '+currentLocation.business_name} size={102}/></div>:<div className='qr-label'>Review QR appears after Google location sync.</div>}</div></>:<><div className='empty' style={{gridColumn:'1/-1'}}><strong>Google Business Profile is not connected yet.</strong>Connect Google from Settings when you are ready. No placeholder locations or reviews are shown.</div></>}
       </section>
 
       <div className='metrics'>
         <article className='panel metric blue'><span>Total Reviews</span><strong>{loading?'—':filteredReviews.length}</strong><small>Imported into this workspace</small></article>
         <article className='panel metric green'><span>Average Rating</span><strong>{loading?'—':avg==null?'—':avg.toFixed(2)+'/5'}</strong><small>Across imported ratings</small></article>
-        <article className='panel metric purple'><span>Recent Reviews</span><strong>{loading?'—':recent.length}</strong><small>Latest available review set</small></article>
+        <article className='panel metric purple'><span>Recent Reviews</span><strong>{loading?'—':recentSevenDays}</strong><small>Last 7 days</small></article>
         <article className='panel metric orange'><span>Pending Replies</span><strong>{loading?'—':pending}</strong><small>Need a response</small></article>
       </div>
 

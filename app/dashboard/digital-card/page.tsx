@@ -21,7 +21,7 @@ export default function DigitalCardPage(){
  async function save(){setBusy(true);setError('');try{const t=await token();const r=await fetch('/api/digital-card',{method:'PATCH',headers:{Authorization:'Bearer '+t,'Content-Type':'application/json'},body:JSON.stringify({workspaceId,...card,contacts:data.contacts,socialLinks:data.socialLinks,services:data.services,testimonials:data.testimonials,embeds:data.embeds,payments:data.payments})});const d=await r.json();if(!r.ok)throw Error(d?.error||'Unable to save digital card.');await load(workspaceId)}catch(e){setError(e instanceof Error?e.message:'Unable to save digital card.')}finally{setBusy(false)}}
  function add(type:string,item:any){setData(d=>({...d,[type]:[...(d as any)[type],item]}))}
  function previewUrl(){return card.profile_slug?'/digital-card/'+encodeURIComponent(card.profile_slug):''}
- return <AppShell title='Digital Card'><style>{css}</style><div className='page'>
+ return <AppShell title='Website'><style>{css}</style><div className='page'>
   <div className='hero'><div className='page-head'><div className='eyebrow'>DIGITAL CARD</div><h1>Digital Business Card</h1><p>Profile, contact methods, social links, testimonials, services, lead capture, embeds, offline content and payment link for this workspace.</p></div><div className='actions'><button className='btn soft' onClick={()=>location.href='/dashboard'}>← Dashboard</button><button className='btn soft' onClick={()=>location.href='/dashboard/digital-card/leads'}>View Leads & Contacts →</button>{card.profile_slug&&<button className='btn' onClick={()=>location.href=previewUrl()}>Open Public Card →</button>}</div></div>
   {error&&<div className='alert alert-error'>{error}</div>}
   <section className='grid'>
