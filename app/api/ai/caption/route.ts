@@ -10,7 +10,7 @@ function adminDb() {
 }
 
 async function getUser(req: NextRequest) {
-  const token = req.headers.get('authorization')?.replace(/^Bearer\\s+/i, '');
+  const token = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
   if (!token) return null;
   const client = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -132,7 +132,7 @@ export async function POST(req: NextRequest) {
       'Do not invent prices, offers, certifications, medical claims, contact details, or product specifications.',
       'Return valid JSON only.',
       `Return keys appropriate for this task: ${output}.`,
-    ].filter(Boolean).join('\\n');
+    ].filter(Boolean).join('\n');
 
     const response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
