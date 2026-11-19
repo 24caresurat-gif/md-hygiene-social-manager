@@ -66,10 +66,10 @@ export default function AICaptionPanel({
         return;
       }
       if (action === 'hashtags') {
-        onUse(`${currentCaption}${data.hashtags?.length ? `\\n\\n${data.hashtags.join(' ')}` : ''}`);
+        onUse(`${currentCaption}${data.hashtags?.length ? `\n\n${data.hashtags.join(' ')}` : ''}`);
         return;
       }
-      onUse(`${data.caption || currentCaption}${data.hashtags?.length ? `\\n\\n${data.hashtags.join(' ')}` : ''}`);
+      onUse(`${data.caption || currentCaption}${data.hashtags?.length ? `\n\n${data.hashtags.join(' ')}` : ''}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to generate AI content.');
     } finally {
