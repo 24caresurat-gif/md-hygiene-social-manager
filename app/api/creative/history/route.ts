@@ -69,6 +69,12 @@ export async function POST(request: NextRequest) {
     const mime = match[1];
     const bytes = Buffer.from(match[2], 'base64');
     if (!bytes.length || bytes.length > 15 * 1024 * 1024) return NextResponse.json({ error: 'Each image must be 15MB or smaller.' }, { status: 413 });
+    const isPng = bytes.length >= 8 && bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+    const isJpeg = bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+    const isWebp = bytes.length >= 12 && bytes.toString('ascii', 0, 4) === 'RIFF' && bytes.toString('ascii', 8, 12) === 'WEBP';
+    if ((mime === 'image/png' && !isPng) || (mime === 'image/jpeg' && !isJpeg) || (mime === 'image/webp' && !isWebp)) {
+      return NextResponse.json({ error: 'Image content does not match its declared file type.' }, { status: 400 });
+    }
     const ext = mime === 'image/png' ? 'png' : mime === 'image/webp' ? 'webp' : 'jpg';
     const path = `${access.user.id}/${workspaceId}/ai-history/${crypto.randomUUID()}-${index + 1}.${ext}`;
     const { error: uploadError } = await access.db.storage.from('social-media').upload(path, bytes, { contentType: mime, upsert: false });
@@ -93,9 +99,12 @@ export async function DELETE(request: NextRequest) {
   const { data: item, error: findError } = await access.db.from('creative_image_history').select('id,image_path').eq('id', id).eq('workspace_id', workspaceId).maybeSingle();
   if (findError) return NextResponse.json({ error: findError.message }, { status: 500 });
   if (!item) return NextResponse.json({ error: 'Image not found.' }, { status: 404 });
-  const { error: removeError } = await access.db.storage.from('social-media').remove([item.image_path]);
-  if (removeError) return NextResponse.json({ error: removeError.message }, { status: 500 });
   const { error } = await access.db.from('creative_image_history').delete().eq('id', id).eq('workspace_id', workspaceId);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  const { error: removeError } = await access.db.storage.from('social-media').remove([item.image_path]);
+  if (removeError) {
+    console.error('creative image history storage cleanup failed', { historyId: id, error: removeError.message });
+    return NextResponse.json({ ok: true, warning: 'History entry deleted; stored image cleanup is pending.' });
+  }
   return NextResponse.json({ ok: true });
 }
