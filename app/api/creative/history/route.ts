@@ -32,7 +32,7 @@ async function authorize(request: Request, workspaceId: string, permissionColumn
   const privileged = ['admin','owner'].includes(role) || workspace.user_id === authData.user.id || (membership?.active === true && ['admin','owner'].includes(memberRole));
   if (!privileged && membership?.active !== true) return { error: 'You do not have access to this workspace.', status: 403 as const };
   if (!privileged) {
-    const { data: permission, error } = await db.from('workspace_member_permissions').select(permissionColumn).eq('workspace_id', workspaceId).eq('user_id', authData.user.id).eq('module', 'content').maybeSingle();
+    const { data: permission, error } = await db.from('workspace_member_permissions').select('can_view,can_create,can_edit').eq('workspace_id', workspaceId).eq('user_id', authData.user.id).eq('module', 'content').maybeSingle();
     if (error) return { error: 'Unable to verify content permissions.', status: 500 as const };
     if (permission?.[permissionColumn] !== true) return { error: 'You do not have the required Content permission.', status: 403 as const };
   }
