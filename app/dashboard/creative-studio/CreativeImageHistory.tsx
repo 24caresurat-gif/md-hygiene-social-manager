@@ -4,7 +4,7 @@ import { getSupabase } from '../../../lib/supabase-browser';
 
 type HistoryItem = { id: string; url: string; prompt: string; format: string; source_type: string; created_at: string };
 
-export default function CreativeImageHistory({ workspaceId, onUse }: { workspaceId: string; onUse: (url: string) => void }) {
+export default function CreativeImageHistory({ workspaceId, refreshKey, onUse }: { workspaceId: string; refreshKey: number; onUse: (url: string) => void }) {
   const [items, setItems] = useState<HistoryItem[]>([]);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
@@ -16,7 +16,7 @@ export default function CreativeImageHistory({ workspaceId, onUse }: { workspace
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || 'Could not load image history.');
     setItems(data.items || []);
-  }, [workspaceId]);
+  }, [workspaceId, refreshKey]);
   useEffect(() => { load().catch(error => setMessage(error instanceof Error ? error.message : 'Could not load image history.')); }, [load]);
   async function remove(id: string) {
     setBusy(true); setMessage('');
