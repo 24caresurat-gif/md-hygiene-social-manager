@@ -3,11 +3,27 @@ import { createClient } from '@supabase/supabase-js';
 
 export const runtime = 'nodejs';
 
+const HISTORY_BUCKET = 'creative-history';
+
 function adminDb() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) throw new Error('Server database configuration is missing.');
   return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
+}
+
+async function ensureHistoryBucket(db: ReturnType<typeof adminDb>) {
+  const { data: existing } = await db.storage.getBucket(HISTORY_BUCKET);
+  if (existing) return null;
+  const { error: createError } = await db.storage.createBucket(HISTORY_BUCKET, {
+    public: false,
+    fileSizeLimit: 15 * 1024 * 1024,
+    allowedMimeTypes: ['image/png', 'image/jpeg', 'image/webp'],
+  });
+  if (!createError) return null;
+  // A concurrent request may have created the bucket after the first lookup.
+  const { data: createdByAnotherRequest } = await db.storage.getBucket(HISTORY_BUCKET);
+  return createdByAnotherRequest ? null : createError.message;
 }
 
 async function authorize(request: Request, workspaceId: string, permissionColumn: 'can_view' | 'can_create' | 'can_edit' = 'can_view') {
@@ -44,9 +60,17 @@ export async function GET(request: NextRequest) {
   if (!workspaceId) return NextResponse.json({ error: 'workspaceId is required.' }, { status: 400 });
   const access = await authorize(request, workspaceId);
   if ('error' in access) return NextResponse.json({ error: access.error }, { status: access.status });
+  const bucketError = await ensureHistoryBucket(access.db);
+  if (bucketError) return NextResponse.json({ error: 'Private image storage is unavailable.' }, { status: 503 });
   const { data, error } = await access.db.from('creative_image_history').select('id,image_path,prompt,format,source_type,created_at').eq('workspace_id', workspaceId).order('created_at', { ascending: false }).limit(60);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  const items = (data || []).map(item => ({ ...item, url: access.db.storage.from('social-media').getPublicUrl(item.image_path).data.publicUrl }));
+  const storage = access.db.storage.from(HISTORY_BUCKET);
+  const items = await Promise.all((data || []).map(async item => {
+    const { data: signed, error: signedError } = await storage.createSignedUrl(item.image_path, 60 * 60);
+    if (signedError || !signed?.signedUrl) throw new Error('Could not create a secure image link.');
+    return { ...item, url: signed.signedUrl };
+  }).map(promise => promise.catch(() => null)));
+  if (items.some(item => !item)) return NextResponse.json({ error: 'Could not load secure image previews.' }, { status: 500 });
   return NextResponse.json({ items });
 }
 
@@ -61,6 +85,9 @@ export async function POST(request: NextRequest) {
   if (!['9:16','4:5','1:1','16:9'].includes(format)) return NextResponse.json({ error: 'Unsupported image format.' }, { status: 400 });
   const access = await authorize(request, workspaceId, 'can_create');
   if ('error' in access) return NextResponse.json({ error: access.error }, { status: access.status });
+  const bucketError = await ensureHistoryBucket(access.db);
+  if (bucketError) return NextResponse.json({ error: 'Private image storage is unavailable.' }, { status: 503 });
+  const storage = access.db.storage.from(HISTORY_BUCKET);
   const saved = [];
   for (const [index, value] of images.entries()) {
     if (typeof value !== 'string' || value.length > 22 * 1024 * 1024) return NextResponse.json({ error: 'Image data is invalid or too large.' }, { status: 413 });
@@ -77,14 +104,14 @@ export async function POST(request: NextRequest) {
     }
     const ext = mime === 'image/png' ? 'png' : mime === 'image/webp' ? 'webp' : 'jpg';
     const path = `${access.user.id}/${workspaceId}/ai-history/${crypto.randomUUID()}-${index + 1}.${ext}`;
-    const { error: uploadError } = await access.db.storage.from('social-media').upload(path, bytes, { contentType: mime, upsert: false });
+    const { error: uploadError } = await storage.upload(path, bytes, { contentType: mime, upsert: false });
     if (uploadError) return NextResponse.json({ error: uploadError.message }, { status: 400 });
     const { data, error } = await access.db.from('creative_image_history').insert({ workspace_id: workspaceId, user_id: access.user.id, image_path: path, prompt, format, source_type: sourceType }).select('id,image_path,prompt,format,source_type,created_at').single();
     if (error) {
-      await access.db.storage.from('social-media').remove([path]);
+      await storage.remove([path]);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
-    saved.push({ ...data, url: access.db.storage.from('social-media').getPublicUrl(path).data.publicUrl });
+    saved.push({ ...data, url: (await storage.createSignedUrl(path, 60 * 60)).data?.signedUrl || '' });
   }
   return NextResponse.json({ items: saved });
 }
@@ -101,7 +128,7 @@ export async function DELETE(request: NextRequest) {
   if (!item) return NextResponse.json({ error: 'Image not found.' }, { status: 404 });
   const { error } = await access.db.from('creative_image_history').delete().eq('id', id).eq('workspace_id', workspaceId);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  const { error: removeError } = await access.db.storage.from('social-media').remove([item.image_path]);
+  const { error: removeError } = await access.db.storage.from(HISTORY_BUCKET).remove([item.image_path]);
   if (removeError) {
     console.error('creative image history storage cleanup failed', { historyId: id, error: removeError.message });
     return NextResponse.json({ ok: true, warning: 'History entry deleted; stored image cleanup is pending.' });
