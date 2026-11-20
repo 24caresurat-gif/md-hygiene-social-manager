@@ -11,7 +11,7 @@ function adminDb() {
 }
 
 async function authorize(request: Request, workspaceId: string) {
-  const token = request.headers.get('authorization')?.replace(/^Bearer\\s+/i, '');
+  const token = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!token || !url || !anon) return { error: 'Authentication required.', status: 401 as const };
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
   const saved = [];
   for (const [index, value] of images.entries()) {
     if (typeof value !== 'string' || value.length > 22 * 1024 * 1024) return NextResponse.json({ error: 'Image data is invalid or too large.' }, { status: 413 });
-    const match = value.match(/^data:(image\\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$/);
+    const match = value.match(/^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$/);
     if (!match) return NextResponse.json({ error: 'Only PNG, JPEG and WebP image data is accepted.' }, { status: 400 });
     const mime = match[1];
     const bytes = Buffer.from(match[2], 'base64');
