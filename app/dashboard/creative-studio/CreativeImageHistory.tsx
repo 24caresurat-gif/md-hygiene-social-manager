@@ -30,7 +30,7 @@ export default function CreativeImageHistory({ workspaceId, onUse }: { workspace
     } catch (error) { setMessage(error instanceof Error ? error.message : 'Could not delete image.'); }
     finally { setBusy(false); }
   }
-  return <section className="panel" style={{ marginTop: 18 }}>
+  return <section className="panel" style={{ marginTop: 18 }}><style jsx>{`.panel{background:#fff;border:1px solid #e2e9ed;border-radius:20px;padding:20px;box-shadow:0 12px 35px rgba(15,23,42,.05)}.mini-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.mini-head h2{margin:0;font-size:16px}.variants{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}.variant{border-radius:13px;background:#f6f9fa;border:1px solid #e2e9ed;overflow:hidden}.variant img{width:100%;aspect-ratio:1;object-fit:cover;display:block}.variant>div{padding:8px}.actions{display:flex;gap:8px;flex-wrap:wrap}.soft{background:#eef8f7;color:#087f7b;border:0;border-radius:11px;padding:9px 12px;font-size:10px;font-weight:900;cursor:pointer}.soft:disabled{opacity:.5}.status{padding:11px;border-radius:11px;background:#fff8e8;color:#8a5b00;font-size:10px;line-height:1.5;margin-bottom:14px}`}</style>
     <div className="mini-head"><h2>AI Image History</h2><button className="soft" onClick={() => load().catch(error => setMessage(error.message))}>Refresh</button></div>
     {message && <p className="status">{message}</p>}
     {!items.length ? <p style={{ color: '#718096', fontSize: 12 }}>Generated and edited images will appear here for this workspace.</p> :
