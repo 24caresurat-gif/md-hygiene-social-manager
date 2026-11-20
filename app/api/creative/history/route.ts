@@ -10,7 +10,7 @@ function adminDb() {
   return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
 }
 
-async function authorize(request: Request, workspaceId: string) {
+async function authorize(request: Request, workspaceId: string, permissionColumn: 'can_view' | 'can_create' | 'can_edit' = 'can_view') {
   const token = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -32,9 +32,9 @@ async function authorize(request: Request, workspaceId: string) {
   const privileged = ['admin','owner'].includes(role) || workspace.user_id === authData.user.id || (membership?.active === true && ['admin','owner'].includes(memberRole));
   if (!privileged && membership?.active !== true) return { error: 'You do not have access to this workspace.', status: 403 as const };
   if (!privileged) {
-    const { data: permission, error } = await db.from('workspace_member_permissions').select('can_view').eq('workspace_id', workspaceId).eq('user_id', authData.user.id).eq('module', 'content').maybeSingle();
+    const { data: permission, error } = await db.from('workspace_member_permissions').select(permissionColumn).eq('workspace_id', workspaceId).eq('user_id', authData.user.id).eq('module', 'content').maybeSingle();
     if (error) return { error: 'Unable to verify content permissions.', status: 500 as const };
-    if (permission?.can_view !== true) return { error: 'You do not have View permission for Content.', status: 403 as const };
+    if (permission?.[permissionColumn] !== true) return { error: 'You do not have the required Content permission.', status: 403 as const };
   }
   return { user: authData.user, db };
 }
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
   const sourceType = body?.sourceType === 'edited' ? 'edited' : 'generated';
   if (!workspaceId || !images.length) return NextResponse.json({ error: 'Workspace and generated images are required.' }, { status: 400 });
   if (!['9:16','4:5','1:1','16:9'].includes(format)) return NextResponse.json({ error: 'Unsupported image format.' }, { status: 400 });
-  const access = await authorize(request, workspaceId);
+  const access = await authorize(request, workspaceId, 'can_create');
   if ('error' in access) return NextResponse.json({ error: access.error }, { status: access.status });
   const saved = [];
   for (const [index, value] of images.entries()) {
@@ -88,7 +88,7 @@ export async function DELETE(request: NextRequest) {
   const workspaceId = String(body?.workspaceId || '');
   const id = String(body?.id || '');
   if (!workspaceId || !id) return NextResponse.json({ error: 'Workspace and image id are required.' }, { status: 400 });
-  const access = await authorize(request, workspaceId);
+  const access = await authorize(request, workspaceId, 'can_edit');
   if ('error' in access) return NextResponse.json({ error: access.error }, { status: access.status });
   const { data: item, error: findError } = await access.db.from('creative_image_history').select('id,image_path').eq('id', id).eq('workspace_id', workspaceId).maybeSingle();
   if (findError) return NextResponse.json({ error: findError.message }, { status: 500 });
