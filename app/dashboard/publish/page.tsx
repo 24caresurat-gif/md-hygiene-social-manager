@@ -24,6 +24,11 @@ export default function PublishPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [aiTopic, setAiTopic] = useState('');
   const [aiBusy, setAiBusy] = useState(false);
+  const [aiLanguage, setAiLanguage] = useState('English');
+  const [aiGoal, setAiGoal] = useState('');
+  const [aiDetails, setAiDetails] = useState('');
+  const [reelBusy, setReelBusy] = useState(false);
+  const [reel, setReel] = useState<{ hook: string; shots: { time: string; visual: string; onScreenText: string; voiceOver: string }[]; cta: string } | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -95,7 +100,9 @@ export default function PublishPage() {
           current: message,
           platform,
           tone: 'Professional, trustworthy, concise',
-          language: 'English',
+          language: aiLanguage,
+          goal: aiGoal,
+          details: aiDetails,
         }),
       });
       const d = await r.json().catch(() => ({}));
@@ -109,6 +116,41 @@ export default function PublishPage() {
       setError(e instanceof Error ? e.message : 'AI caption generation failed.');
     } finally {
       setAiBusy(false);
+    }
+  }
+
+  async function generateReel() {
+    if (!targets.length) return setError('Select a Facebook or Instagram account first.');
+    if (!aiTopic.trim() && !message.trim()) return setError('Add a topic or current caption for the reel script.');
+    setReelBusy(true); setError(''); setSuccess(''); setReel(null);
+    try {
+      const c = getSupabase();
+      const { data: { session } } = await c.auth.getSession();
+      if (!session?.access_token) throw new Error('Your session has expired.');
+      const r = await fetch('/api/ai/caption', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + session.access_token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          brandId,
+          accountIds: targets.map(a => a.id),
+          action: 'reel',
+          topic: aiTopic,
+          current: message,
+          platform: 'instagram reel',
+          tone: 'Friendly, tasteful, trustworthy',
+          language: aiLanguage,
+          goal: aiGoal,
+          details: aiDetails,
+        }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d?.error || 'Reel script generation failed.');
+      setReel(d.reel || null);
+      setSuccess('Reel script ready. It is a shooting plan, not a post. Review it before you film.');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Reel script generation failed.');
+    } finally {
+      setReelBusy(false);
     }
   }
 
@@ -177,6 +219,10 @@ export default function PublishPage() {
   }
 
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
+
+  const reelText = (x: NonNullable<typeof reel>) => ['Hook: ' + x.hook]
+    .concat(x.shots.map((s, i) => (i + 1) + '. [' + s.time + '] ' + s.visual + (s.onScreenText ? ' | On screen: ' + s.onScreenText : '') + (s.voiceOver ? ' | Voice: ' + s.voiceOver : '')))
+    .concat(['CTA: ' + x.cta]).join('\n');
 
   return (
     <AppShell title="Create Post">
@@ -248,11 +294,43 @@ export default function PublishPage() {
             </label>
             <label>AI Post Assistant
               <input value={aiTopic} onChange={e => setAiTopic(e.target.value)} placeholder="Topic or campaign direction for AI" disabled={busy || aiBusy} />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <select value={aiLanguage} onChange={e => setAiLanguage(e.target.value)} disabled={busy || aiBusy || reelBusy}>
+                  <option value="English">English</option>
+                  <option value="Gujarati">Gujarati</option>
+                  <option value="Hindi">Hindi</option>
+                </select>
+                <select value={aiGoal} onChange={e => setAiGoal(e.target.value)} disabled={busy || aiBusy || reelBusy}>
+                  <option value="">Goal (optional)</option>
+                  <option value="Sales promotion">Sales promotion</option>
+                  <option value="Awareness">Awareness</option>
+                  <option value="Product features">Product features</option>
+                </select>
+              </div>
+              <textarea rows={2} value={aiDetails} onChange={e => setAiDetails(e.target.value)} placeholder="Product details to use: name, pack size, price, benefits (optional)" maxLength={600} disabled={busy || aiBusy || reelBusy} />
               <span className="note">AI can generate or rewrite the caption for the selected Facebook/Instagram targets. Final submission still follows the existing approval flow.</span>
               <button type="button" className="btn soft" onClick={generateAICaption} disabled={busy || aiBusy || !targets.length}>
                 {aiBusy ? 'Generating…' : message.trim() ? '✦ Improve with AI' : '✦ Generate with AI'}
               </button>
+              <button type="button" className="btn soft" onClick={generateReel} disabled={busy || aiBusy || reelBusy || !targets.length}>
+                {reelBusy ? 'Writing script…' : '🎬 Reel script'}
+              </button>
             </label>
+            {reel && (
+              <div className="alert ok" style={{ lineHeight: 1.6 }}>
+                <b>Reel script (20 to 30 seconds)</b>
+                <div style={{ marginTop: 6 }}>Hook: {reel.hook}</div>
+                {reel.shots.map((s, i) => (
+                  <div key={i} style={{ marginTop: 6 }}>
+                    {i + 1}. [{s.time}] {s.visual}{s.onScreenText ? ' | On screen: ' + s.onScreenText : ''}{s.voiceOver ? ' | Voice: ' + s.voiceOver : ''}
+                  </div>
+                ))}
+                {reel.cta ? <div style={{ marginTop: 6 }}>CTA: {reel.cta}</div> : null}
+                <div style={{ marginTop: 8 }}>
+                  <button type="button" className="btn soft" onClick={() => void navigator.clipboard.writeText(reelText(reel))}>Copy script</button>
+                </div>
+              </div>
+            )}
             <label>Media
               <div className="media">
                 <label className="btn soft" style={{ margin: 0 }}>📷 Choose Image
